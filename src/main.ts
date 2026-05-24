@@ -8,4 +8,15 @@ import "@/plugins/axios";
 import "@/access";
 import "bytemd/dist/index.css";
 
+// Suppress benign ResizeObserver loop errors caused by Monaco Editor
+window.addEventListener("error", (e) => {
+  if (
+    e.message ===
+      "ResizeObserver loop completed with undelivered notifications." ||
+    e.message === "ResizeObserver loop limit exceeded"
+  ) {
+    e.stopPropagation();
+  }
+});
+
 createApp(App).use(ArcoVue).use(store).use(router).mount("#app");

@@ -1,57 +1,61 @@
 <template>
   <div id="userLoginView">
-    <div class="login-container">
+    <div class="login-card">
+      <div class="card-accent"></div>
+
       <div class="login-header">
-        <img class="logo" src="../../assets/logo.png" />
-        <h2>用户登录</h2>
-        <p class="subtitle">欢迎回到 MyOJ</p>
+        <div class="logo-wrap">
+          <svg viewBox="0 0 28 28" fill="none">
+            <path
+              d="M7 6 C3 7 1 10 1 14 C1 18 3 21 7 22"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M21 6 C25 7 27 10 27 14 C27 18 25 21 21 22"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M12 4 C14 9 15 19 16 24"
+              stroke="var(--primary)"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </div>
+        <h2 class="login-title">欢迎回来</h2>
+        <p class="login-subtitle">登录你的 MyOJ 账号</p>
       </div>
+
       <a-form
         class="login-form"
-        label-align="left"
-        auto-label-width
         :model="form"
         @submit="handleSubmit"
+        layout="vertical"
       >
         <a-form-item field="userAccount" label="账号">
-          <a-input
-            v-model="form.userAccount"
-            placeholder="请输入账号"
-            size="large"
-          />
+          <a-input v-model="form.userAccount" placeholder="请输入账号" />
         </a-form-item>
-        <a-form-item
-          field="userPassword"
-          tooltip="密码不少于 8 位"
-          label="密码"
-        >
+
+        <a-form-item field="userPassword" label="密码">
           <a-input-password
             v-model="form.userPassword"
             placeholder="请输入密码"
-            size="large"
           />
         </a-form-item>
+
         <a-form-item>
-          <div class="form-actions">
-            <a-button
-              type="primary"
-              html-type="submit"
-              size="large"
-              class="login-button"
-            >
-              登录
-            </a-button>
-            <a-button
-              type="outline"
-              size="large"
-              class="register-button"
-              @click="goToRegister"
-            >
-              注册
-            </a-button>
-          </div>
+          <button type="submit" class="submit-btn">登录</button>
         </a-form-item>
       </a-form>
+
+      <div class="login-footer">
+        <span class="footer-text">还没有账号？</span>
+        <button class="link-btn" @click="goToRegister">立即注册</button>
+      </div>
     </div>
   </div>
 </template>
@@ -63,253 +67,166 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(
-    135deg,
-    #f8fafc 0%,
-    #e2e8f0 25%,
-    #cbd5e1 50%,
-    #e2e8f0 75%,
-    #f8fafc 100%
+    180deg,
+    var(--surface-card) 0%,
+    var(--surface-soft) 30%,
+    var(--canvas) 100%
   );
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-  padding: var(--spacing-md);
+  padding: var(--space-md);
   position: relative;
   overflow: hidden;
 }
 
-/* 背景装饰效果 */
-#userLoginView::before {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-      circle at 30% 40%,
-      rgba(99, 102, 241, 0.05),
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 70% 60%,
-      rgba(139, 92, 246, 0.05),
-      transparent 50%
-    );
-  animation: rotate 20s linear infinite;
-  z-index: 0;
-}
-
-/* 渐变背景动画 */
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes rotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* 登录容器样式 */
-.login-container {
-  background: rgba(255, 255, 255, 0.5) !important;
-  backdrop-filter: blur(15px) !important;
-  -webkit-backdrop-filter: blur(15px) !important;
-  border-radius: var(--border-radius-xl);
-  box-shadow: var(--shadow-xl);
-  border: 1px solid var(--border-color);
-  padding: var(--spacing-2xl);
+/* Card */
+.login-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-xl);
+  padding: 0;
   width: 100%;
-  max-width: 520px;
-  transition: all var(--transition-normal);
+  max-width: 400px;
   position: relative;
   z-index: 1;
-  animation: fadeInUp var(--transition-normal) ease-out;
+  overflow: hidden;
 }
 
-.login-container:hover {
-  box-shadow: var(--shadow-2xl);
-  border-color: var(--border-light);
-  transform: translateY(-4px);
-  background: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+.card-accent {
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--accent-teal));
 }
 
-/* 登录头部样式 */
 .login-header {
   text-align: center;
-  margin-bottom: var(--spacing-2xl);
-  position: relative;
+  padding: var(--space-xl) var(--space-xl) 0;
 }
 
-.login-header::after {
-  content: "";
-  position: absolute;
-  bottom: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: var(--primary-gradient);
-  border-radius: 1.5px;
+.logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-soft);
+  margin-bottom: var(--space-md);
+  color: var(--ink);
 }
 
-.login-header .logo {
-  height: 80px;
-  margin-bottom: var(--spacing-lg);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-md);
-  transition: all var(--transition-fast);
-  border: 1px solid var(--border-color);
+.logo-wrap svg {
+  width: 22px;
+  height: 22px;
 }
 
-.login-header .logo:hover {
-  transform: rotate(5deg) scale(1.05);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary-color);
+.login-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
 }
 
-.login-header h2 {
-  color: var(--text-primary);
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: var(--spacing-md);
-  background: linear-gradient(135deg, var(--primary-color), var(--info-color));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 15px rgba(0, 180, 255, 0.2);
-}
-
-.login-header .subtitle {
-  color: var(--text-secondary);
-  font-size: 16px;
+.login-subtitle {
+  color: var(--muted);
+  font-size: 14px;
   margin: 0;
-  font-weight: 500;
 }
 
-/* 表单样式 */
+/* Form */
 .login-form {
-  width: 100%;
+  padding: var(--space-lg) var(--space-xl) 0;
 }
 
-/* 表单项样式 */
-.login-form .arco-form-item {
-  margin-bottom: var(--spacing-lg);
+.login-form :deep(.arco-form-item) {
+  margin-bottom: var(--space-md);
 }
 
-.login-form .arco-form-item-label {
-  color: var(--text-secondary) !important;
+.login-form :deep(.arco-form-item-label) {
+  color: var(--body-strong) !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
-  font-size: 14px !important;
+  padding-bottom: 4px !important;
 }
 
-.login-form .arco-input,
-.login-form .arco-input-password {
-  background-color: var(--surface-color) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-primary) !important;
-  border-radius: var(--border-radius-md) !important;
-  transition: all var(--transition-fast) !important;
+.login-form :deep(.arco-input-inner-wrapper),
+.login-form :deep(.arco-input-wrapper) {
+  height: 44px;
 }
 
-.login-form .arco-input:hover,
-.login-form .arco-input-password:hover {
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px var(--primary-light) !important;
+.login-form :deep(.arco-input) {
+  font-size: 15px !important;
 }
 
-.login-form .arco-input:focus,
-.login-form .arco-input-password:focus {
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px var(--primary-light) !important;
+/* Submit button */
+.submit-btn {
+  width: 100%;
+  height: 44px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin-top: var(--space-xs);
 }
 
-/* 表单操作按钮样式 */
-.form-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-2xl);
+.submit-btn:hover {
+  background: var(--primary-active);
 }
 
-.login-button {
-  flex: 1;
-  background: var(--primary-gradient) !important;
-  border: none !important;
-  border-radius: var(--border-radius-md) !important;
-  font-weight: 600 !important;
-  transition: all var(--transition-fast) !important;
-  padding: var(--spacing-md) !important;
+.submit-btn:active {
+  background: var(--primary-active);
 }
 
-.login-button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 12px rgba(0, 180, 255, 0.4) !important;
+/* Footer */
+.login-footer {
+  text-align: center;
+  padding: var(--space-lg) var(--space-xl);
+  border-top: 1px solid var(--hairline-soft);
+  margin-top: var(--space-md);
 }
 
-.register-button {
-  flex: 1;
-  border-color: var(--border-color) !important;
-  color: var(--text-secondary) !important;
-  border-radius: var(--border-radius-md) !important;
-  transition: all var(--transition-fast) !important;
-  padding: var(--spacing-md) !important;
-  font-weight: 600 !important;
+.footer-text {
+  font-size: 13px;
+  color: var(--muted);
 }
 
-.register-button:hover {
-  border-color: var(--primary-color) !important;
-  color: var(--primary-color) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: var(--shadow-md) !important;
+.link-btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+  transition: color 0.15s;
 }
 
-/* 动画效果 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.link-btn:hover {
+  color: var(--primary-active);
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
-  .login-container {
-    padding: var(--spacing-xl);
-    margin: var(--spacing-sm);
+  .login-card {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
   }
 
-  .login-header h2 {
-    font-size: 24px;
+  .login-form {
+    padding: var(--space-md) var(--space-lg) 0;
   }
 
-  .login-header .logo {
-    height: 64px;
+  .login-header {
+    padding: var(--space-lg) var(--space-lg) 0;
   }
 
-  .form-actions {
-    flex-direction: column;
-  }
-
-  .login-button,
-  .register-button {
-    width: 100%;
+  .login-footer {
+    padding: var(--space-md) var(--space-lg);
   }
 }
 </style>
@@ -321,9 +238,6 @@ import message from "@arco-design/web-vue/es/message";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 
-/**
- * 表单信息
- */
 const form = reactive({
   userAccount: "",
   userPassword: "",
@@ -338,13 +252,8 @@ const goToRegister = () => {
   });
 };
 
-/**
- * 提交表单
- * @param data
- */
 const handleSubmit = async () => {
   const res = await UserControllerService.userLoginUsingPost(form);
-  // 登录成功，跳转到主页
   if (res.code === 0) {
     await store.dispatch("user/getLoginUser");
     router.push({

@@ -34,9 +34,17 @@ export const routes: Array<RouteRecordRaw> = [
     },
   },
   {
+    path: "/",
+    name: "题库",
+    component: QuestionsView,
+  },
+  {
     path: "/questions",
     name: "浏览题目",
     component: QuestionsView,
+    meta: {
+      hideInMenu: true,
+    },
   },
   {
     path: "/question_submit",
@@ -77,11 +85,6 @@ export const routes: Array<RouteRecordRaw> = [
     meta: {
       access: ACCESS_ENUM.ADMIN,
     },
-  },
-  {
-    path: "/",
-    name: "主页",
-    component: QuestionsView,
   },
   // {
   //   path: "/hide",

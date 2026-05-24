@@ -1,134 +1,424 @@
 <template>
   <div id="viewQuestionView">
-    <a-row :gutter="[24, 24]">
-      <a-col :md="12" :xs="24">
-        <a-tabs default-active-key="question">
-          <a-tab-pane key="question" title="题目">
-            <a-card v-if="question" :title="question.title">
-              <a-descriptions
-                title="判题条件"
-                :column="{ xs: 1, md: 2, lg: 3 }"
-              >
-                <a-descriptions-item label="时间限制">
-                  {{ question.judgeConfig.timeLimit ?? 0 }}
-                </a-descriptions-item>
-                <a-descriptions-item label="内存限制">
-                  {{ question.judgeConfig.memoryLimit ?? 0 }}
-                </a-descriptions-item>
-                <a-descriptions-item label="堆栈限制">
-                  {{ question.judgeConfig.stackLimit ?? 0 }}
-                </a-descriptions-item>
-              </a-descriptions>
-              <MdViewer :value="question.content || ''" />
-              <template #extra>
-                <a-space wrap>
-                  <a-tag
-                    v-for="(tag, index) of question.tags"
-                    :key="index"
-                    color="green"
-                    >{{ tag }}
-                  </a-tag>
-                </a-space>
-              </template>
-            </a-card>
-          </a-tab-pane>
-          <a-tab-pane key="comment" title="评论" disabled> 评论区</a-tab-pane>
-          <a-tab-pane key="answer" title="答案">
-            <div v-if="canViewAnswer">
-              <div v-if="questionAnswer">
-                <MdViewer :value="questionAnswer" />
-              </div>
-              <div v-else>答案加载中...</div>
-            </div>
-            <div v-else>暂时无法查看答案</div>
-          </a-tab-pane>
-        </a-tabs>
-      </a-col>
-      <a-col :md="12" :xs="24">
-        <a-form :model="form" layout="inline">
-          <a-form-item
-            field="language"
-            label="编程语言"
-            style="min-width: 240px"
+    <div class="workspace">
+      <!-- Description -->
+      <div class="description-panel">
+        <div class="tabs-row">
+          <button
+            :class="['tab-btn', { active: activeTab === 'question' }]"
+            @click="activeTab = 'question'"
           >
-            <a-select
-              v-model="form.language"
-              :style="{ width: '320px' }"
-              placeholder="选择编程语言"
-            >
-              <a-option>java</a-option>
-              <a-option>cpp</a-option>
-              <a-option>go</a-option>
-              <a-option>python</a-option>
-              <a-option>javascript</a-option>
-            </a-select>
-          </a-form-item>
-        </a-form>
-        <CodeEditor
-          :value="form.code as string"
-          :language="form.language"
-          :handle-change="changeCode"
-        />
-        <a-divider size="0" />
-        <a-button type="primary" style="min-width: 200px" @click="doSubmit">
-          提交代码
-        </a-button>
+            题目
+          </button>
+          <button
+            :class="['tab-btn', { active: activeTab === 'answer' }]"
+            @click="activeTab = 'answer'"
+            :disabled="!canViewAnswer"
+          >
+            答案
+          </button>
+        </div>
 
-        <!-- 提交结果显示区域 -->
-        <a-divider size="0" v-if="showResult" />
-        <a-card v-if="showResult" title="提交结果" :bordered="false">
-          <a-descriptions :column="{ xs: 1, md: 2, lg: 3 }">
-            <a-descriptions-item label="提交ID">
-              {{ submitResult?.id || "--" }}
-            </a-descriptions-item>
-            <a-descriptions-item label="状态">
-              <a-tag :color="getStatusColor(submitResult?.status)">
-                {{ getStatusText(submitResult?.status) }}
-              </a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="判题结果">
+        <div v-if="activeTab === 'question'">
+          <div v-if="question">
+            <h1 class="problem-title">{{ question.title }}</h1>
+            <div class="problem-header">
               <span
-                :style="{
-                  color: getJudgeInfoColor(submitResult?.judgeInfo?.message),
-                }"
+                class="tag"
+                v-for="(tag, index) of question.tags"
+                :key="index"
+                >{{ tag }}</span
               >
-                {{ submitResult?.judgeInfo?.message || "--" }}
-              </span>
-            </a-descriptions-item>
-            <a-descriptions-item label="执行时间">
-              {{
-                submitResult?.judgeInfo?.time
-                  ? submitResult?.judgeInfo?.time + "ms"
-                  : "--"
-              }}
-            </a-descriptions-item>
-            <a-descriptions-item label="内存消耗">
-              {{
-                submitResult?.judgeInfo?.memory
-                  ? submitResult?.judgeInfo?.memory + "KB"
-                  : "--"
-              }}
-            </a-descriptions-item>
-            <a-descriptions-item label="编程语言">
-              {{ submitResult?.language || "--" }}
-            </a-descriptions-item>
-          </a-descriptions>
-        </a-card>
-      </a-col>
-    </a-row>
+            </div>
+
+            <div class="problem-section">
+              <p>{{ question.content || "" }}</p>
+            </div>
+
+            <div class="problem-section">
+              <h3>限制</h3>
+              <ul class="constraints">
+                <li>时间限制: {{ question.judgeConfig?.timeLimit ?? 0 }}ms</li>
+                <li>
+                  内存限制: {{ question.judgeConfig?.memoryLimit ?? 0 }}KB
+                </li>
+                <li>堆栈限制: {{ question.judgeConfig?.stackLimit ?? 0 }}KB</li>
+              </ul>
+            </div>
+          </div>
+          <div v-else class="loading-state">加载中...</div>
+        </div>
+
+        <div v-if="activeTab === 'answer'">
+          <div v-if="canViewAnswer">
+            <div v-if="questionAnswer">
+              <MdViewer :value="questionAnswer" />
+            </div>
+            <div v-else class="loading-state">答案加载中...</div>
+          </div>
+          <div v-else class="no-access">请先通过本题后再查看答案</div>
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div class="editor-panel">
+        <div class="editor-toolbar">
+          <select v-model="form.language" class="lang-selector">
+            <option>java</option>
+            <option>cpp</option>
+            <option>go</option>
+            <option>python</option>
+            <option>javascript</option>
+          </select>
+          <div class="editor-actions">
+            <button class="btn-submit" @click="doSubmit">提交</button>
+          </div>
+        </div>
+        <div class="editor-body">
+          <CodeEditor
+            :value="form.code as string"
+            :language="form.language"
+            :handle-change="changeCode"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div v-if="showResult" class="results-panel">
+      <div class="results-header">
+        <div
+          :class="[
+            'results-status',
+            submitResult?.judgeInfo?.message === 'Accepted'
+              ? 'passed'
+              : 'failed',
+          ]"
+        >
+          <svg
+            v-if="submitResult?.judgeInfo?.message === 'Accepted'"
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+          >
+            <circle
+              cx="7"
+              cy="7"
+              r="6"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
+            <path
+              d="M4.5 7L6.5 9L9.5 5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <svg v-else width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle
+              cx="7"
+              cy="7"
+              r="6"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
+            <path
+              d="M5 5l4 4M9 5l-4 4"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          {{ getStatusText(submitResult?.status) }}
+          <span class="result-muted"
+            >· {{ submitResult?.judgeInfo?.message || "--" }}</span
+          >
+        </div>
+        <div class="result-stats">
+          <span
+            >执行时间
+            {{
+              submitResult?.judgeInfo?.time
+                ? submitResult?.judgeInfo?.time + "ms"
+                : "--"
+            }}</span
+          >
+          <span class="sep">·</span>
+          <span
+            >内存消耗
+            {{
+              submitResult?.judgeInfo?.memory
+                ? submitResult?.judgeInfo?.memory + "KB"
+                : "--"
+            }}</span
+          >
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
+<style scoped>
+#viewQuestionView {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  animation: claude-fade-up 0.4s ease-out;
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== Description ===== */
+.description-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 36px;
+  border-right: 1px solid var(--hairline);
+  background: var(--canvas);
+}
+
+.tabs-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.tab-btn.active {
+  color: var(--ink);
+}
+
+.tab-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.problem-title {
+  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.problem-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  border: 1px solid var(--hairline);
+  letter-spacing: 0.2px;
+}
+
+.problem-section {
+  margin-bottom: 20px;
+}
+
+.problem-section h3 {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.problem-section p {
+  font-size: 14px;
+  color: var(--body);
+  line-height: 1.7;
+}
+
+.problem-section p code {
+  color: var(--primary);
+  background: var(--surface-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.constraints {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  padding-left: 20px;
+  margin-top: 4px;
+}
+
+.constraints li {
+  margin-bottom: 3px;
+}
+
+.loading-state,
+.no-access {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+/* ===== Editor ===== */
+.editor-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--canvas);
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--surface-dark);
+  flex-shrink: 0;
+}
+
+.lang-selector {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--on-dark);
+  background: var(--surface-dark-elevated);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  outline: none;
+  min-width: 100px;
+  height: 30px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-submit {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  height: 30px;
+  padding: 4px 14px;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-submit:hover {
+  background: var(--primary-active);
+}
+
+.editor-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ===== Results ===== */
+.results-panel {
+  border-top: 1px solid var(--hairline);
+  background: var(--canvas);
+  flex-shrink: 0;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.results-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.results-status.passed {
+  color: var(--success);
+}
+
+.results-status.failed {
+  color: var(--error);
+}
+
+.result-muted {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.result-stats {
+  font-size: 12px;
+  color: var(--muted-soft);
+}
+
+.sep {
+  margin: 0 4px;
+}
+
+@media (max-width: 1024px) {
+  .workspace {
+    flex-direction: column;
+  }
+
+  .description-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--hairline);
+    max-height: 50vh;
+    padding: 24px;
+  }
+}
+</style>
+
 <script setup lang="ts">
-import {
-  onMounted,
-  ref,
-  watchEffect,
-  withDefaults,
-  defineProps,
-  onBeforeUnmount,
-  computed,
-} from "vue";
+import { onMounted, ref, defineProps, onBeforeUnmount, computed } from "vue";
 import message from "@arco-design/web-vue/es/message";
 import CodeEditor from "@/components/CodeEditor.vue";
 import MdViewer from "@/components/MdViewer.vue";
@@ -146,37 +436,25 @@ interface Props {
   id: string;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  id: () => "",
-});
+const props = defineProps<Props>();
 
+const activeTab = ref("question");
 const question = ref<QuestionVO>();
 const submitResult = ref<QuestionSubmitVO>();
 const showResult = ref(false);
 const pollingTimer = ref<any>(null);
 const pollingStartTime = ref<number>(0);
-const POLLING_INTERVAL = 3000; // 3秒轮询间隔
-const POLLING_TIMEOUT = 30000; // 30秒超时时间
+const POLLING_INTERVAL = 3000;
+const POLLING_TIMEOUT = 30000;
 
 const store = useStore();
 const questionAnswer = ref<string>("");
 const hasPassedQuestion = ref<boolean>(false);
-const isCheckingPassedStatus = ref<boolean>(false);
 
-// 计算属性：是否可以查看答案
 const canViewAnswer = computed(() => {
   const loginUser = store.state.user.loginUser;
-
-  // 1. 管理员直接查看
-  if (checkAccess(loginUser, ACCESS_ENUM.ADMIN)) {
-    return true;
-  }
-
-  // 2. 普通用户已经通过题目
-  if (hasPassedQuestion.value) {
-    return true;
-  }
-
+  if (checkAccess(loginUser, ACCESS_ENUM.ADMIN)) return true;
+  if (hasPassedQuestion.value) return true;
   return false;
 });
 
@@ -186,135 +464,78 @@ const loadData = async () => {
   );
   if (res.code === 0) {
     question.value = res.data;
-    // 检查用户是否可以通过题目查看答案
     checkIfUserCanViewAnswer();
   } else {
     message.error("加载失败，" + res.message);
   }
 };
 
-/**
- * 检查用户是否可以通过题目查看答案
- */
 const checkIfUserCanViewAnswer = async () => {
   const loginUser = store.state.user.loginUser;
-
-  // 如果是管理员，直接加载答案
   if (checkAccess(loginUser, ACCESS_ENUM.ADMIN)) {
     loadQuestionAnswer();
     return;
   }
-
-  // 如果是普通用户，检查是否通过题目
   if (loginUser && loginUser.userRole === ACCESS_ENUM.USER) {
     await checkIfUserPassedQuestion();
-    if (hasPassedQuestion.value) {
-      loadQuestionAnswer();
-    }
+    if (hasPassedQuestion.value) loadQuestionAnswer();
   }
 };
 
-/**
- * 检查用户是否通过题目
- */
 const checkIfUserPassedQuestion = async () => {
   if (!question.value?.id) return;
-
-  isCheckingPassedStatus.value = true;
   try {
-    // 查询用户的提交记录
     const res =
       await QuestionControllerService.listQuestionSubmitByPageUsingPost({
         questionId: question.value.id,
         userId: store.state.user.loginUser.id,
-        pageSize: 100, // 获取足够多的记录来检查
+        pageSize: 100,
         current: 1,
       });
-
     if (res.code === 0 && res.data.records) {
-      // 检查是否有通过的提交（judgeInfo.message === "Accepted"）
-      const passedSubmission = res.data.records.find((submission) => {
-        let judgeInfo = submission.judgeInfo;
-        // 处理judgeInfo字段：如果是字符串，解析为对象
-        if (typeof judgeInfo === "string") {
+      const passed = res.data.records.find((s) => {
+        let j = s.judgeInfo;
+        if (typeof j === "string") {
           try {
-            judgeInfo = JSON.parse(judgeInfo);
-          } catch (error) {
-            console.error("解析judgeInfo失败:", error);
-            judgeInfo = {};
+            j = JSON.parse(j);
+          } catch (e) {
+            console.error(e);
+            j = {};
           }
         }
-        return judgeInfo?.message === "Accepted";
+        return j?.message === "Accepted";
       });
-
-      hasPassedQuestion.value = !!passedSubmission;
+      hasPassedQuestion.value = !!passed;
     }
-  } catch (error) {
-    console.error("检查用户通过状态失败:", error);
-  } finally {
-    isCheckingPassedStatus.value = false;
+  } catch (e) {
+    console.error(e);
   }
 };
 
-/**
- * 加载题目答案
- */
 const loadQuestionAnswer = async () => {
   if (!question.value?.id) return;
-
   try {
-    const loginUser = store.state.user.loginUser;
-
-    // 管理员使用获取完整题目信息的接口
-    if (checkAccess(loginUser, ACCESS_ENUM.ADMIN)) {
+    const u = store.state.user.loginUser;
+    if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
       const res = await QuestionControllerService.getQuestionByIdUsingGet(
-        question.value.id as any
+        props.id as any
       );
-      if (res.code === 0 && res.data.answer) {
-        questionAnswer.value = res.data.answer;
-      } else {
-        questionAnswer.value = "暂无答案";
-      }
+      questionAnswer.value =
+        res.code === 0 && res.data.answer ? res.data.answer : "暂无答案";
     } else {
-      // 普通用户通过题目后，使用替代方案获取答案
-      // 方案1：尝试使用其他可能包含答案的接口
-      await loadAnswerForNormalUser();
+      const res = await QuestionControllerService.listQuestionByPageUsingPost({
+        id: question.value.id,
+        pageSize: 1,
+        current: 1,
+      });
+      questionAnswer.value =
+        res.code === 0 && res.data.records?.[0]?.answer
+          ? res.data.records[0].answer
+          : "无法加载答案";
     }
-  } catch (error) {
-    console.error("加载题目答案失败:", error);
-    message.error("加载答案失败");
-  }
-};
-
-/**
- * 为普通用户加载答案（替代方案）
- */
-const loadAnswerForNormalUser = async () => {
-  if (!question.value?.id) return;
-
-  try {
-    // 方案1：尝试使用题目列表接口，可能包含答案信息
-    const res = await QuestionControllerService.listQuestionByPageUsingPost({
-      id: question.value.id,
-      pageSize: 1,
-      current: 1,
-    });
-
-    if (res.code === 0 && res.data.records && res.data.records.length > 0) {
-      const questionData = res.data.records[0];
-      if (questionData.answer) {
-        questionAnswer.value = questionData.answer;
-        return;
-      }
-    }
-
-    // 方案2：如果上述方法不行，显示提示信息
-    questionAnswer.value =
-      "```java\n// 恭喜您通过了本题！\n// 由于系统限制，普通用户无法直接查看标准答案\n// 建议您参考自己的通过代码作为参考答案\n// 或者联系管理员获取标准答案\n```";
-  } catch (error) {
-    console.error("为普通用户加载答案失败:", error);
-    questionAnswer.value =
-      "```java\n// 答案加载失败\n// 请稍后重试或联系管理员\n```";
+  } catch (e) {
+    console.error(e);
+    questionAnswer.value = "```java\n// 答案加载失败\n```";
   }
 };
 
@@ -322,27 +543,17 @@ const form = ref<QuestionSubmitAddRequest>({
   language: "java",
   code: `import java.util.*;
 
-public class Main { 
-    public static void main(String[] args) { 
-        //获取参数方式 
-        int a = Integer.parseInt(args[0]); 
-        //输出答案 
-        System.out.print("output the answer"); 
-    } 
+public class Main {
+    public static void main(String[] args) {
+        int a = Integer.parseInt(args[0]);
+        System.out.print("output the answer");
+    }
 }`,
 });
 
-/**
- * 提交代码
- */
 const doSubmit = async () => {
-  if (!question.value?.id) {
-    return;
-  }
-
-  // 停止之前的轮询
+  if (!question.value?.id) return;
   stopPolling();
-
   const res = await QuestionControllerService.doQuestionSubmitUsingPost({
     ...form.value,
     questionId: question.value.id,
@@ -350,79 +561,47 @@ const doSubmit = async () => {
   if (res.code === 0) {
     message.success("提交成功");
     showResult.value = true;
-    // 开始轮询获取提交结果
     startPolling(res.data);
   } else {
     message.error("提交失败," + res.message);
   }
 };
 
-/**
- * 开始轮询获取提交结果
- */
-const startPolling = async (submitId: number) => {
+const startPolling = (submitId: number) => {
   pollingStartTime.value = Date.now();
-
   const poll = async () => {
-    // 检查是否超时
     if (Date.now() - pollingStartTime.value > POLLING_TIMEOUT) {
       stopPolling();
-      message.error("获取提交结果超时");
       return;
     }
-
     try {
-      // 使用新的接口直接通过ID获取提交结果
       const res = await QuestionControllerService.getQuestionSubmitByIdUsingGet(
         submitId
       );
-
       if (res.code === 0) {
-        // 处理judgeInfo字段：如果是字符串，解析为对象
-        const resultData = { ...res.data };
-        if (typeof resultData.judgeInfo === "string") {
+        const d = { ...res.data };
+        if (typeof d.judgeInfo === "string") {
           try {
-            resultData.judgeInfo = JSON.parse(resultData.judgeInfo);
-          } catch (error) {
-            console.error("解析judgeInfo失败:", error);
-            resultData.judgeInfo = {};
+            d.judgeInfo = JSON.parse(d.judgeInfo);
+          } catch (e) {
+            console.error(e);
+            d.judgeInfo = {};
           }
         }
-
-        submitResult.value = resultData;
-
-        // 详细的调试输出，查看返回的数据结构
-        console.log("=== 提交结果数据 ===");
-        console.log("完整数据:", resultData);
-        console.log("状态:", resultData?.status);
-        console.log("判题信息对象:", resultData?.judgeInfo);
-        console.log("判题结果:", resultData?.judgeInfo?.message);
-        console.log("执行时间:", resultData?.judgeInfo?.time);
-        console.log("内存消耗:", resultData?.judgeInfo?.memory);
-        console.log("=== 调试结束 ===");
-
-        // 如果状态是最终状态（2:完成, 3:未完成），停止轮询
-        if (resultData?.status === 2 || resultData?.status === 3) {
+        submitResult.value = d;
+        if (d?.status === 2 || d?.status === 3) {
           stopPolling();
           return;
         }
-        // 状态为0（待判题）或1（提交中）时继续轮询
       }
-    } catch (error) {
-      console.error("轮询获取提交结果失败:", error);
+    } catch (e) {
+      console.error(e);
     }
-
-    // 继续轮询（只有在状态为1时才设置下一次轮询）
     pollingTimer.value = setTimeout(poll, POLLING_INTERVAL);
   };
-
-  // 开始第一次轮询
   poll();
 };
 
-/**
- * 停止轮询
- */
 const stopPolling = () => {
   if (pollingTimer.value) {
     clearTimeout(pollingTimer.value);
@@ -430,9 +609,6 @@ const stopPolling = () => {
   }
 };
 
-/**
- * 获取状态文本
- */
 const getStatusText = (status?: number) => {
   switch (status) {
     case 0:
@@ -448,44 +624,9 @@ const getStatusText = (status?: number) => {
   }
 };
 
-/**
- * 获取状态颜色
- */
-const getStatusColor = (status?: number) => {
-  switch (status) {
-    case 0:
-      return "blue";
-    case 1:
-      return "orange";
-    case 2:
-      return "green";
-    case 3:
-      return "red";
-    default:
-      return "gray";
-  }
-};
-
-/**
- * 获取判题结果颜色
- */
-const getJudgeInfoColor = (message?: string) => {
-  if (message === "Accepted") {
-    return "#00b42a"; // 绿色
-  }
-  return "#f53f3f"; // 红色
-};
-
-/**
- * 页面加载时，请求数据
- */
 onMounted(() => {
   loadData();
 });
-
-/**
- * 页面卸载时，停止轮询
- */
 onBeforeUnmount(() => {
   stopPolling();
 });
@@ -494,14 +635,3 @@ const changeCode = (value: string) => {
   form.value.code = value;
 };
 </script>
-
-<style>
-#viewQuestionView {
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-#viewQuestionView .arco-space-horizontal .arco-space-item {
-  margin-bottom: 0 !important;
-}
-</style>

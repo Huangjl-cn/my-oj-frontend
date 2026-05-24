@@ -1,46 +1,142 @@
 <template>
   <div id="manageQuestionView">
-    <a-table
-      :ref="tableRef"
-      :columns="columns"
-      :data="dataList"
-      :pagination="{
-        showTotal: true,
-        pageSize: searchParams.pageSize,
-        current: searchParams.current,
-        total,
-      }"
-      @page-change="onPageChange"
-    >
-      <template #optional="{ record }">
-        <a-space>
-          <a-button type="primary" @click="doUpdate(record)"> 修改</a-button>
-          <a-button status="danger" @click="doDelete(record)">删除</a-button>
-        </a-space>
-      </template>
-    </a-table>
+    <h2 class="page-title">题目管理</h2>
+    <div class="page-card">
+      <a-table
+        :columns="columns"
+        :data="dataList"
+        :pagination="{
+          showTotal: true,
+          pageSize: searchParams.pageSize,
+          current: searchParams.current,
+          total,
+        }"
+        @page-change="onPageChange"
+      >
+        <template #tags="{ record }">
+          <span v-if="record.tags" class="tag-list">
+            <span
+              v-for="(tag, i) in typeof record.tags === 'string'
+                ? JSON.parse(record.tags)
+                : record.tags"
+              :key="i"
+              class="tag"
+              >{{ tag }}</span
+            >
+          </span>
+        </template>
+        <template #optional="{ record }">
+          <span class="action-group">
+            <button class="action-btn edit" @click="doUpdate(record)">
+              修改
+            </button>
+            <button class="action-btn delete" @click="doDelete(record)">
+              删除
+            </button>
+          </span>
+        </template>
+      </a-table>
+    </div>
   </div>
 </template>
 
+<style scoped>
+#manageQuestionView {
+  animation: claude-fade-up 0.4s ease-out;
+  padding: var(--space-lg);
+}
+
+.page-title {
+  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-lg) 0;
+}
+
+.page-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.page-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
+  opacity: 0.3;
+}
+
+.tag-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-block;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.action-group {
+  display: flex;
+  gap: 6px;
+}
+
+.action-btn {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+
+.action-btn.edit {
+  color: var(--primary);
+}
+
+.action-btn.edit:hover {
+  background: var(--surface-soft);
+  border-color: var(--primary);
+}
+
+.action-btn.delete {
+  color: var(--error);
+}
+
+.action-btn.delete:hover {
+  background: rgba(198, 69, 69, 0.08);
+  border-color: var(--error);
+}
+</style>
+
 <script setup lang="ts">
 import { onMounted, ref, watchEffect } from "vue";
-import {
-  Page_Question_,
-  Question,
-  QuestionControllerService,
-} from "../../../generated";
+import { Question, QuestionControllerService } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
-import * as querystring from "querystring";
 import { useRouter } from "vue-router";
-
-const tableRef = ref();
 
 const dataList = ref([]);
 const total = ref(0);
-const searchParams = ref({
-  pageSize: 10,
-  current: 1,
-});
+const searchParams = ref({ pageSize: 10, current: 1 });
 
 const loadData = async () => {
   const res = await QuestionControllerService.listQuestionByPageUsingPost(
@@ -54,78 +150,30 @@ const loadData = async () => {
   }
 };
 
-/**
- * 监听 searchParams 变量，改变时触发页面的重新加载
- */
 watchEffect(() => {
   loadData();
 });
-
-/**
- * 页面加载时，请求数据
- */
 onMounted(() => {
   loadData();
 });
 
-// {id: "1", title: "A+ D", content: "新的题目内容", tags: "["二叉树"]", answer: "新的答案", submitNum: 0,…}
-
 const columns = [
-  {
-    title: "id",
-    dataIndex: "id",
-  },
-  {
-    title: "标题",
-    dataIndex: "title",
-  },
-  {
-    title: "内容",
-    dataIndex: "content",
-  },
-  {
-    title: "标签",
-    dataIndex: "tags",
-  },
-  {
-    title: "答案",
-    dataIndex: "answer",
-  },
-  {
-    title: "提交数",
-    dataIndex: "submitNum",
-  },
-  {
-    title: "通过数",
-    dataIndex: "acceptedNum",
-  },
-  {
-    title: "判题配置",
-    dataIndex: "judgeConfig",
-  },
-  {
-    title: "判题用例",
-    dataIndex: "judgeCase",
-  },
-  {
-    title: "用户id",
-    dataIndex: "userId",
-  },
-  {
-    title: "创建时间",
-    dataIndex: "createTime",
-  },
-  {
-    title: "操作",
-    slotName: "optional",
-  },
+  { title: "ID", dataIndex: "id" },
+  { title: "标题", dataIndex: "title" },
+  { title: "内容", dataIndex: "content", ellipsis: true },
+  { title: "标签", slotName: "tags" },
+  { title: "答案", dataIndex: "answer", ellipsis: true },
+  { title: "提交数", dataIndex: "submitNum" },
+  { title: "通过数", dataIndex: "acceptedNum" },
+  { title: "判题配置", dataIndex: "judgeConfig", ellipsis: true },
+  { title: "判题用例", dataIndex: "judgeCase", ellipsis: true },
+  { title: "用户 id", dataIndex: "userId" },
+  { title: "创建时间", dataIndex: "createTime" },
+  { title: "操作", slotName: "optional" },
 ];
 
 const onPageChange = (page: number) => {
-  searchParams.value = {
-    ...searchParams.value,
-    current: page,
-  };
+  searchParams.value = { ...searchParams.value, current: page };
 };
 
 const doDelete = async (question: Question) => {
@@ -143,16 +191,6 @@ const doDelete = async (question: Question) => {
 const router = useRouter();
 
 const doUpdate = (question: Question) => {
-  router.push({
-    path: "/update/question",
-    query: {
-      id: question.id,
-    },
-  });
+  router.push({ path: "/update/question", query: { id: question.id } });
 };
 </script>
-
-<style scoped>
-#manageQuestionView {
-}
-</style>

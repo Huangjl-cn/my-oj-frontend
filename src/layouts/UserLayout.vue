@@ -11,13 +11,12 @@
 <style scoped>
 #userLayout {
   min-height: 100vh;
+  background: var(--canvas);
 }
 
 #userLayout .content {
-  background-color: transparent !important;
+  background: transparent !important;
   min-height: 100vh;
-  padding: 0;
-  margin: 0;
 }
 </style>
 <script setup lang="ts"></script>

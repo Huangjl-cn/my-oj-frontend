@@ -10,60 +10,79 @@
 </template>
 
 <style>
+/* ========================================
+   Claude Design System for MyOJ
+   Based on Anthropic's warm editorial palette
+   ======================================== */
+
+/* Font imports */
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
 :root {
-  /* 明亮色系主题变量 - 简约高级配色 */
-  --primary-color: #6366f1;
-  --primary-light: rgba(99, 102, 241, 0.1);
-  --primary-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
-  --secondary-color: #94a3b8;
-  --background-color: #f8fafc;
-  --surface-color: #ffffff;
-  --surface-light: #f1f5f9;
-  --card-color: rgba(255, 255, 255, 0.5);
-  --card-hover: rgba(255, 255, 255, 0.7);
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
-  --hover-color: rgba(99, 102, 241, 0.05);
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
-  --error-color: #ef4444;
-  --info-color: #3b82f6;
+  /* === Brand Colors === */
+  --primary: #cc785c;
+  --primary-active: #a9583e;
+  --primary-disabled: #e6dfd8;
+  --primary-light: rgba(204, 120, 92, 0.1);
 
-  /* 字体 */
-  --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  /* === Surface Colors === */
+  --canvas: #faf9f5;
+  --surface-soft: #f5f0e8;
+  --surface-card: #efe9de;
+  --surface-cream-strong: #e8e0d2;
+  --surface-dark: #181715;
+  --surface-dark-elevated: #252320;
+  --surface-dark-soft: #1f1e1b;
+
+  /* === Text Colors === */
+  --ink: #141413;
+  --body: #3d3d3a;
+  --body-strong: #252523;
+  --muted: #6c6a64;
+  --muted-soft: #8e8b82;
+  --on-primary: #ffffff;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+
+  /* === Border === */
+  --hairline: #e6dfd8;
+  --hairline-soft: #ebe6df;
+
+  /* === Semantic === */
+  --accent-teal: #5db8a6;
+  --accent-amber: #e8a55a;
+  --success: #5db872;
+  --warning: #d4a017;
+  --error: #c64545;
+
+  /* === Typography === */
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, monospace;
 
-  /* 间距 */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-xxl: 48px;
+  /* === Border Radius === */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
 
-  /* 边框圆角 */
-  --border-radius-sm: 6px;
-  --border-radius-md: 8px;
-  --border-radius-lg: 12px;
-  --border-radius-xl: 16px;
+  /* === Spacing === */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
 
-  /* 阴影 */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
-  --shadow-primary: 0 0 20px rgba(99, 102, 241, 0.2);
-
-  /* 过渡动画 */
-  --transition-fast: 0.2s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
+  /* === Shadows (subtle, rare) === */
+  --shadow-sm: 0 1px 3px rgba(20, 20, 19, 0.06);
+  --shadow-md: 0 4px 12px rgba(20, 20, 19, 0.08);
+  --shadow-lg: 0 8px 24px rgba(20, 20, 19, 0.1);
 }
 
+/* === Base Reset === */
 * {
   margin: 0;
   padding: 0;
@@ -72,321 +91,538 @@
 
 html,
 body {
-  font-family: var(--font-family);
-  background: linear-gradient(
-    135deg,
-    #f8fafc 0%,
-    #e0f2fe 15%,
-    #dbeafe 30%,
-    #ede9fe 45%,
-    #fce7f3 60%,
-    #fef3c7 75%,
-    #dcfce7 90%,
-    #f8fafc 100%
-  );
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-  color: var(--text-primary);
-  line-height: 1.6;
-  overflow-x: hidden;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--body);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   height: 100%;
-  margin: 0;
-  padding: 0;
 }
 
 #app {
-  height: 100vh;
   min-height: 100vh;
-  background: linear-gradient(
-    135deg,
-    #f8fafc 0%,
-    #e0f2fe 15%,
-    #dbeafe 30%,
-    #ede9fe 45%,
-    #fce7f3 60%,
-    #fef3c7 75%,
-    #dcfce7 90%,
-    #f8fafc 100%
-  );
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
-  overflow-x: hidden;
+  background: var(--canvas);
 }
 
-/* 渐变背景动画 */
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* 滚动条样式 */
+/* === Scrollbar === */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface-color);
-  border-radius: 4px;
+  background: var(--canvas);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--secondary-color);
-  border-radius: 4px;
-  transition: all var(--transition-fast);
+  background: var(--hairline);
+  border-radius: var(--radius-pill);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-color);
+  background: var(--muted-soft);
 }
 
-/* Arco Design 组件样式覆盖 */
+/* === Typography — Claude Design System === */
+/* Display: page titles (serif) */
+h1,
+h2 {
+  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Section titles (sans) */
+h3,
+h4 {
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: var(--body-strong);
+  line-height: 1.4;
+}
+
+/* Claude typography tokens */
+.claude-title-lg {
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.claude-title-md {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--body-strong);
+}
+.claude-title-sm {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--body-strong);
+}
+.claude-body {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--body);
+}
+.claude-body-sm {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--body);
+}
+.claude-caption {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.claude-caption-up {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* === Arco Design Overrides === */
+
+/* Buttons */
 .arco-btn {
-  border-radius: var(--border-radius-md) !important;
-  transition: all var(--transition-fast) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-body) !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
+  line-height: 1 !important;
+  height: 40px !important;
+  padding: 0 20px !important;
+  transition: all 0.15s ease !important;
 }
 
-.arco-btn:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: var(--shadow-md) !important;
+.arco-btn.arco-btn-primary {
+  background: var(--primary) !important;
+  border: none !important;
+  color: var(--on-primary) !important;
 }
 
-.arco-btn-primary {
-  background: var(--primary-gradient) !important;
+.arco-btn.arco-btn-primary:hover {
+  background: var(--primary-active) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.arco-btn.arco-btn-primary[disabled] {
+  background: var(--primary-disabled) !important;
+  color: var(--muted) !important;
+}
+
+.arco-btn:not(.arco-btn-primary):not(.arco-btn-outline):not(.arco-btn-dashed) {
+  background: transparent !important;
+  color: var(--ink) !important;
   border: none !important;
 }
 
+.arco-btn:not(.arco-btn-primary):not(.arco-btn-outline):not(
+    .arco-btn-dashed
+  ):hover {
+  background: var(--surface-soft) !important;
+}
+
 .arco-btn-outline {
-  border-color: var(--border-color) !important;
-  color: var(--text-secondary) !important;
+  background: var(--canvas) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--hairline) !important;
 }
 
 .arco-btn-outline:hover {
-  border-color: var(--primary-color) !important;
-  color: var(--primary-color) !important;
-  background-color: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  background: var(--primary-light) !important;
 }
 
+.arco-btn-status-danger {
+  color: var(--error) !important;
+  border-color: transparent !important;
+}
+
+.arco-btn-status-danger:hover {
+  background: rgba(198, 69, 69, 0.08) !important;
+  border-color: transparent !important;
+}
+
+/* Cards */
 .arco-card {
-  background-color: var(--card-color) !important;
-  border-radius: var(--border-radius-lg) !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: all var(--transition-normal) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
+  background: var(--surface-card) !important;
+  border-radius: var(--radius-lg) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.arco-card:hover {
-  box-shadow: var(--shadow-md) !important;
-  border-color: var(--border-light) !important;
-  backdrop-filter: blur(15px) !important;
-  -webkit-backdrop-filter: blur(15px) !important;
-}
-
+/* Forms */
 .arco-form {
-  color: var(--text-primary) !important;
-  background-color: var(--card-color) !important;
-  border-radius: var(--border-radius-lg) !important;
-  border: 1px solid var(--border-color) !important;
-  padding: var(--spacing-lg) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: all var(--transition-normal) !important;
+  color: var(--body) !important;
 }
 
-.arco-form:hover {
-  box-shadow: var(--shadow-md) !important;
-  border-color: var(--border-light) !important;
-  backdrop-filter: blur(15px) !important;
-  -webkit-backdrop-filter: blur(15px) !important;
+/* Form - fix label column width (Arco uses arco-col-5/19 grid) */
+.arco-form-item-label-col {
+  flex: 0 0 auto !important;
+  max-width: none !important;
+  width: auto !important;
+  padding-right: 0 !important;
 }
 
 .arco-form-item-label {
-  color: var(--text-secondary) !important;
+  color: var(--muted) !important;
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
+  white-space: nowrap !important;
+  padding-right: 12px !important;
 }
 
-/* 输入框 placeholder 颜色 */
+.arco-form-item-wrapper-col {
+  flex: 1 !important;
+  max-width: none !important;
+}
+
+.arco-form-item-content {
+  display: flex !important;
+  width: 100% !important;
+}
+
+/* Make input-tag look like regular input (Arco sets inline 70px style) */
+.arco-input-tag {
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  overflow: hidden !important;
+}
+
+.arco-input-tag .arco-input-tag-mirror {
+  display: none !important;
+}
+
+.arco-input-tag-inner {
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.arco-input-tag-input {
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* ===== Inputs - all variants ===== */
+/* Outer wrappers: get the visible border/background */
+.arco-input-wrapper,
+.arco-input-inner-wrapper,
+.arco-input-number .arco-input-inner-wrapper,
+.arco-input-tag-view,
+.arco-textarea-wrapper,
+.arco-textarea .arco-input-inner-wrapper {
+  background: var(--canvas) !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--radius-md) !important;
+  transition: border-color 0.15s ease !important;
+}
+
+.arco-input-wrapper:hover,
+.arco-input-inner-wrapper:hover,
+.arco-input-number:hover .arco-input-inner-wrapper,
+.arco-input-tag-view:hover,
+.arco-textarea-wrapper:hover {
+  border-color: var(--primary) !important;
+}
+
+.arco-input-wrapper.arco-input-wrapper-focus,
+.arco-input-inner-wrapper.arco-input-inner-wrapper-focus,
+.arco-input-number.arco-input-number-focus .arco-input-inner-wrapper {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15) !important;
+}
+
+/* The actual input elements: transparent, no border */
+.arco-input,
+.arco-textarea,
+.arco-input-number input,
+.arco-input-number .arco-input,
+.arco-select,
+.arco-select-view input,
+.arco-input-tag input,
+.arco-input-tag .arco-input,
+.arco-input-search .arco-input,
+.arco-input-password .arco-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+  font-family: var(--font-body) !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+}
+
 .arco-input::placeholder,
-.arco-input-affix-wrapper::placeholder,
-.arco-input-password::placeholder {
-  color: var(--text-muted) !important;
+.arco-input-password .arco-input::placeholder {
+  color: var(--muted-soft) !important;
 }
 
-/* 输入框内部元素颜色 */
-.arco-input-inner-wrapper {
-  background-color: transparent !important;
+/* Select dropdown */
+.arco-select-dropdown {
+  background: var(--canvas) !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
 }
 
-.arco-input-icon {
-  color: var(--text-secondary) !important;
+.arco-select-option {
+  color: var(--body) !important;
+  font-family: var(--font-body) !important;
+  font-size: 14px !important;
 }
 
-.arco-input-icon:hover {
-  color: var(--primary-color) !important;
+.arco-select-option:hover {
+  background: var(--surface-soft) !important;
 }
 
+.arco-select-option.arco-select-option-selected {
+  color: var(--primary) !important;
+  background: var(--primary-light) !important;
+}
+
+/* Menu */
 .arco-menu {
-  background-color: rgba(255, 255, 255, 0.5) !important;
-  color: var(--text-primary) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border-radius: var(--border-radius-lg) !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-sm) !important;
+  background: transparent !important;
+  color: var(--body) !important;
+  font-family: var(--font-body) !important;
+  border: none !important;
 }
 
 .arco-menu-item {
-  color: var(--text-secondary) !important;
-  border-radius: var(--border-radius-md) !important;
-  margin: 0 4px !important;
-  transition: all var(--transition-fast) !important;
+  color: var(--muted) !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
-  background-color: transparent !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.15s ease !important;
 }
 
 .arco-menu-item:hover {
-  background-color: var(--hover-color) !important;
-  color: var(--text-primary) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
 }
 
 .arco-menu-item.arco-menu-item-selected {
-  background-color: var(--primary-light) !important;
-  color: var(--primary-color) !important;
+  background: var(--primary-light) !important;
+  color: var(--primary) !important;
 }
 
-.arco-menu-item.arco-menu-item-disabled {
-  background-color: transparent !important;
-  color: var(--text-secondary) !important;
-  opacity: 1 !important;
-}
-
+/* Tables */
 .arco-table {
-  background-color: var(--card-color) !important;
-  border-radius: var(--border-radius-lg) !important;
-  border: 1px solid var(--border-color) !important;
-  overflow: hidden !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  box-shadow: var(--shadow-sm) !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.arco-table-container {
+  border: none !important;
 }
 
 .arco-table-th {
-  background-color: rgba(255, 255, 255, 0.6) !important;
-  color: var(--text-primary) !important;
+  background: var(--surface-soft) !important;
+  color: var(--muted) !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  padding: var(--spacing-md) !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  padding: 12px 16px !important;
+  /* 左侧装饰线 */
+  border-left: 1px solid transparent !important;
+}
+
+.arco-table-th:first-child {
+  padding-left: 20px !important;
 }
 
 .arco-table-td {
-  background-color: rgba(255, 255, 255, 0.4) !important;
-  color: var(--text-secondary) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  padding: var(--spacing-md) !important;
-  transition: all var(--transition-fast) !important;
+  background: transparent !important;
+  color: var(--body) !important;
+  border-bottom: 1px solid var(--hairline-soft) !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+}
+
+.arco-table-td:first-child {
+  padding-left: 20px !important;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.arco-table-tr:last-child .arco-table-td {
+  border-bottom: none !important;
 }
 
 .arco-table-tr:hover .arco-table-td {
-  background-color: var(--hover-color) !important;
-  color: var(--text-primary) !important;
+  background: var(--surface-soft) !important;
 }
 
-.arco-divider {
-  margin: var(--spacing-md) 0 !important;
-  border-color: var(--border-color) !important;
-}
-
-.arco-tag {
-  background-color: var(--primary-light) !important;
-  color: var(--primary-color) !important;
-  border: 1px solid var(--primary-light) !important;
-  border-radius: var(--border-radius-sm) !important;
-  font-size: 12px !important;
-  font-weight: 500 !important;
-}
-
+/* Pagination */
 .arco-pagination {
-  background-color: var(--card-color) !important;
-  border-radius: var(--border-radius-md) !important;
-  border: 1px solid var(--border-color) !important;
-  padding: var(--spacing-sm) !important;
-  margin-top: var(--spacing-lg) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  box-shadow: var(--shadow-sm) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 .arco-pagination-item {
-  background-color: rgba(255, 255, 255, 0.6) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--text-secondary) !important;
-  transition: all var(--transition-fast) !important;
-  border-radius: var(--border-radius-sm) !important;
+  background: transparent !important;
+  border: 1px solid var(--hairline) !important;
+  color: var(--muted) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 14px !important;
+  font-family: var(--font-body) !important;
+  transition: all 0.15s ease !important;
 }
 
 .arco-pagination-item:hover {
-  border-color: var(--primary-color) !important;
-  color: var(--primary-color) !important;
-  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  background: var(--primary-light) !important;
 }
 
 .arco-pagination-item.arco-pagination-item-active {
-  background-color: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
-  color: white !important;
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--on-primary) !important;
 }
 
-/* 通用动画效果 */
-@keyframes fadeIn {
+/* Tags */
+.arco-tag {
+  background: var(--surface-card) !important;
+  color: var(--ink) !important;
+  border: none !important;
+  border-radius: var(--radius-pill) !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 2px 12px !important;
+  line-height: 1.4 !important;
+}
+
+/* Divider */
+.arco-divider {
+  border-color: var(--hairline-soft) !important;
+  margin: var(--space-lg) 0 !important;
+}
+
+/* Tabs */
+.arco-tabs-nav-extra {
+  font-family: var(--font-body) !important;
+}
+
+.arco-tabs-header-title {
+  color: var(--muted) !important;
+  font-family: var(--font-body) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: color 0.15s ease !important;
+}
+
+.arco-tabs-header-title:hover {
+  color: var(--ink) !important;
+}
+
+.arco-tabs-header-title.arco-tabs-header-title-active {
+  color: var(--primary) !important;
+}
+
+.arco-tabs-header-underline {
+  background-color: var(--primary) !important;
+}
+
+/* Descriptions */
+.arco-descriptions-title {
+  color: var(--muted) !important;
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
+.arco-descriptions-item-label {
+  color: var(--muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.arco-descriptions-item-value {
+  color: var(--body) !important;
+  font-size: 14px !important;
+}
+
+/* Message / Notification */
+.arco-message {
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-body) !important;
+}
+
+/* Select trigger */
+.arco-select-view {
+  background: var(--canvas) !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--radius-md) !important;
+  min-height: 40px !important;
+}
+
+.arco-select-view:hover {
+  border-color: var(--primary) !important;
+}
+
+.arco-select-view.arco-select-view-focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15) !important;
+}
+
+/* Input tag */
+.arco-input-tag {
+  min-height: 40px !important;
+}
+
+.arco-input-tag .arco-tag {
+  margin: 2px !important;
+}
+
+/* Table pagination wrapper */
+.arco-table-pagination {
+  border-top: 1px solid var(--hairline-soft) !important;
+  padding: var(--space-md) !important;
+  background: transparent !important;
+}
+
+/* Animation for page entries */
+@keyframes claude-fade-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
-.fade-in {
-  animation: fadeIn var(--transition-normal) ease-out;
-}
-
-/* 通用渐变背景 */
-.gradient-bg {
-  background: linear-gradient(135deg, var(--surface-color), var(--card-color));
-}
-
-/* 通用玻璃态效果 */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-  border-radius: var(--border-radius-lg);
-  transition: all var(--transition-normal);
-}
-
-.glass-effect:hover {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-light);
-}
 </style>
+
 <script setup lang="ts">
 import BasicLayout from "@/layouts/BasicLayout";
 import { onMounted } from "vue";
@@ -394,11 +630,8 @@ import { useRoute } from "vue-router";
 
 const route = useRoute();
 
-/**
- * 全局初始化函数，有全局单次调用的代码，都可以写到这里
- */
 const doInit = () => {
-  console.log("hello 欢迎来到我的项目");
+  console.log("MyOJ — Claude Design");
 };
 
 onMounted(() => {
