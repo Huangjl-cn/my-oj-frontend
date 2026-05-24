@@ -132,6 +132,7 @@
 import { onMounted, ref, watchEffect } from "vue";
 import { Question, QuestionControllerService } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
+import { Modal } from "@arco-design/web-vue";
 import { useRouter } from "vue-router";
 
 const dataList = ref([]);
@@ -176,16 +177,25 @@ const onPageChange = (page: number) => {
   searchParams.value = { ...searchParams.value, current: page };
 };
 
-const doDelete = async (question: Question) => {
-  const res = await QuestionControllerService.deleteQuestionUsingPost({
-    id: question.id,
+const doDelete = (question: Question) => {
+  Modal.confirm({
+    title: "确认删除",
+    content: `确定要删除题目「${question.title}」吗？此操作不可撤销。`,
+    okText: "删除",
+    cancelText: "取消",
+    okButtonProps: { status: "danger" },
+    onOk: async () => {
+      const res = await QuestionControllerService.deleteQuestionUsingPost({
+        id: question.id,
+      });
+      if (res.code === 0) {
+        message.success("删除成功");
+        loadData();
+      } else {
+        message.error("删除失败");
+      }
+    },
   });
-  if (res.code === 0) {
-    message.success("删除成功");
-    loadData();
-  } else {
-    message.error("删除失败");
-  }
 };
 
 const router = useRouter();

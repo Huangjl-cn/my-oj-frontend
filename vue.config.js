@@ -16,8 +16,20 @@ module.exports = defineConfig({
     optimization: {
       splitChunks: {
         chunks: "all",
-        maxInitialRequests: 5,
+        maxInitialRequests: 6,
         cacheGroups: {
+          vue: {
+            name: "chunk-vue",
+            test: /[\\/]node_modules[\\/](vue|vue-router|vuex|pinia)[\\/]/,
+            priority: 20,
+            chunks: "initial",
+          },
+          arco: {
+            name: "chunk-arco",
+            test: /[\\/]node_modules[\\/]@arco-design[\\/]/,
+            priority: 19,
+            chunks: "initial",
+          },
           vendor: {
             name: "chunk-vendors",
             test: /[\\/]node_modules[\\/]/,

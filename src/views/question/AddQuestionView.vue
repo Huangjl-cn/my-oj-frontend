@@ -308,9 +308,10 @@ import { onMounted, ref } from "vue";
 import MdEditor from "@/components/MdEditor.vue";
 import { QuestionControllerService } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
+const router = useRouter();
 const updatePage = route.path.includes("update");
 
 let form = ref({
@@ -365,14 +366,18 @@ const doSubmit = async () => {
     const res = await QuestionControllerService.updateQuestionUsingPost(
       form.value
     );
-    if (res.code === 0) message.success("更新成功");
-    else message.error("更新失败，" + res.message);
+    if (res.code === 0) {
+      message.success("更新成功");
+      router.push("/manage/question");
+    } else message.error("更新失败，" + res.message);
   } else {
     const res = await QuestionControllerService.addQuestionUsingPost(
       form.value
     );
-    if (res.code === 0) message.success("创建成功");
-    else message.error("创建失败，" + res.message);
+    if (res.code === 0) {
+      message.success("创建成功");
+      router.push("/questions");
+    } else message.error("创建失败，" + res.message);
   }
 };
 

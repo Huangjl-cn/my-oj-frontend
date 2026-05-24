@@ -54,6 +54,16 @@ watch(
   }
 );
 
+watch(
+  () => props.value,
+  (newVal) => {
+    const editor = toRaw(codeEditor.value);
+    if (editor && editor.getValue() !== newVal) {
+      editor.setValue(newVal);
+    }
+  }
+);
+
 onMounted(async () => {
   if (!codeEditorRef.value) {
     return;

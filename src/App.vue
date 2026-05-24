@@ -621,10 +621,72 @@ h4 {
     transform: translateY(0);
   }
 }
+
+/* Modal */
+.arco-modal {
+  background: var(--surface-card) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+.arco-modal-header {
+  border-bottom: 1px solid var(--hairline-soft) !important;
+  padding: 20px 24px 16px !important;
+}
+
+.arco-modal-title {
+  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif !important;
+  font-size: 20px !important;
+  font-weight: 400 !important;
+  color: var(--ink) !important;
+}
+
+.arco-modal-content {
+  color: var(--body) !important;
+  font-size: 14px !important;
+  padding: 20px 24px !important;
+  line-height: 1.6 !important;
+}
+
+.arco-modal-footer {
+  border-top: 1px solid var(--hairline-soft) !important;
+  padding: 16px 24px 20px !important;
+}
+
+.arco-modal-footer .arco-btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  height: 34px;
+  padding: 0 18px;
+  transition: all 0.15s;
+}
+
+.arco-modal-footer .arco-btn-primary {
+  background: var(--primary) !important;
+  color: var(--on-primary) !important;
+  border: none !important;
+}
+
+.arco-modal-footer .arco-btn-primary:hover {
+  background: var(--primary-active) !important;
+}
+
+.arco-modal-footer .arco-btn-secondary {
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--hairline) !important;
+}
+
+.arco-modal-footer .arco-btn-secondary:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
 </style>
 
 <script setup lang="ts">
-import BasicLayout from "@/layouts/BasicLayout";
+import BasicLayout from "@/layouts/BasicLayout.vue";
 import { onMounted } from "vue";
 import { useRoute } from "vue-router";
 

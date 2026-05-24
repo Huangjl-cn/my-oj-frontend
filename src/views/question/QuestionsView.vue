@@ -66,7 +66,7 @@
             :pageSize="searchParams.pageSize"
             :current="searchParams.current"
             :total="total"
-            @page-change="onPageChange"
+            @change="onPageChange"
           />
         </div>
       </aside>
@@ -837,7 +837,7 @@
 import {
   onMounted,
   ref,
-  watchEffect,
+  watch,
   onBeforeUnmount,
   computed,
   defineAsyncComponent,
@@ -851,6 +851,7 @@ import {
   JudgeInfo,
 } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
+import { Modal } from "@arco-design/web-vue";
 import MdViewer from "@/components/MdViewer.vue";
 
 const CodeEditor = defineAsyncComponent(
@@ -886,9 +887,13 @@ const loadData = async () => {
   }
 };
 
-watchEffect(() => {
-  loadData();
-});
+watch(
+  searchParams,
+  () => {
+    loadData();
+  },
+  { deep: true }
+);
 onMounted(() => {
   loadData();
 });
@@ -902,8 +907,10 @@ const onFilterChange = (filter: string) => {
   };
 };
 
-const onPageChange = (page: number) => {
-  searchParams.value = { ...searchParams.value, current: page };
+const onPageChange = (page: any) => {
+  const p = typeof page === "number" ? page : page?.current;
+  searchParams.value = { ...searchParams.value, current: p };
+  loadData();
 };
 const onSearchInput = () => {
   searchParams.value = { ...searchParams.value, current: 1 };
@@ -944,17 +951,23 @@ const resultStatusClass = computed(() => {
 
 const form = ref<QuestionSubmitAddRequest>({
   language: "java",
-  code: `import java.util.*;
-
-public class Main {
-    public static void main(String[] args) {
-        int a = Integer.parseInt(args[0]);
-        System.out.print("output the answer");
-    }
-}`,
+  code: DEFAULT_CODE,
 });
 
 const onSelectQuestion = async (item: any) => {
+  if (codeChanged.value) {
+    const ok = await new Promise((r) =>
+      Modal.confirm({
+        title: "切换题目",
+        content: "当前代码未保存，切换后将会丢失。是否继续？",
+        okText: "继续",
+        cancelText: "取消",
+        onOk: () => r(true),
+        onCancel: () => r(false),
+      })
+    );
+    if (!ok) return;
+  }
   selectedId.value = item.id as string;
   stopPolling();
   showResult.value = false;
@@ -962,6 +975,8 @@ const onSelectQuestion = async (item: any) => {
   activeTab.value = "question";
   hasPassedQuestion.value = false;
   questionAnswer.value = "";
+  codeChanged.value = false;
+  form.value.code = DEFAULT_CODE;
 
   const res = await QuestionControllerService.getQuestionVoByIdUsingGet(
     item.id as any
@@ -1101,7 +1116,27 @@ const getStatusText = (status?: number, judgeInfo?: JudgeInfo) => {
   }
 };
 
+const DEFAULT_CODE = `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        int a = Integer.parseInt(args[0]);
+        System.out.print("output the answer");
+    }
+}`;
+
+const codeChanged = ref(false);
+
+const hash = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++)
+    (h = (h << 5) - h + s.charCodeAt(i)), (h |= 0);
+  return h;
+};
+const DEFAULT_HASH = hash(DEFAULT_CODE);
+
 const changeCode = (value: string) => {
+  if (hash(value) !== DEFAULT_HASH) codeChanged.value = true;
   form.value.code = value;
 };
 

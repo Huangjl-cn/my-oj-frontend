@@ -65,9 +65,7 @@
           </span>
         </template>
         <template #createTime="{ record }">
-          <span class="time">{{
-            moment(record.createTime).format("YYYY-MM-DD HH:mm")
-          }}</span>
+          <span class="time">{{ formatTime(record.createTime) }}</span>
         </template>
       </a-table>
     </div>
@@ -192,7 +190,14 @@ import {
   QuestionSubmitQueryRequest,
 } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
-import moment from "moment";
+
+const formatTime = (t: string) => {
+  const d = new Date(t);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+};
 
 const dataList = ref([]);
 const total = ref(0);

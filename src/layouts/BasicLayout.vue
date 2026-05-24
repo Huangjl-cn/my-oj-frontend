@@ -84,12 +84,13 @@
 }
 
 .footer-inner {
-  max-width: 280px;
-  margin: 0 auto;
+  margin: 0 var(--space-lg);
+  text-align: center;
 }
 
 .footer-quote {
   display: flex;
+  justify-content: center;
   align-items: baseline;
   gap: 6px;
   min-height: 20px;
@@ -103,10 +104,6 @@
   color: var(--on-dark);
   line-height: 1.4;
   letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 1;
   min-width: 0;
 }
 
@@ -138,9 +135,14 @@
 </style>
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
-import GlobalHeader from "@/components/GlobalHeader";
+import GlobalHeader from "@/components/GlobalHeader.vue";
 
 const quotes = [
+  {
+    text: "Success is not final, failure is not fatal: it is the courage to continue that counts",
+    author: "Winston Churchill",
+    country: "UK",
+  },
   { text: "学而不思则罔，思而不学则殆", author: "孔子", country: "中国" },
   { text: "千里之行，始于足下", author: "老子", country: "中国" },
   { text: "天行健，君子以自强不息", author: "《周易》", country: "中国" },
@@ -193,11 +195,6 @@ const quotes = [
     text: "The only thing we have to fear is fear itself",
     author: "Franklin D. Roosevelt",
     country: "USA",
-  },
-  {
-    text: "Success is not final, failure is not fatal: it is the courage to continue that counts",
-    author: "Winston Churchill",
-    country: "UK",
   },
   {
     text: "To be or not to be, that is the question",
