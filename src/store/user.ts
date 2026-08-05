@@ -1,9 +1,14 @@
-// initial state
-import { StoreOptions } from "vuex";
-import ACCESS_ENUM from "@/access/accessEnum";
-import { UserControllerService } from "../../generated";
+import type { Module } from "vuex";
 
-export default {
+import ACCESS_ENUM from "@/access/accessEnum";
+import type { RootState } from "@/store";
+import { UserControllerService, UserVO } from "../../generated";
+
+export interface UserState {
+  loginUser: UserVO;
+}
+
+const userModule: Module<UserState, RootState> = {
   namespaced: true,
   state: () => ({
     loginUser: {
@@ -11,7 +16,7 @@ export default {
     },
   }),
   actions: {
-    async getLoginUser({ commit, state }, payload) {
+    async getLoginUser({ commit, state }) {
       // 从远程请求获取登录信息
       const res = await UserControllerService.getLoginUserUsingGet();
       if (res.code === 0) {
@@ -29,4 +34,6 @@ export default {
       state.loginUser = payload;
     },
   },
-} as StoreOptions<any>;
+};
+
+export default userModule;

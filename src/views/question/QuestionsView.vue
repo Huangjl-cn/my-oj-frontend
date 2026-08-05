@@ -1,8 +1,8 @@
 <template>
   <div id="questionsView">
-    <div class="workspace">
+    <div :class="['workspace', { 'sidebar-collapsed': isSidebarCollapsed }]">
       <!-- ===== Sidebar ===== -->
-      <aside class="sidebar">
+      <aside id="question-sidebar" class="sidebar">
         <div class="sidebar-header">
           <h2>题库</h2>
           <span class="problem-count">{{ total }} 题</span>
@@ -71,6 +71,21 @@
         </div>
       </aside>
 
+      <button
+        class="sidebar-toggle"
+        type="button"
+        :class="{ collapsed: isSidebarCollapsed }"
+        :aria-label="isSidebarCollapsed ? '展开题库' : '收起题库'"
+        :aria-expanded="!isSidebarCollapsed"
+        aria-controls="question-sidebar"
+        :title="isSidebarCollapsed ? '展开题库' : '收起题库'"
+        @click="isSidebarCollapsed = !isSidebarCollapsed"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+      </button>
+
       <!-- ===== Main Content ===== -->
       <main class="main-content">
         <template v-if="currentQuestion">
@@ -91,45 +106,63 @@
                 答案
               </button>
             </div>
-            <div v-if="activeTab === 'question'">
-              <h1 class="problem-title">{{ currentQuestion.title }}</h1>
-              <div class="problem-header">
-                <span
-                  class="tag"
-                  v-for="(tag, i) of currentQuestion.tags"
-                  :key="i"
-                  >{{ tag }}</span
-                >
+            <div class="question-reading-area">
+              <div v-if="activeTab === 'question'">
+                <header class="question-heading">
+                  <h1 class="problem-title">{{ currentQuestion.title }}</h1>
+                  <div class="problem-header">
+                    <span
+                      class="tag"
+                      v-for="(tag, i) of currentQuestion.tags"
+                      :key="i"
+                      >{{ tag }}</span
+                    >
+                  </div>
+                </header>
+                <div class="problem-section problem-content">
+                  <MdViewer :value="currentQuestion.content || ''" />
+                </div>
+                <section class="limits-section" aria-labelledby="limits-title">
+                  <h2 id="limits-title" class="section-label">运行限制</h2>
+                  <div class="limits-strip">
+                    <div class="limit-item">
+                      <span class="limit-label">时间</span>
+                      <strong class="limit-value">
+                        {{ currentQuestion.judgeConfig?.timeLimit ?? 0 }} ms
+                      </strong>
+                    </div>
+                    <div class="limit-item">
+                      <span class="limit-label">内存</span>
+                      <strong class="limit-value">
+                        {{
+                          formatJudgeMemory(
+                            currentQuestion.judgeConfig?.memoryLimit
+                          )
+                        }}
+                      </strong>
+                    </div>
+                    <div class="limit-item">
+                      <span class="limit-label">堆栈</span>
+                      <strong class="limit-value">
+                        {{
+                          formatJudgeMemory(
+                            currentQuestion.judgeConfig?.stackLimit
+                          )
+                        }}
+                      </strong>
+                    </div>
+                  </div>
+                </section>
               </div>
-              <div class="problem-section">
-                <MdViewer :value="currentQuestion.content || ''" />
-              </div>
-              <div class="problem-section">
-                <h3>限制</h3>
-                <ul class="constraints">
-                  <li>
-                    时间限制:
-                    {{ currentQuestion.judgeConfig?.timeLimit ?? 0 }}ms
-                  </li>
-                  <li>
-                    内存限制:
-                    {{ currentQuestion.judgeConfig?.memoryLimit ?? 0 }}KB
-                  </li>
-                  <li>
-                    堆栈限制:
-                    {{ currentQuestion.judgeConfig?.stackLimit ?? 0 }}KB
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div v-else>
-              <div v-if="questionAnswer">
-                <MdViewer :value="questionAnswer" />
-              </div>
-              <div v-else class="empty-hint">
-                {{
-                  canViewAnswer ? "答案加载中..." : "请先通过本题后再查看答案"
-                }}
+              <div v-else>
+                <div v-if="questionAnswer" class="problem-section">
+                  <MdViewer :value="questionAnswer" />
+                </div>
+                <div v-else class="empty-hint">
+                  {{
+                    canViewAnswer ? "答案加载中..." : "请先通过本题后再查看答案"
+                  }}
+                </div>
               </div>
             </div>
           </div>
@@ -138,11 +171,13 @@
           <div class="editor-panel">
             <div class="editor-toolbar">
               <select v-model="form.language" class="lang-selector">
-                <option>java</option>
-                <option>cpp</option>
-                <option>go</option>
-                <option>python</option>
-                <option>javascript</option>
+                <option
+                  v-for="language in SUPPORTED_LANGUAGES"
+                  :key="language"
+                  :value="language"
+                >
+                  {{ language }}
+                </option>
               </select>
               <div class="editor-actions">
                 <button class="btn-submit" @click="doSubmit">提交</button>
@@ -158,14 +193,12 @@
           </div>
 
           <!-- Results -->
-          <div v-if="showResult" class="results-panel">
+          <div v-if="showResult" :class="['results-panel', resultStatusClass]">
             <div class="results-header">
               <div :class="['results-status', resultStatusClass]">
                 <!-- Pending/Submitting -->
                 <svg
-                  v-if="
-                    submitResult?.status === 0 || submitResult?.status === 1
-                  "
+                  v-if="resultPresentation.tone === 'pending'"
                   width="14"
                   height="14"
                   viewBox="0 0 14 14"
@@ -182,7 +215,7 @@
                 </svg>
                 <!-- Passed -->
                 <svg
-                  v-else-if="submitResult?.judgeInfo?.message === 'Accepted'"
+                  v-else-if="resultPresentation.tone === 'passed'"
                   width="14"
                   height="14"
                   viewBox="0 0 14 14"
@@ -225,31 +258,69 @@
                     stroke-linecap="round"
                   />
                 </svg>
-                {{
-                  getStatusText(submitResult?.status, submitResult?.judgeInfo)
-                }}
-                <span class="result-muted"
-                  >· {{ submitResult?.judgeInfo?.message || "--" }}</span
-                >
+                {{ resultPresentation.label }}
               </div>
-              <div class="result-stats">
-                <span
-                  >执行时间
-                  {{
-                    submitResult?.judgeInfo?.time
-                      ? submitResult?.judgeInfo?.time + "ms"
-                      : "--"
-                  }}</span
+              <div class="result-actions">
+                <div class="result-stats">
+                  <div class="result-stat">
+                    <span class="result-stat-label">执行时间</span>
+                    <strong class="result-stat-value">
+                      {{
+                        submitResult?.judgeInfo?.time != null
+                          ? submitResult.judgeInfo.time + " ms"
+                          : "--"
+                      }}
+                    </strong>
+                  </div>
+                  <div class="result-stat">
+                    <span class="result-stat-label">内存消耗</span>
+                    <strong class="result-stat-value">
+                      {{ formatJudgeMemory(submitResult?.judgeInfo?.memory) }}
+                    </strong>
+                  </div>
+                </div>
+                <button
+                  v-if="resultPresentation.message"
+                  class="result-toggle"
+                  type="button"
+                  :class="{ collapsed: isResultDetailsCollapsed }"
+                  :aria-expanded="!isResultDetailsCollapsed"
+                  aria-controls="judge-result-details"
+                  :aria-label="
+                    isResultDetailsCollapsed ? '展开判题详情' : '收起判题详情'
+                  "
+                  :title="
+                    isResultDetailsCollapsed ? '展开判题详情' : '收起判题详情'
+                  "
+                  @click="isResultDetailsCollapsed = !isResultDetailsCollapsed"
                 >
-                <span class="sep">·</span>
-                <span
-                  >内存消耗
-                  {{
-                    submitResult?.judgeInfo?.memory
-                      ? submitResult?.judgeInfo?.memory + "KB"
-                      : "--"
-                  }}</span
-                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              v-if="resultPresentation.message"
+              id="judge-result-details"
+              :class="[
+                'result-detail-shell',
+                { collapsed: isResultDetailsCollapsed },
+              ]"
+              :aria-hidden="isResultDetailsCollapsed"
+            >
+              <div class="result-detail-clip">
+                <div class="result-detail-content">
+                  <div class="result-message-title">
+                    {{ resultMessageParts.title }}
+                  </div>
+                  <div
+                    v-if="resultMessageParts.details"
+                    class="result-message-details"
+                  >
+                    {{ resultMessageParts.details }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -264,6 +335,285 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import { Modal } from "@arco-design/web-vue";
+import message from "@arco-design/web-vue/es/message";
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
+import { useStore } from "vuex";
+
+import ACCESS_ENUM from "@/access/accessEnum";
+import checkAccess from "@/access/checkAccess";
+import MdViewer from "@/components/editor/MdViewer.vue";
+import { SUPPORTED_LANGUAGES } from "@/constants/languages";
+import {
+  formatJudgeMemory,
+  getJudgeResultPresentation,
+  listQuestionSubmissions,
+  splitJudgeMessage,
+} from "@/services/questionSubmit";
+import { createQuestionSubmitPoller } from "@/services/questionSubmitPolling";
+import {
+  QuestionControllerService,
+  QuestionQueryRequest,
+  QuestionSubmitAddRequest,
+  QuestionSubmitVO,
+  QuestionVO,
+} from "../../../generated";
+
+const CodeEditor = defineAsyncComponent(
+  () => import("@/components/editor/CodeEditor.vue")
+);
+
+const DEFAULT_CODE = `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        int a = Integer.parseInt(args[0]);
+        System.out.print("output the answer");
+    }
+}`;
+
+type PageChange = number | { current?: number };
+
+const store = useStore();
+
+// ===== Sidebar =====
+const isSidebarCollapsed = ref(false);
+const selectedId = ref<number | null>(null);
+const activeFilter = ref("all");
+const dataList = ref<QuestionVO[]>([]);
+const total = ref(0);
+const searchParams = ref<QuestionQueryRequest>({
+  title: "",
+  tags: [],
+  pageSize: 8,
+  current: 1,
+});
+
+const loadData = async () => {
+  const res = await QuestionControllerService.listQuestionVoByPageUsingPost(
+    searchParams.value
+  );
+  if (res.code === 0) {
+    dataList.value = res.data.records ?? [];
+    total.value = res.data.total ?? 0;
+  } else {
+    message.error("加载失败，" + res.message);
+  }
+};
+
+watch(
+  searchParams,
+  () => {
+    loadData();
+  },
+  { deep: true }
+);
+onMounted(() => {
+  loadData();
+});
+
+const onFilterChange = (filter: string) => {
+  activeFilter.value = filter;
+  searchParams.value = {
+    ...searchParams.value,
+    tags: filter === "all" ? [] : [filter],
+    current: 1,
+  };
+};
+
+const onPageChange = (page: PageChange) => {
+  const current = typeof page === "number" ? page : page.current;
+  if (current == null) return;
+  searchParams.value = { ...searchParams.value, current };
+  loadData();
+};
+const onSearchInput = () => {
+  searchParams.value = { ...searchParams.value, current: 1 };
+};
+
+const getDifficultyClass = (tag: string) => {
+  const l = tag.toLowerCase();
+  if (l === "easy" || l === "简单") return "easy";
+  if (l === "medium" || l === "中等") return "medium";
+  if (l === "hard" || l === "困难") return "hard";
+  return "easy";
+};
+
+// ===== Question & Editor =====
+const currentQuestion = ref<QuestionVO | null>(null);
+const activeTab = ref("question");
+const questionAnswer = ref("");
+const hasPassedQuestion = ref(false);
+const submitResult = ref<QuestionSubmitVO | null>(null);
+const showResult = ref(false);
+const isResultDetailsCollapsed = ref(false);
+
+const canViewAnswer = computed(() => {
+  const u = store.state.user.loginUser;
+  return checkAccess(u, ACCESS_ENUM.ADMIN) || hasPassedQuestion.value;
+});
+
+const resultPresentation = computed(() =>
+  getJudgeResultPresentation(submitResult.value || undefined)
+);
+const resultStatusClass = computed(() => resultPresentation.value.tone);
+const resultMessageParts = computed(() =>
+  splitJudgeMessage(resultPresentation.value.message)
+);
+
+const polling = createQuestionSubmitPoller({
+  onUpdate: (submission) => {
+    submitResult.value = submission;
+    if (submission.status === 2 || submission.status === 3) {
+      isResultDetailsCollapsed.value = false;
+    }
+  },
+  onTimeout: () => {
+    message.warning("判题等待超时，请稍后在提交记录中查看结果");
+  },
+  onError: () => undefined,
+});
+
+const form = ref<QuestionSubmitAddRequest>({
+  language: "java",
+  code: DEFAULT_CODE,
+});
+
+const onSelectQuestion = async (item: QuestionVO) => {
+  if (item.id == null) return;
+
+  if (codeChanged.value) {
+    const ok = await new Promise<boolean>((resolve) =>
+      Modal.confirm({
+        title: "切换题目",
+        content: "当前代码未保存，切换后将会丢失。是否继续？",
+        okText: "继续",
+        cancelText: "取消",
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
+    );
+    if (!ok) return;
+  }
+  selectedId.value = item.id;
+  stopPolling();
+  showResult.value = false;
+  submitResult.value = null;
+  isResultDetailsCollapsed.value = false;
+  activeTab.value = "question";
+  hasPassedQuestion.value = false;
+  questionAnswer.value = "";
+  codeChanged.value = false;
+  form.value.code = DEFAULT_CODE;
+
+  const res = await QuestionControllerService.getQuestionVoByIdUsingGet(
+    item.id
+  );
+  if (res.code === 0) {
+    currentQuestion.value = res.data;
+    checkAnswerAccess();
+  } else {
+    message.error("加载失败");
+  }
+};
+
+const checkAnswerAccess = async () => {
+  const u = store.state.user.loginUser;
+  if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
+    loadAnswer();
+    return;
+  }
+  if (u?.userRole === ACCESS_ENUM.USER) {
+    const res = await listQuestionSubmissions({
+      questionId: currentQuestion.value?.id,
+      userId: u.id,
+      pageSize: 100,
+      current: 1,
+    });
+    if (res.code === 0 && res.data.records) {
+      const passed = res.data.records.find(
+        (submission: QuestionSubmitVO) =>
+          submission.judgeInfo?.message === "Accepted"
+      );
+      hasPassedQuestion.value = !!passed;
+      if (passed) loadAnswer();
+    }
+  }
+};
+
+const loadAnswer = async () => {
+  if (!currentQuestion.value?.id) return;
+  const u = store.state.user.loginUser;
+  if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
+    const res = await QuestionControllerService.getQuestionByIdUsingGet(
+      currentQuestion.value.id
+    );
+    questionAnswer.value =
+      res.code === 0 && res.data.answer ? res.data.answer : "暂无答案";
+  } else {
+    const res = await QuestionControllerService.listQuestionByPageUsingPost({
+      id: currentQuestion.value.id,
+      pageSize: 1,
+      current: 1,
+    });
+    questionAnswer.value =
+      res.code === 0 && res.data.records?.[0]?.answer
+        ? res.data.records[0].answer
+        : "无法加载答案";
+  }
+};
+
+const doSubmit = async () => {
+  if (!currentQuestion.value?.id) return;
+  stopPolling();
+  const res = await QuestionControllerService.doQuestionSubmitUsingPost({
+    ...form.value,
+    questionId: currentQuestion.value.id,
+  });
+  if (res.code === 0) {
+    message.success("提交成功");
+    showResult.value = true;
+    isResultDetailsCollapsed.value = false;
+    submitResult.value = { id: res.data, status: 0 };
+    startPolling(res.data);
+  } else {
+    message.error("提交失败，" + res.message);
+  }
+};
+
+const startPolling = (submitId: number) => polling.start(submitId);
+const stopPolling = () => polling.stop();
+
+const codeChanged = ref(false);
+
+const hash = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return h;
+};
+const DEFAULT_HASH = hash(DEFAULT_CODE);
+
+const changeCode = (value: string) => {
+  if (hash(value) !== DEFAULT_HASH) codeChanged.value = true;
+  form.value.code = value;
+};
+
+onBeforeUnmount(() => {
+  stopPolling();
+});
+</script>
+
 <style scoped>
 #questionsView {
   animation: claude-fade-up 0.4s ease-out;
@@ -273,24 +623,78 @@
 }
 
 .workspace {
+  --sidebar-width: 300px;
   display: flex;
   width: 100%;
   overflow: hidden;
   background: var(--surface-soft);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
+  position: relative;
 }
 
 /* ===== Sidebar ===== */
 .sidebar {
-  width: 300px;
-  min-width: 300px;
+  width: var(--sidebar-width);
+  min-width: 0;
+  flex: 0 0 var(--sidebar-width);
   background: var(--surface-soft);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
   border-right: 1px solid var(--hairline);
+  transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    flex-basis 480ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease,
+    transform 480ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease;
+  will-change: width, flex-basis, transform;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  left: var(--sidebar-width);
+  z-index: 20;
+  width: 28px;
+  height: 64px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: 0 6px 6px 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms ease,
+    background 150ms ease;
+}
+
+.sidebar-toggle:hover {
+  color: var(--primary);
+  background: var(--surface-soft);
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -3px;
+}
+
+.sidebar-toggle svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar-toggle.collapsed svg {
+  transform: rotate(180deg);
 }
 
 .sidebar-header {
@@ -378,7 +782,7 @@
 .problem-list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 8px;
   min-height: 0;
 }
 
@@ -386,20 +790,24 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 11px 13px;
   cursor: pointer;
-  transition: background 0.1s;
+  background: var(--surface-card);
+  border: 1px solid var(--hairline-soft);
   border-left: 3px solid transparent;
-  margin: 0 8px;
+  margin-bottom: 6px;
   border-radius: 6px;
+  transition: background 150ms ease, border-color 150ms ease;
 }
 
 .problem-item:hover {
-  background: var(--surface-card);
+  background: var(--surface-cream-strong);
+  border-color: var(--hairline);
 }
 
 .problem-item.active {
-  background: var(--surface-card);
+  background: var(--surface-cream-strong);
+  border-color: var(--hairline);
   border-left-color: var(--primary);
 }
 
@@ -489,26 +897,41 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--canvas);
+  background: var(--surface-soft);
   min-width: 0;
   position: relative;
 }
 
 /* Description */
 .description-panel {
-  flex: 4;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
   overflow-y: auto;
-  padding: 28px 36px;
+  padding: 0 36px 32px;
   border-bottom: 1px solid var(--hairline);
+  border-right: 1px solid transparent;
+  background: var(--surface-soft);
   min-height: 0;
+  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 480ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease;
+  will-change: left, width, height;
 }
 
 .tabs-row {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   gap: 8px;
-  margin-bottom: 24px;
+  margin: 0 -36px 24px;
+  padding: 12px 36px;
   border-bottom: 1px solid var(--hairline);
-  padding-bottom: 8px;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(8px);
 }
 
 .tab-btn {
@@ -518,19 +941,20 @@
   color: var(--muted);
   background: transparent;
   border: none;
-  padding: 6px 14px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 150ms ease;
 }
 
 .tab-btn:hover {
   color: var(--ink);
-  background: var(--surface-soft);
+  background: var(--surface-card);
 }
 
 .tab-btn.active {
   color: var(--ink);
+  background: var(--surface-card);
 }
 
 .tab-btn:disabled {
@@ -538,13 +962,30 @@
   cursor: not-allowed;
 }
 
+.question-reading-area {
+  width: 100%;
+  max-width: 840px;
+  min-height: calc(100% - 76px);
+  margin: 0 auto;
+  padding: 30px 32px 32px;
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  transition: max-width 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.question-heading {
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--surface-cream-strong);
+}
+
 .problem-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 400;
   color: var(--ink);
-  letter-spacing: -0.3px;
-  margin-bottom: 6px;
+  letter-spacing: 0;
+  margin: 0 0 10px;
   line-height: 1.2;
 }
 
@@ -552,7 +993,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
@@ -561,14 +1001,14 @@
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--surface-soft);
-  color: var(--muted);
-  border: 1px solid var(--hairline);
-  letter-spacing: 0.2px;
+  background: var(--surface-cream-strong);
+  color: var(--body);
+  border: 1px solid transparent;
+  letter-spacing: 0;
 }
 
 .problem-section {
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 
 .problem-section h3 {
@@ -582,14 +1022,40 @@
 
 /* MdViewer content styling */
 .problem-section :deep(p) {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--body);
-  line-height: 1.7;
+  line-height: 1.8;
+  margin: 0 0 14px;
+}
+
+.problem-section :deep(h1),
+.problem-section :deep(h2),
+.problem-section :deep(h3),
+.problem-section :deep(h4) {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+  margin: 26px 0 12px;
+}
+
+.problem-section :deep(h1) {
+  font-size: 28px;
+}
+
+.problem-section :deep(h2) {
+  font-size: 24px;
+}
+
+.problem-section :deep(h3),
+.problem-section :deep(h4) {
+  font-size: 20px;
 }
 
 .problem-section :deep(code) {
   color: var(--primary);
-  background: var(--surface-soft);
+  background: var(--surface-cream-strong);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 13px;
@@ -599,7 +1065,7 @@
 .problem-section :deep(pre),
 .problem-section :deep(pre.hljs),
 .problem-section :deep(.hljs) {
-  background: var(--surface-soft) !important;
+  background: var(--surface-cream-strong) !important;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   padding: var(--space-md);
@@ -645,21 +1111,55 @@
 }
 
 .problem-section :deep(th) {
-  background: var(--surface-soft);
+  background: var(--surface-cream-strong);
   font-weight: 500;
   color: var(--body-strong);
 }
 
-.constraints {
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.7;
-  padding-left: 20px;
-  margin-top: 4px;
+.limits-section {
+  margin-top: 34px;
 }
 
-.constraints li {
-  margin-bottom: 3px;
+.section-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.limits-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  background: var(--surface-cream-strong);
+  border: 0;
+  border-radius: var(--radius-md);
+}
+
+.limit-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px 15px;
+}
+
+.limit-item + .limit-item {
+  border-left: 1px solid var(--surface-card);
+}
+
+.limit-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.limit-value {
+  color: var(--ink);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .empty-hint {
@@ -671,13 +1171,21 @@
 
 /* Editor */
 .editor-panel {
-  flex: 6;
+  position: absolute;
+  top: 40%;
+  left: 0;
+  width: 100%;
+  height: 60%;
   display: flex;
   flex-direction: column;
   min-height: 0;
   border-radius: var(--radius-md);
   overflow: hidden;
-  position: relative;
+  transition: top 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: top, left, width, height;
 }
 
 .editor-toolbar {
@@ -750,23 +1258,26 @@
   border-top: 1px solid var(--hairline);
   background: var(--canvas);
   z-index: 10;
+  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .results-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
+  min-height: 52px;
+  padding: 8px 14px 8px 20px;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 
 .results-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .results-status.pending {
@@ -781,19 +1292,131 @@
   color: var(--error);
 }
 
-.result-muted {
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--muted);
+.result-actions,
+.result-stats,
+.result-stat {
+  display: flex;
+  align-items: center;
+}
+
+.result-actions {
+  gap: 14px;
+  margin-left: auto;
 }
 
 .result-stats {
-  font-size: 12px;
-  color: var(--muted-soft);
+  gap: 24px;
 }
 
-.sep {
-  margin: 0 4px;
+.result-stat {
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.result-stat-label {
+  color: var(--muted-soft);
+  font-size: 11px;
+}
+
+.result-stat-value {
+  color: var(--ink);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-toggle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.result-toggle:hover {
+  color: var(--ink);
+  background: var(--surface-soft);
+  border-color: var(--hairline);
+}
+
+.result-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.result-toggle svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.result-toggle.collapsed svg {
+  transform: rotate(180deg);
+}
+
+.result-detail-shell {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease;
+}
+
+.result-detail-shell.collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.result-detail-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.result-detail-content {
+  max-height: 240px;
+  overflow: auto;
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--hairline-soft);
+  background: var(--surface-soft);
+}
+
+.result-message-title {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.results-panel.failed .result-message-title {
+  color: var(--error);
+}
+
+.results-panel.passed .result-message-title {
+  color: var(--success);
+}
+
+.result-message-details {
+  margin-top: 8px;
+  color: var(--body);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Empty state */
@@ -807,12 +1430,63 @@
 }
 
 @media (max-width: 1024px) {
+  .workspace {
+    --sidebar-width: 260px;
+  }
+
   .sidebar {
-    width: 260px;
-    min-width: 260px;
+    width: var(--sidebar-width);
   }
   .description-panel {
-    padding: 24px;
+    padding: 0 24px 28px;
+  }
+
+  .tabs-row {
+    margin-right: -24px;
+    margin-left: -24px;
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+
+  .question-reading-area {
+    padding: 26px 24px 28px;
+  }
+}
+
+@media (min-width: 769px) {
+  .workspace.sidebar-collapsed .sidebar {
+    width: 0;
+    flex-basis: 0;
+    opacity: 0;
+    transform: translateX(-24px);
+    border-right-color: transparent;
+    pointer-events: none;
+  }
+
+  .workspace.sidebar-collapsed .sidebar-toggle {
+    left: 0;
+  }
+
+  .workspace.sidebar-collapsed .description-panel {
+    width: 50%;
+    height: 100%;
+    border-right: 1px solid var(--hairline);
+    border-bottom-color: transparent;
+  }
+
+  .workspace.sidebar-collapsed .question-reading-area {
+    max-width: 760px;
+  }
+
+  .workspace.sidebar-collapsed .editor-panel {
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+  }
+
+  .workspace.sidebar-collapsed .results-panel {
+    left: 50%;
   }
 }
 
@@ -823,324 +1497,26 @@
   .sidebar {
     width: 100%;
     min-width: 0;
+    flex-basis: auto;
     max-height: 35vh;
     border-right: none;
     border-bottom: 1px solid var(--hairline);
   }
+
+  .sidebar-toggle {
+    display: none;
+  }
   #questionsView {
     margin: calc(-1 * var(--space-md));
   }
+
+  .limits-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .limit-item + .limit-item {
+    border-top: 1px solid var(--surface-card);
+    border-left: 0;
+  }
 }
 </style>
-
-<script setup lang="ts">
-import {
-  onMounted,
-  ref,
-  watch,
-  onBeforeUnmount,
-  computed,
-  defineAsyncComponent,
-} from "vue";
-import {
-  QuestionControllerService,
-  QuestionSubmitAddRequest,
-  QuestionVO,
-  QuestionSubmitVO,
-  QuestionQueryRequest,
-  JudgeInfo,
-} from "../../../generated";
-import message from "@arco-design/web-vue/es/message";
-import { Modal } from "@arco-design/web-vue";
-import MdViewer from "@/components/MdViewer.vue";
-
-const CodeEditor = defineAsyncComponent(
-  () => import("@/components/CodeEditor.vue")
-);
-import ACCESS_ENUM from "@/access/accessEnum";
-import checkAccess from "@/access/checkAccess";
-import { useStore } from "vuex";
-
-const store = useStore();
-
-// ===== Sidebar =====
-const selectedId = ref<string | null>(null);
-const activeFilter = ref("all");
-const dataList = ref([]);
-const total = ref(0);
-const searchParams = ref<QuestionQueryRequest>({
-  title: "",
-  tags: [],
-  pageSize: 8,
-  current: 1,
-});
-
-const loadData = async () => {
-  const res = await QuestionControllerService.listQuestionVoByPageUsingPost(
-    searchParams.value
-  );
-  if (res.code === 0) {
-    dataList.value = res.data.records;
-    total.value = res.data.total;
-  } else {
-    message.error("加载失败，" + res.message);
-  }
-};
-
-watch(
-  searchParams,
-  () => {
-    loadData();
-  },
-  { deep: true }
-);
-onMounted(() => {
-  loadData();
-});
-
-const onFilterChange = (filter: string) => {
-  activeFilter.value = filter;
-  searchParams.value = {
-    ...searchParams.value,
-    tags: filter === "all" ? [] : [filter],
-    current: 1,
-  };
-};
-
-const onPageChange = (page: any) => {
-  const p = typeof page === "number" ? page : page?.current;
-  searchParams.value = { ...searchParams.value, current: p };
-  loadData();
-};
-const onSearchInput = () => {
-  searchParams.value = { ...searchParams.value, current: 1 };
-};
-
-const getDifficultyClass = (tag: string) => {
-  const l = tag.toLowerCase();
-  if (l === "easy" || l === "简单") return "easy";
-  if (l === "medium" || l === "中等") return "medium";
-  if (l === "hard" || l === "困难") return "hard";
-  return "easy";
-};
-
-// ===== Question & Editor =====
-const currentQuestion = ref<QuestionVO | null>(null);
-const activeTab = ref("question");
-const questionAnswer = ref("");
-const hasPassedQuestion = ref(false);
-const submitResult = ref<QuestionSubmitVO | null>(null);
-const showResult = ref(false);
-
-let pollingTimer: any = null;
-let pollingStart = 0;
-const POLLING_INTERVAL = 3000;
-const POLLING_TIMEOUT = 30000;
-
-const canViewAnswer = computed(() => {
-  const u = store.state.user.loginUser;
-  return checkAccess(u, ACCESS_ENUM.ADMIN) || hasPassedQuestion.value;
-});
-
-const resultStatusClass = computed(() => {
-  const s = submitResult.value;
-  if (!s) return "";
-  if (s.status === 0 || s.status === 1) return "pending";
-  return s.judgeInfo?.message === "Accepted" ? "passed" : "failed";
-});
-
-const form = ref<QuestionSubmitAddRequest>({
-  language: "java",
-  code: DEFAULT_CODE,
-});
-
-const onSelectQuestion = async (item: any) => {
-  if (codeChanged.value) {
-    const ok = await new Promise((r) =>
-      Modal.confirm({
-        title: "切换题目",
-        content: "当前代码未保存，切换后将会丢失。是否继续？",
-        okText: "继续",
-        cancelText: "取消",
-        onOk: () => r(true),
-        onCancel: () => r(false),
-      })
-    );
-    if (!ok) return;
-  }
-  selectedId.value = item.id as string;
-  stopPolling();
-  showResult.value = false;
-  submitResult.value = null;
-  activeTab.value = "question";
-  hasPassedQuestion.value = false;
-  questionAnswer.value = "";
-  codeChanged.value = false;
-  form.value.code = DEFAULT_CODE;
-
-  const res = await QuestionControllerService.getQuestionVoByIdUsingGet(
-    item.id as any
-  );
-  if (res.code === 0) {
-    currentQuestion.value = res.data;
-    checkAnswerAccess();
-  } else {
-    message.error("加载失败");
-  }
-};
-
-const checkAnswerAccess = async () => {
-  const u = store.state.user.loginUser;
-  if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
-    loadAnswer();
-    return;
-  }
-  if (u?.userRole === ACCESS_ENUM.USER) {
-    const res =
-      await QuestionControllerService.listQuestionSubmitByPageUsingPost({
-        questionId: currentQuestion.value?.id,
-        userId: u.id,
-        pageSize: 100,
-        current: 1,
-      });
-    if (res.code === 0 && res.data.records) {
-      const passed = res.data.records.find((s: any) => {
-        let j = s.judgeInfo;
-        if (typeof j === "string") {
-          try {
-            j = JSON.parse(j);
-          } catch {
-            j = {};
-          }
-        }
-        return j?.message === "Accepted";
-      });
-      hasPassedQuestion.value = !!passed;
-      if (passed) loadAnswer();
-    }
-  }
-};
-
-const loadAnswer = async () => {
-  if (!currentQuestion.value?.id) return;
-  const u = store.state.user.loginUser;
-  if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
-    const res = await QuestionControllerService.getQuestionByIdUsingGet(
-      currentQuestion.value.id as any
-    );
-    questionAnswer.value =
-      res.code === 0 && res.data.answer ? res.data.answer : "暂无答案";
-  } else {
-    const res = await QuestionControllerService.listQuestionByPageUsingPost({
-      id: currentQuestion.value.id,
-      pageSize: 1,
-      current: 1,
-    });
-    questionAnswer.value =
-      res.code === 0 && res.data.records?.[0]?.answer
-        ? res.data.records[0].answer
-        : "无法加载答案";
-  }
-};
-
-const doSubmit = async () => {
-  if (!currentQuestion.value?.id) return;
-  stopPolling();
-  const res = await QuestionControllerService.doQuestionSubmitUsingPost({
-    ...form.value,
-    questionId: currentQuestion.value.id,
-  });
-  if (res.code === 0) {
-    message.success("提交成功");
-    showResult.value = true;
-    startPolling(res.data);
-  } else {
-    message.error("提交失败，" + res.message);
-  }
-};
-
-const startPolling = (submitId: number) => {
-  pollingStart = Date.now();
-  const poll = async () => {
-    if (Date.now() - pollingStart > POLLING_TIMEOUT) {
-      stopPolling();
-      return;
-    }
-    try {
-      const res = await QuestionControllerService.getQuestionSubmitByIdUsingGet(
-        submitId
-      );
-      if (res.code === 0) {
-        const d = { ...res.data };
-        if (typeof d.judgeInfo === "string") {
-          try {
-            d.judgeInfo = JSON.parse(d.judgeInfo);
-          } catch {
-            d.judgeInfo = {};
-          }
-        }
-        submitResult.value = d;
-        if (d?.status === 2 || d?.status === 3) {
-          stopPolling();
-          return;
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    pollingTimer = setTimeout(poll, POLLING_INTERVAL);
-  };
-  poll();
-};
-
-const stopPolling = () => {
-  if (pollingTimer) {
-    clearTimeout(pollingTimer);
-    pollingTimer = null;
-  }
-};
-
-const getStatusText = (status?: number, judgeInfo?: JudgeInfo) => {
-  switch (status) {
-    case 0:
-      return "等待中";
-    case 1:
-      return "判题中";
-    case 2:
-      if (judgeInfo?.message === "Accepted") return "通过";
-      return judgeInfo?.message || "失败";
-    case 3:
-      return "失败";
-    default:
-      return "未知";
-  }
-};
-
-const DEFAULT_CODE = `import java.util.*;
-
-public class Main {
-    public static void main(String[] args) {
-        int a = Integer.parseInt(args[0]);
-        System.out.print("output the answer");
-    }
-}`;
-
-const codeChanged = ref(false);
-
-const hash = (s: string) => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++)
-    (h = (h << 5) - h + s.charCodeAt(i)), (h |= 0);
-  return h;
-};
-const DEFAULT_HASH = hash(DEFAULT_CODE);
-
-const changeCode = (value: string) => {
-  if (hash(value) !== DEFAULT_HASH) codeChanged.value = true;
-  form.value.code = value;
-};
-
-onBeforeUnmount(() => {
-  stopPolling();
-});
-</script>

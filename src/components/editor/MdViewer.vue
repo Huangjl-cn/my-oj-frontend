@@ -14,7 +14,7 @@ interface Props {
 
 const plugins = [gfm(), highlight()];
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   value: () => "",
 });
 </script>

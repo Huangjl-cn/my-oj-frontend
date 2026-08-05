@@ -1,6 +1,10 @@
 .DS_Store
+Thumbs.db
 node_modules
 /dist
+/coverage
+.cache
+*.tsbuildinfo
 
 
 # local env files
@@ -12,6 +16,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 
 # Editor directories and files
 .idea
@@ -23,5 +28,5 @@ pnpm-debug.log*
 *.sw?
 
 ### Agent tooling ###
-.claude/
+.claude/**/*local*
 .agents/

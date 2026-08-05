@@ -1,12 +1,14 @@
-import { createApp } from "vue";
-import App from "./App.vue";
 import ArcoVue from "@arco-design/web-vue";
 import "@arco-design/web-vue/dist/arco.css";
+import "bytemd/dist/index.css";
+import { createApp } from "vue";
+
+import App from "./App.vue";
+import "@/access";
+import "@/plugins/axios";
+import "@/styles/global.css";
 import router from "./router";
 import store from "./store";
-import "@/plugins/axios";
-import "@/access";
-import "bytemd/dist/index.css";
 
 // Suppress benign ResizeObserver loop errors caused by Monaco Editor
 window.addEventListener("error", (e) => {

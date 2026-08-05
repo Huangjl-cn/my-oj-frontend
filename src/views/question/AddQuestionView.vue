@@ -122,6 +122,109 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import message from "@arco-design/web-vue/es/message";
+import { onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+import MdEditor from "@/components/editor/MdEditor.vue";
+import {
+  JudgeCase,
+  JudgeConfig,
+  QuestionControllerService,
+} from "../../../generated";
+
+interface QuestionForm {
+  id?: number;
+  title: string;
+  tags: string[];
+  answer: string;
+  content: string;
+  judgeConfig: JudgeConfig;
+  judgeCase: JudgeCase[];
+}
+
+const createDefaultForm = (): QuestionForm => ({
+  title: "",
+  tags: [],
+  answer: "",
+  content: "",
+  judgeConfig: {
+    memoryLimit: 1000,
+    stackLimit: 1000,
+    timeLimit: 1000,
+  },
+  judgeCase: [{ input: "", output: "" }],
+});
+
+function parseJson<T>(value: string | undefined, fallback: T): T {
+  return value ? (JSON.parse(value) as T) : fallback;
+}
+
+const route = useRoute();
+const router = useRouter();
+const updatePage = route.path.includes("update");
+const form = ref<QuestionForm>(createDefaultForm());
+
+const loadData = async () => {
+  const id = Number(route.query.id);
+  if (!Number.isFinite(id)) return;
+
+  const res = await QuestionControllerService.getQuestionByIdUsingGet(id);
+  if (res.code === 0 && res.data) {
+    const defaults = createDefaultForm();
+    form.value = {
+      id: res.data.id,
+      title: res.data.title ?? "",
+      answer: res.data.answer ?? "",
+      content: res.data.content ?? "",
+      tags: parseJson(res.data.tags, defaults.tags),
+      judgeCase: parseJson(res.data.judgeCase, defaults.judgeCase),
+      judgeConfig: parseJson(res.data.judgeConfig, defaults.judgeConfig),
+    };
+  } else {
+    message.error("加载失败，" + res.message);
+  }
+};
+
+onMounted(() => {
+  loadData();
+});
+
+const doSubmit = async () => {
+  if (updatePage) {
+    const res = await QuestionControllerService.updateQuestionUsingPost(
+      form.value
+    );
+    if (res.code === 0) {
+      message.success("更新成功");
+      router.push("/manage/question");
+    } else message.error("更新失败，" + res.message);
+  } else {
+    const res = await QuestionControllerService.addQuestionUsingPost(
+      form.value
+    );
+    if (res.code === 0) {
+      message.success("创建成功");
+      router.push("/questions");
+    } else message.error("创建失败，" + res.message);
+  }
+};
+
+const handleAdd = () => {
+  form.value.judgeCase.push({ input: "", output: "" });
+};
+const handleDelete = (index: number) => {
+  form.value.judgeCase.splice(index, 1);
+};
+const onContentChange = (value: string) => {
+  form.value.content = value;
+};
+const onAnswerChange = (value: string) => {
+  form.value.answer = value;
+};
+</script>
+
 <style scoped>
 #addQuestionView {
   max-width: 1600px;
@@ -302,95 +405,3 @@
   }
 }
 </style>
-
-<script setup lang="ts">
-import { onMounted, ref } from "vue";
-import MdEditor from "@/components/MdEditor.vue";
-import { QuestionControllerService } from "../../../generated";
-import message from "@arco-design/web-vue/es/message";
-import { useRoute, useRouter } from "vue-router";
-
-const route = useRoute();
-const router = useRouter();
-const updatePage = route.path.includes("update");
-
-let form = ref({
-  title: "",
-  tags: [],
-  answer: "",
-  content: "",
-  judgeConfig: {
-    memoryLimit: 1000,
-    stackLimit: 1000,
-    timeLimit: 1000,
-  },
-  judgeCase: [
-    {
-      input: "",
-      output: "",
-    },
-  ],
-});
-
-const loadData = async () => {
-  const id = route.query.id;
-  if (!id) return;
-  const res = await QuestionControllerService.getQuestionByIdUsingGet(
-    id as any
-  );
-  if (res.code === 0) {
-    form.value = res.data as any;
-    if (!form.value.judgeCase)
-      form.value.judgeCase = [{ input: "", output: "" }];
-    else form.value.judgeCase = JSON.parse(form.value.judgeCase as any);
-    if (!form.value.judgeConfig)
-      form.value.judgeConfig = {
-        memoryLimit: 1000,
-        stackLimit: 1000,
-        timeLimit: 1000,
-      };
-    else form.value.judgeConfig = JSON.parse(form.value.judgeConfig as any);
-    if (!form.value.tags) form.value.tags = [];
-    else form.value.tags = JSON.parse(form.value.tags as any);
-  } else {
-    message.error("加载失败，" + res.message);
-  }
-};
-
-onMounted(() => {
-  loadData();
-});
-
-const doSubmit = async () => {
-  if (updatePage) {
-    const res = await QuestionControllerService.updateQuestionUsingPost(
-      form.value
-    );
-    if (res.code === 0) {
-      message.success("更新成功");
-      router.push("/manage/question");
-    } else message.error("更新失败，" + res.message);
-  } else {
-    const res = await QuestionControllerService.addQuestionUsingPost(
-      form.value
-    );
-    if (res.code === 0) {
-      message.success("创建成功");
-      router.push("/questions");
-    } else message.error("创建失败，" + res.message);
-  }
-};
-
-const handleAdd = () => {
-  form.value.judgeCase.push({ input: "", output: "" });
-};
-const handleDelete = (index: number) => {
-  form.value.judgeCase.splice(index, 1);
-};
-const onContentChange = (value: string) => {
-  form.value.content = value;
-};
-const onAnswerChange = (value: string) => {
-  form.value.answer = value;
-};
-</script>

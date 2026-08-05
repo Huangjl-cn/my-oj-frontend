@@ -8,9 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run serve              # Start dev server (vue-cli-service serve, port 8080)
 npm run build              # Production build (sourcemaps disabled)
 npm run lint -- --fix      # Lint and auto-fix (use this instead of npx prettier --write)
+npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plugin-unit-jest)
 ```
 
-- **No test runner** is configured. Do not attempt to run tests.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `useTheme.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Regenerate the API client** from the backend OpenAPI spec (from README): `openapi --input http://localhost:8121/api/v2/api-docs --output ./generated --client axios`
 - The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.
@@ -26,6 +28,7 @@ npm run lint -- --fix      # Lint and auto-fix (use this instead of npx prettier
 - **Editor:** Monaco Editor via `monaco-editor-webpack-plugin` (java, javascript, typescript, python, cpp)
 - **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight
 - **Codegen:** `openapi-typescript-codegen` generates API client from OpenAPI spec into `generated/`
+- **Tests:** Jest 27 via `@vue/cli-plugin-unit-jest` (vue3-jest + ts-jest)
 
 ## Project Structure
 
@@ -36,10 +39,17 @@ src/
 │   ├── checkAccess.ts    # Permission check logic
 │   └── index.ts          # Vue Router beforeEach guard (auto-login, route auth)
 ├── components/
-│   ├── CodeEditor.vue    # Monaco Editor wrapper (do not modify)
-│   ├── GlobalHeader.vue  # Top nav: logo + links + user avatar + switch-account
-│   ├── MdEditor.vue      # ByteMD editor (for question content/answer editing)
-│   └── MdViewer.vue      # ByteMD viewer (read-only markdown rendering)
+│   ├── editor/
+│   │   ├── CodeEditor.vue  # Monaco Editor wrapper (do not modify)
+│   │   ├── MdEditor.vue    # ByteMD editor (for question content/answer editing)
+│   │   └── MdViewer.vue    # ByteMD viewer (read-only markdown rendering)
+│   └── layout/
+│       └── GlobalHeader.vue  # Top nav: logo + links + user avatar + theme toggle + switch-account
+├── composables/
+│   └── useTheme.ts       # Dark/light theme toggle (data-theme on <html>, arco-theme on <body>, localStorage "myoj-theme")
+├── constants/
+│   ├── quotes.ts         # Footer cycling quotes
+│   └── languages.ts      # Code editor language options
 ├── layouts/
 │   ├── BasicLayout.vue   # Main layout: height:100vh fixed viewport, sticky header, footer with cycling quotes
 │   └── UserLayout.vue    # Minimal layout for login/register
@@ -48,21 +58,26 @@ src/
 ├── router/
 │   ├── index.ts          # Router instance
 │   └── routes.ts         # Route definitions with access meta
+├── services/
+│   ├── questionSubmit.ts          # Judge-info adaptation (normalizeJudgeInfo, getJudgeResultPresentation) + submission request wrapper
+│   └── questionSubmitPolling.ts   # createQuestionSubmitPoller (poll/cancel/timeout)
 ├── store/
 │   ├── index.ts          # Vuex store
 │   └── user.ts           # User state (loginUser), getLoginUser action
+├── styles/
+│   └── global.css        # Claude Design System tokens + Arco overrides + dark theme (imported in main.ts)
 ├── views/
 │   ├── question/
 │   │   ├── QuestionsView.vue         # Main workspace: sidebar + embedded editor + polling
-│   │   ├── ViewQuestionView.vue      # Standalone coding page (unused from nav, kept for direct links)
 │   │   ├── AddQuestionView.vue       # Create/edit form (judge config, test cases, side-by-side editors)
 │   │   ├── ManageQuestionView.vue    # Admin CRUD table in card
 │   │   └── QuestionSubmitView.vue    # Submission history list with filters in card
+│   ├── NoAuthView.vue               # 403 page (route /noAuth)
 │   └── user/
 │       ├── UserLoginView.vue         # Login form
 │       └── UserRegisterView.vue      # Register form
-├── App.vue              # Root component + global Claude Design System CSS + Arco overrides
-└── main.ts              # Bootstrap: ArcoVue + router + store + axios + access guard
+├── App.vue              # Thin shell: route-based layout switching (UserLayout for /user/*) + useTheme() init
+└── main.ts              # Bootstrap: ArcoVue + router + store + axios + access guard + global.css
 
 generated/               # Auto-generated API client — DO NOT EDIT
 └── services/            # e.g. QuestionControllerService, UserControllerService
@@ -70,7 +85,7 @@ generated/               # Auto-generated API client — DO NOT EDIT
 
 ## Design System (Claude-inspired)
 
-All CSS custom properties are defined in `src/App.vue` `:root`. Key tokens:
+All CSS custom properties and Arco overrides live in `src/styles/global.css` (imported in `main.ts`) — not in `App.vue`, which is only a thin shell. Key tokens:
 
 - **Canvas:** `#faf9f5` cream, **Primary:** `#cc785c` coral, **Dark:** `#181715` navy
 - **Fonts:** Cormorant Garamond (serif, for page titles h1/h2), Inter (sans, for body and section titles h3/h4), JetBrains Mono (code)
@@ -79,9 +94,13 @@ All CSS custom properties are defined in `src/App.vue` `:root`. Key tokens:
 
 Typography utility classes: `.claude-title-lg` (22px), `.claude-title-md` (18px), `.claude-title-sm` (16px), `.claude-body` (16px), `.claude-body-sm` (14px), `.claude-caption` (13px/500), `.claude-caption-up` (12px/500/uppercase/1.5px tracking).
 
+### Dark Theme
+
+`global.css` defines `:root[data-theme="dark"]` overrides for every token. The `useTheme` composable (`src/composables/useTheme.ts`) toggles it: sets `data-theme` + `color-scheme` on `<html>`, sets/removes `arco-theme="dark"` on `<body>` (Arco's dark mode), and persists the choice in `localStorage["myoj-theme"]`. Toggle button lives in GlobalHeader; `App.vue` calls `useTheme()` once at startup.
+
 ### Arco Design CSS Override Patterns
 
-Overrides live in `src/App.vue` unscoped styles. Key patterns:
+Overrides live in `src/styles/global.css` (unscoped, `!important`-heavy). Key patterns:
 
 - **Table header:** `.arco-table-th` uses `--surface-soft` background, uppercase 12px/600, with `--muted` color
 - **Table body:** `.arco-table-td` transparent background on `--canvas` card; first column gets `--ink` color + 500 weight
@@ -158,17 +177,16 @@ The main "题库" page uses a sidebar + embedded editor pattern (no page navigat
 - Backend API: `listQuestionVoByPageUsingPost` (supports `title` and `tags` filter params, where `tags` uses English values: `["easy"]`, `["medium"]`, `["hard"]`)
 
 ### Code Submission & Polling
-1. Submit via `doQuestionSubmitUsingPost` → returns submit ID
-2. Poll `getQuestionSubmitByIdUsingGet` every 3s (30s timeout)
-3. Stop when status is 2 (completed) or 3 (failed)
-4. Judge info arrives as JSON string — must be parsed: `typeof d.judgeInfo === "string" && JSON.parse(d.judgeInfo)`
-5. The getStatusText function uses status enum: 0=等待中, 1=判题中, 2=成功, 3=失败
+Polling logic lives in `src/services/` — do not re-implement inline in views:
+1. `questionSubmit.ts` — `requestQuestionSubmit(submitId)` wraps `getQuestionSubmitByIdUsingGet` with a 10s per-request timeout + cancellation; `normalizeQuestionSubmit`/`normalizeJudgeInfo` parse the judgeInfo JSON string (falling back to raw text when it isn't JSON); `getJudgeResultPresentation` maps submissions to `{ label, message, tone }` for the UI — status 2 is only "通过" when the message is exactly `Accepted`, never inferred from status alone
+2. `questionSubmitPolling.ts` — `createQuestionSubmitPoller({ request, onUpdate, onTimeout, interval?, timeout? })` polls every 3s by default with a **75s overall timeout** (deliberately covers the backend's 60s sandbox limit); stops on `!isJudging(status)` (statuses 0 and 1 = judging) or timeout; `stop()` cancels the in-flight request
+3. Status enum: 0=等待中, 1=判题中, 2=已判完, 3=判题失败
+4. Tests in `tests/unit/questionSubmitPolling.spec.ts` and `questionSubmit.spec.ts` pin this behavior — update them when touching these services
 
 ### Question Answer Visibility
 - Admins always see answers
 - Normal users see answers only after an "Accepted" submission on that question
-- Check queries submission history for `judgeInfo.message === "Accepted"`
-- ViewQuestionView also keeps this pattern (for direct `/view/question/:id` links)
+- Implemented in QuestionsView.vue's `canViewAnswer` computed, which queries submission history for `judgeInfo.message === "Accepted"`
 
 ### API Client
 - `openapi-typescript-codegen` generates static service classes (e.g., `QuestionControllerService.listQuestionByPageUsingPost`)
@@ -182,11 +200,13 @@ In `GlobalHeader.vue`, there's a 3-second `setTimeout` that dispatches a mock ad
 
 ### Build Optimization
 - `compression-webpack-plugin` generates `.gz` files for all JS/CSS/HTML/SVG during build
-- `vue.config.js` splits node_modules into 3 chunks: `chunk-vue` (Vue core), `chunk-arco` (Arco Design), `chunk-vendors` (rest)
+- `vue.config.js` splits node_modules into 4 chunks: `chunk-vue` (Vue core), `chunk-arco` (Arco Design), `chunk-vendors` (rest), `chunk-common` (shared); prefetch/preload are disabled
+- Monaco is configured with only `["coreCommands", "find"]` features (plus the 5 languages listed above)
 - Monaco Editor is lazy-loaded via `defineAsyncComponent` in QuestionsView
 - `moment.js` was removed — use native `formatTime()` helper for date formatting instead
 
 ### Nginx Configuration
+- The full config lives in `nginx.conf` at the repo root; `docker-compose.yml` mounts it (plus `dist/`) into an nginx:1.20.2 container on port 80
 - Use `gzip_static on` alongside `gzip on` to serve pre-built `.gz` files
 - Nginx reverse-proxies `/api/` to the backend service (port 8101 in Docker, 8102 in dev)
 - SPA fallback via `try_files $uri $uri/ /index.html;` for `createWebHistory` mode

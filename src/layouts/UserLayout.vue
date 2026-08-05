@@ -8,6 +8,8 @@
   </div>
 </template>
 
+<script setup lang="ts"></script>
+
 <style scoped>
 #userLayout {
   min-height: 100vh;
@@ -19,4 +21,3 @@
   min-height: 100vh;
 }
 </style>
-<script setup lang="ts"></script>

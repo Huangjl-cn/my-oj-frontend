@@ -40,6 +40,83 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import { onMounted, ref, watchEffect } from "vue";
+import { Question, QuestionControllerService } from "../../../generated";
+import message from "@arco-design/web-vue/es/message";
+import { Modal } from "@arco-design/web-vue";
+import { useRouter } from "vue-router";
+
+const dataList = ref([]);
+const total = ref(0);
+const searchParams = ref({ pageSize: 10, current: 1 });
+
+const loadData = async () => {
+  const res = await QuestionControllerService.listQuestionByPageUsingPost(
+    searchParams.value
+  );
+  if (res.code === 0) {
+    dataList.value = res.data.records;
+    total.value = res.data.total;
+  } else {
+    message.error("加载失败，" + res.message);
+  }
+};
+
+watchEffect(() => {
+  loadData();
+});
+onMounted(() => {
+  loadData();
+});
+
+const columns = [
+  { title: "ID", dataIndex: "id" },
+  { title: "标题", dataIndex: "title" },
+  { title: "内容", dataIndex: "content", ellipsis: true },
+  { title: "标签", slotName: "tags" },
+  { title: "答案", dataIndex: "answer", ellipsis: true },
+  { title: "提交数", dataIndex: "submitNum" },
+  { title: "通过数", dataIndex: "acceptedNum" },
+  { title: "判题配置", dataIndex: "judgeConfig", ellipsis: true },
+  { title: "判题用例", dataIndex: "judgeCase", ellipsis: true },
+  { title: "用户 id", dataIndex: "userId" },
+  { title: "创建时间", dataIndex: "createTime" },
+  { title: "操作", slotName: "optional" },
+];
+
+const onPageChange = (page: number) => {
+  searchParams.value = { ...searchParams.value, current: page };
+};
+
+const doDelete = (question: Question) => {
+  Modal.confirm({
+    title: "确认删除",
+    content: `确定要删除题目「${question.title}」吗？此操作不可撤销。`,
+    okText: "删除",
+    cancelText: "取消",
+    okButtonProps: { status: "danger" },
+    onOk: async () => {
+      const res = await QuestionControllerService.deleteQuestionUsingPost({
+        id: question.id,
+      });
+      if (res.code === 0) {
+        message.success("删除成功");
+        loadData();
+      } else {
+        message.error("删除失败");
+      }
+    },
+  });
+};
+
+const router = useRouter();
+
+const doUpdate = (question: Question) => {
+  router.push({ path: "/update/question", query: { id: question.id } });
+};
+</script>
+
 <style scoped>
 #manageQuestionView {
   animation: claude-fade-up 0.4s ease-out;
@@ -127,80 +204,3 @@
   border-color: var(--error);
 }
 </style>
-
-<script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
-import { Question, QuestionControllerService } from "../../../generated";
-import message from "@arco-design/web-vue/es/message";
-import { Modal } from "@arco-design/web-vue";
-import { useRouter } from "vue-router";
-
-const dataList = ref([]);
-const total = ref(0);
-const searchParams = ref({ pageSize: 10, current: 1 });
-
-const loadData = async () => {
-  const res = await QuestionControllerService.listQuestionByPageUsingPost(
-    searchParams.value
-  );
-  if (res.code === 0) {
-    dataList.value = res.data.records;
-    total.value = res.data.total;
-  } else {
-    message.error("加载失败，" + res.message);
-  }
-};
-
-watchEffect(() => {
-  loadData();
-});
-onMounted(() => {
-  loadData();
-});
-
-const columns = [
-  { title: "ID", dataIndex: "id" },
-  { title: "标题", dataIndex: "title" },
-  { title: "内容", dataIndex: "content", ellipsis: true },
-  { title: "标签", slotName: "tags" },
-  { title: "答案", dataIndex: "answer", ellipsis: true },
-  { title: "提交数", dataIndex: "submitNum" },
-  { title: "通过数", dataIndex: "acceptedNum" },
-  { title: "判题配置", dataIndex: "judgeConfig", ellipsis: true },
-  { title: "判题用例", dataIndex: "judgeCase", ellipsis: true },
-  { title: "用户 id", dataIndex: "userId" },
-  { title: "创建时间", dataIndex: "createTime" },
-  { title: "操作", slotName: "optional" },
-];
-
-const onPageChange = (page: number) => {
-  searchParams.value = { ...searchParams.value, current: page };
-};
-
-const doDelete = (question: Question) => {
-  Modal.confirm({
-    title: "确认删除",
-    content: `确定要删除题目「${question.title}」吗？此操作不可撤销。`,
-    okText: "删除",
-    cancelText: "取消",
-    okButtonProps: { status: "danger" },
-    onOk: async () => {
-      const res = await QuestionControllerService.deleteQuestionUsingPost({
-        id: question.id,
-      });
-      if (res.code === 0) {
-        message.success("删除成功");
-        loadData();
-      } else {
-        message.error("删除失败");
-      }
-    },
-  });
-};
-
-const router = useRouter();
-
-const doUpdate = (question: Question) => {
-  router.push({ path: "/update/question", query: { id: question.id } });
-};
-</script>

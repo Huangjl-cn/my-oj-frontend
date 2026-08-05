@@ -35,6 +35,16 @@
       >
     </div>
     <div class="nav-right">
+      <button
+        class="theme-toggle"
+        type="button"
+        :aria-label="isDark ? '切换为亮色主题' : '切换为暗色主题'"
+        :title="isDark ? '切换为亮色主题' : '切换为暗色主题'"
+        @click="toggleTheme"
+      >
+        <IconSun v-if="isDark" />
+        <IconMoon v-else />
+      </button>
       <span class="user-avatar">{{
         (store.state.user?.loginUser?.userName ?? "?")[0]
       }}</span>
@@ -53,15 +63,19 @@
 </template>
 
 <script setup lang="ts">
-import { routes } from "../router/routes";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import { computed, ref } from "vue";
 import { useStore } from "vuex";
+
 import checkAccess from "@/access/checkAccess";
 import ACCESS_ENUM from "@/access/accessEnum";
+import { useTheme } from "@/composables/useTheme";
+import { routes } from "@/router/routes";
+import { IconMoon, IconSun } from "@arco-design/web-vue/es/icon";
 
 const router = useRouter();
 const store = useStore();
+const { isDark, toggleTheme } = useTheme();
 
 const visibleRoutes = computed(() => {
   return routes.filter((item) => {
@@ -100,10 +114,11 @@ const doSwitchAccount = () => {
   align-items: center;
   height: 64px;
   padding: 0 24px;
-  background: var(--canvas);
+  background: var(--header-surface);
   border-bottom: 1px solid var(--hairline);
   flex-shrink: 0;
   gap: 8px;
+  transition: background-color 240ms ease, border-color 180ms ease;
 }
 
 .logo {
@@ -179,6 +194,38 @@ const doSwitchAccount = () => {
   gap: 10px;
 }
 
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--muted);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.theme-toggle:hover {
+  color: var(--ink);
+  background: var(--surface-card);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.theme-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+
 .user-avatar {
   width: 32px;
   height: 32px;
@@ -227,7 +274,7 @@ const doSwitchAccount = () => {
 }
 
 .btn-secondary {
-  background: var(--canvas);
+  background: var(--surface-card);
   color: var(--ink);
   border: 1px solid var(--hairline);
 }

@@ -16,11 +16,13 @@
               placeholder="选择编程语言"
               allow-clear
             >
-              <a-option>java</a-option>
-              <a-option>cpp</a-option>
-              <a-option>go</a-option>
-              <a-option>python</a-option>
-              <a-option>javascript</a-option>
+              <a-option
+                v-for="language in SUPPORTED_LANGUAGES"
+                :key="language"
+                :value="language"
+              >
+                {{ language }}
+              </a-option>
             </a-select>
           </a-form-item>
           <a-form-item>
@@ -31,6 +33,7 @@
       <a-table
         :columns="columns"
         :data="dataList"
+        :scroll="{ x: 1200 }"
         :pagination="{
           showTotal: true,
           pageSize: searchParams.pageSize,
@@ -41,10 +44,7 @@
       >
         <template #judgeInfo="{ record }">
           <span
-            :class="[
-              'judge-result',
-              record.judgeInfo?.message === 'Accepted' ? 'accepted' : 'failed',
-            ]"
+            :class="['judge-result', getJudgeResultPresentation(record).tone]"
           >
             {{ record.judgeInfo?.message || "--" }}
           </span>
@@ -64,6 +64,16 @@
             }}
           </span>
         </template>
+        <template #executionTime="{ record }">
+          <span class="judge-metric">
+            {{ formatJudgeTime(record.judgeInfo?.time) }}
+          </span>
+        </template>
+        <template #memory="{ record }">
+          <span class="judge-metric">
+            {{ formatJudgeMemory(record.judgeInfo?.memory) }}
+          </span>
+        </template>
         <template #createTime="{ record }">
           <span class="time">{{ formatTime(record.createTime) }}</span>
         </template>
@@ -71,6 +81,77 @@
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref, watchEffect } from "vue";
+import {
+  QuestionSubmitQueryRequest,
+  QuestionSubmitVO,
+} from "../../../generated";
+import message from "@arco-design/web-vue/es/message";
+import {
+  formatJudgeMemory,
+  getJudgeResultPresentation,
+  listQuestionSubmissions,
+} from "@/services/questionSubmit";
+import { SUPPORTED_LANGUAGES } from "@/constants/languages";
+
+const formatJudgeTime = (time?: number) => (time == null ? "--" : `${time} ms`);
+
+const formatTime = (t: string) => {
+  const d = new Date(t);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+};
+
+const dataList = ref<QuestionSubmitVO[]>([]);
+const total = ref(0);
+const searchParams = ref<QuestionSubmitQueryRequest>({
+  questionId: undefined,
+  language: undefined,
+  pageSize: 10,
+  current: 1,
+});
+
+const loadData = async () => {
+  const res = await listQuestionSubmissions({
+    ...searchParams.value,
+    sortField: "createTime",
+    sortOrder: "descend",
+  });
+  if (res.code === 0) {
+    dataList.value = res.data.records;
+    total.value = res.data.total;
+  } else {
+    message.error("加载失败，" + res.message);
+  }
+};
+
+watchEffect(() => {
+  loadData();
+});
+
+const columns = [
+  { title: "提交号", dataIndex: "id", width: 100 },
+  { title: "编程语言", dataIndex: "language", width: 100 },
+  { title: "判题信息", slotName: "judgeInfo" },
+  { title: "判题状态", slotName: "status", width: 100 },
+  { title: "运行时间", slotName: "executionTime", width: 110 },
+  { title: "内存占用", slotName: "memory", width: 120 },
+  { title: "题目 ID", dataIndex: "questionId", width: 100 },
+  { title: "提交者 ID", dataIndex: "userId", width: 110 },
+  { title: "创建时间", slotName: "createTime", width: 160 },
+];
+
+const onPageChange = (page: number) => {
+  searchParams.value = { ...searchParams.value, current: page };
+};
+const doSubmit = () => {
+  searchParams.value = { ...searchParams.value, current: 1 };
+};
+</script>
 
 <style scoped>
 #questionSubmitView {
@@ -140,16 +221,23 @@
 }
 
 .judge-result {
+  display: block;
   font-size: 13px;
   font-weight: 500;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.judge-result.accepted {
+.judge-result.passed {
   color: var(--success);
 }
 
 .judge-result.failed {
   color: var(--error);
+}
+
+.judge-result.pending {
+  color: var(--muted);
 }
 
 .status-badge {
@@ -161,8 +249,8 @@
 }
 
 .status-2 {
-  background: rgba(93, 184, 114, 0.12);
-  color: var(--success);
+  background: var(--surface-soft);
+  color: var(--ink);
 }
 
 .status-3 {
@@ -181,70 +269,12 @@
   font-size: 13px;
   color: var(--muted-soft);
 }
+
+.judge-metric {
+  color: var(--body-strong);
+  font-family: var(--font-code);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 </style>
-
-<script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
-import {
-  QuestionControllerService,
-  QuestionSubmitQueryRequest,
-} from "../../../generated";
-import message from "@arco-design/web-vue/es/message";
-
-const formatTime = (t: string) => {
-  const d = new Date(t);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-};
-
-const dataList = ref([]);
-const total = ref(0);
-const searchParams = ref<QuestionSubmitQueryRequest>({
-  questionId: undefined,
-  language: undefined,
-  pageSize: 10,
-  current: 1,
-});
-
-const loadData = async () => {
-  const res = await QuestionControllerService.listQuestionSubmitByPageUsingPost(
-    {
-      ...searchParams.value,
-      sortField: "createTime",
-      sortOrder: "descend",
-    }
-  );
-  if (res.code === 0) {
-    dataList.value = res.data.records;
-    total.value = res.data.total;
-  } else {
-    message.error("加载失败，" + res.message);
-  }
-};
-
-watchEffect(() => {
-  loadData();
-});
-onMounted(() => {
-  loadData();
-});
-
-const columns = [
-  { title: "提交号", dataIndex: "id" },
-  { title: "编程语言", dataIndex: "language" },
-  { title: "判题信息", slotName: "judgeInfo" },
-  { title: "判题状态", slotName: "status" },
-  { title: "题目 ID", dataIndex: "questionId" },
-  { title: "提交者 ID", dataIndex: "userId" },
-  { title: "创建时间", slotName: "createTime" },
-];
-
-const onPageChange = (page: number) => {
-  searchParams.value = { ...searchParams.value, current: page };
-};
-const doSubmit = () => {
-  searchParams.value = { ...searchParams.value, current: 1 };
-};
-</script>

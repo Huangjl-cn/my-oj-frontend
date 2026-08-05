@@ -10,8 +10,8 @@
 <script setup lang="ts">
 import gfm from "@bytemd/plugin-gfm";
 import highlight from "@bytemd/plugin-highlight";
-import { Editor, Viewer } from "@bytemd/vue-next";
-import { ref, withDefaults, defineProps } from "vue";
+import { Editor } from "@bytemd/vue-next";
+import { withDefaults, defineProps } from "vue";
 
 interface Props {
   value: string;
@@ -21,12 +21,10 @@ interface Props {
 
 const plugins = [gfm(), highlight()];
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   value: () => "",
   mode: () => "split",
-  handleChange: (v: string) => {
-    console.log(v);
-  },
+  handleChange: () => undefined,
 });
 </script>
 
@@ -68,6 +66,17 @@ const props = withDefaults(defineProps<Props>(), {
   font-size: 14px !important;
 }
 
+.bytemd .CodeMirror-gutters,
+.bytemd .CodeMirror-gutter-filler,
+.bytemd .CodeMirror-scrollbar-filler {
+  background: var(--canvas) !important;
+  border-color: var(--hairline) !important;
+}
+
+.bytemd .CodeMirror-cursor {
+  border-left-color: var(--ink) !important;
+}
+
 .bytemd .bytemd-preview {
   background: var(--canvas) !important;
 }
@@ -84,6 +93,16 @@ const props = withDefaults(defineProps<Props>(), {
   color: var(--muted) !important;
   font-family: var(--font-body) !important;
   font-size: 12px !important;
+}
+
+.bytemd .bytemd-status-left,
+.bytemd .bytemd-status-right {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.bytemd .bytemd-status input {
+  accent-color: var(--primary);
 }
 
 .bytemd-toolbar-icon.bytemd-tippy.bytemd-tippy-right:last-child {

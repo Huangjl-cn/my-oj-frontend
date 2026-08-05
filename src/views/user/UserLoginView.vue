@@ -60,6 +60,41 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import { reactive } from "vue";
+import { UserControllerService, UserLoginRequest } from "../../../generated";
+import message from "@arco-design/web-vue/es/message";
+import { useRouter } from "vue-router";
+import { useStore } from "vuex";
+
+const form = reactive({
+  userAccount: "",
+  userPassword: "",
+} as UserLoginRequest);
+
+const router = useRouter();
+const store = useStore();
+
+const goToRegister = () => {
+  router.push({
+    path: "/user/register",
+  });
+};
+
+const handleSubmit = async () => {
+  const res = await UserControllerService.userLoginUsingPost(form);
+  if (res.code === 0) {
+    await store.dispatch("user/getLoginUser");
+    router.push({
+      path: "/",
+      replace: true,
+    });
+  } else {
+    message.error("登陆失败，" + res.message);
+  }
+};
+</script>
+
 <style scoped>
 #userLoginView {
   min-height: 100vh;
@@ -230,38 +265,3 @@
   }
 }
 </style>
-
-<script setup lang="ts">
-import { reactive } from "vue";
-import { UserControllerService, UserLoginRequest } from "../../../generated";
-import message from "@arco-design/web-vue/es/message";
-import { useRouter } from "vue-router";
-import { useStore } from "vuex";
-
-const form = reactive({
-  userAccount: "",
-  userPassword: "",
-} as UserLoginRequest);
-
-const router = useRouter();
-const store = useStore();
-
-const goToRegister = () => {
-  router.push({
-    path: "/user/register",
-  });
-};
-
-const handleSubmit = async () => {
-  const res = await UserControllerService.userLoginUsingPost(form);
-  if (res.code === 0) {
-    await store.dispatch("user/getLoginUser");
-    router.push({
-      path: "/",
-      replace: true,
-    });
-  } else {
-    message.error("登陆失败，" + res.message);
-  }
-};
-</script>

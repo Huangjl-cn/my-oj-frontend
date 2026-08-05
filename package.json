@@ -5,7 +5,8 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
     "@bytemd/plugin-gfm": "^1.21.0",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@arco-design/web-vue": "^2.49.1",
+    "@types/jest": "^27.5.2",
     "@types/webpack-env": "^1.18.8",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
@@ -28,9 +30,11 @@
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-plugin-router": "~5.0.0",
     "@vue/cli-plugin-typescript": "~5.0.0",
+    "@vue/cli-plugin-unit-jest": "~5.0.0",
     "@vue/cli-plugin-vuex": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
     "@vue/eslint-config-typescript": "^9.1.0",
+    "@vue/vue3-jest": "^27.0.0",
     "compression-webpack-plugin": "^11.1.0",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
@@ -39,6 +43,7 @@
     "image-webpack-loader": "^8.1.0",
     "openapi-typescript-codegen": "^0.25.0",
     "prettier": "^2.4.1",
+    "ts-jest": "^27.1.5",
     "typescript": "~4.5.5"
   }
 }
