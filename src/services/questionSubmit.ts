@@ -2,8 +2,10 @@ import {
   JudgeInfo,
   QuestionControllerService,
   QuestionSubmitQueryRequest,
+  QuestionSubmitSummaryVO,
   QuestionSubmitVO,
 } from "../../generated";
+import { CancelablePromise } from "../../generated/core/CancelablePromise";
 import { ApiId, toGeneratedApiId } from "@/services/apiId";
 
 type CompatibleQuestionSubmit = Omit<QuestionSubmitVO, "judgeInfo"> & {
@@ -68,13 +70,34 @@ export const listQuestionSubmissions = async (
   return response;
 };
 
-export const requestQuestionSubmit = (
-  submitId: ApiId,
-  timeout = QUESTION_SUBMIT_REQUEST_TIMEOUT
-): QuestionSubmitRequest => {
-  const request = QuestionControllerService.getQuestionSubmitById(
-    toGeneratedApiId(submitId)
+export const listMyQuestionSubmissions = async (
+  query: Pick<QuestionSubmitQueryRequest, "questionId" | "current" | "pageSize">
+) => {
+  const response = await QuestionControllerService.listMyQuestionSubmitByPage(
+    query
   );
+  if (response.data?.records) {
+    response.data = {
+      ...response.data,
+      records: response.data.records.map((submission) => ({
+        ...submission,
+        judgeInfo: normalizeJudgeInfo(submission.judgeInfo),
+      })),
+    };
+  }
+  return response;
+};
+
+type CompatibleQuestionSubmitResponse = {
+  code?: number;
+  data?: CompatibleQuestionSubmit;
+  message?: string;
+};
+
+const createQuestionSubmitRequest = (
+  request: CancelablePromise<CompatibleQuestionSubmitResponse>,
+  timeout: number
+): QuestionSubmitRequest => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   let timedOut = false;
 
@@ -91,9 +114,7 @@ export const requestQuestionSubmit = (
             reject(new Error(response.message || "查询判题结果失败"));
             return;
           }
-          resolve(
-            normalizeQuestionSubmit(response.data as CompatibleQuestionSubmit)
-          );
+          resolve(normalizeQuestionSubmit(response.data));
         })
         .catch((error) => {
           reject(timedOut ? new Error("查询判题结果超时") : error);
@@ -113,6 +134,32 @@ export const requestQuestionSubmit = (
   };
 };
 
+export const requestQuestionSubmit = (
+  submitId: ApiId,
+  timeout = QUESTION_SUBMIT_REQUEST_TIMEOUT
+): QuestionSubmitRequest => {
+  const request = QuestionControllerService.getQuestionSubmitById(
+    toGeneratedApiId(submitId)
+  );
+  return createQuestionSubmitRequest(
+    request as CancelablePromise<CompatibleQuestionSubmitResponse>,
+    timeout
+  );
+};
+
+export const requestMyQuestionSubmit = (
+  submitId: ApiId,
+  timeout = QUESTION_SUBMIT_REQUEST_TIMEOUT
+): QuestionSubmitRequest => {
+  const request = QuestionControllerService.getMyQuestionSubmitById(
+    toGeneratedApiId(submitId)
+  );
+  return createQuestionSubmitRequest(
+    request as CancelablePromise<CompatibleQuestionSubmitResponse>,
+    timeout
+  );
+};
+
 export const isJudging = (status?: number) => status === 0 || status === 1;
 
 export const formatJudgeMemory = (memory?: number) =>
@@ -126,7 +173,9 @@ export const splitJudgeMessage = (message?: string) => {
 
 export type JudgeResultTone = "pending" | "passed" | "failed";
 
-export const getJudgeResultPresentation = (submission?: QuestionSubmitVO) => {
+export const getJudgeResultPresentation = (
+  submission?: Pick<QuestionSubmitSummaryVO, "status" | "judgeInfo">
+) => {
   const status = submission?.status;
   const judgeMessage = submission?.judgeInfo?.message || "";
 

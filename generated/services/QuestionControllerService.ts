@@ -7,11 +7,14 @@ import type { BaseResponseListQuestionStarterCodeVO } from '../models/BaseRespon
 import type { BaseResponseListSupportedLanguageVO } from '../models/BaseResponseListSupportedLanguageVO';
 import type { BaseResponseLong } from '../models/BaseResponseLong';
 import type { BaseResponsePageQuestion } from '../models/BaseResponsePageQuestion';
+import type { BaseResponsePageQuestionSubmitSummaryVO } from '../models/BaseResponsePageQuestionSubmitSummaryVO';
 import type { BaseResponsePageQuestionSubmitVO } from '../models/BaseResponsePageQuestionSubmitVO';
 import type { BaseResponsePageQuestionVO } from '../models/BaseResponsePageQuestionVO';
 import type { BaseResponseQuestion } from '../models/BaseResponseQuestion';
+import type { BaseResponseQuestionSolutionVO } from '../models/BaseResponseQuestionSolutionVO';
 import type { BaseResponseQuestionStarterCodeVO } from '../models/BaseResponseQuestionStarterCodeVO';
 import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
+import type { BaseResponseQuestionSubmitVO } from '../models/BaseResponseQuestionSubmitVO';
 import type { BaseResponseQuestionVO } from '../models/BaseResponseQuestionVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
 import type { QuestionAddRequest } from '../models/QuestionAddRequest';
@@ -38,6 +41,22 @@ requestBody: QuestionUpdateRequest,
         return __request(OpenAPI, {
             method: 'POST',
             url: '/question/update',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponsePageQuestionSubmitSummaryVO OK
+     * @throws ApiError
+     */
+    public static listMyQuestionSubmitByPage(
+requestBody: QuestionSubmitQueryRequest,
+): CancelablePromise<BaseResponsePageQuestionSubmitSummaryVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/question_submit/my/list/page',
             body: requestBody,
             mediaType: 'application/json',
         });
@@ -215,6 +234,40 @@ questionId: number,
             url: '/question/starter-code/list',
             query: {
                 'questionId': questionId,
+            },
+        });
+    }
+
+    /**
+     * @param questionId 
+     * @returns BaseResponseQuestionSolutionVO OK
+     * @throws ApiError
+     */
+    public static getQuestionSolution(
+questionId: number,
+): CancelablePromise<BaseResponseQuestionSolutionVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/solution',
+            query: {
+                'questionId': questionId,
+            },
+        });
+    }
+
+    /**
+     * @param id 
+     * @returns BaseResponseQuestionSubmitVO OK
+     * @throws ApiError
+     */
+    public static getMyQuestionSubmitById(
+id: number,
+): CancelablePromise<BaseResponseQuestionSubmitVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/question_submit/my/get',
+            query: {
+                'id': id,
             },
         });
     }

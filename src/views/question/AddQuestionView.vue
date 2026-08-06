@@ -340,14 +340,16 @@ const doSubmit = async () => {
       : undefined;
 
   if (updatePage) {
-    const res = await QuestionControllerService.updateQuestion({
+    const res = await QuestionControllerService.editQuestion({
       ...form.value,
       id: form.value.id == null ? undefined : toGeneratedApiId(form.value.id),
       starterCodeList,
     });
     if (res.code === 0) {
       message.success("更新成功");
-      router.push("/manage/question");
+      router.push(
+        route.query.from === "my" ? "/my/question" : "/manage/question"
+      );
     } else message.error("更新失败，" + res.message);
   } else {
     const res = await QuestionControllerService.addQuestion({

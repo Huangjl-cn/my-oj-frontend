@@ -99,11 +99,34 @@
                 题目
               </button>
               <button
-                :class="['tab-btn', { active: activeTab === 'answer' }]"
-                @click="activeTab = 'answer'"
-                :disabled="!canViewAnswer"
+                :class="['tab-btn', { active: activeTab === 'solution' }]"
+                :disabled="!canViewSolution"
+                @click="openSolution"
               >
-                答案
+                题解
+              </button>
+              <button
+                :class="['tab-btn', { active: activeTab === 'submissions' }]"
+                @click="activeTab = 'submissions'"
+              >
+                我的提交
+              </button>
+              <button
+                v-for="detailTab in mySubmissionDetailTabs"
+                :key="detailTab.key"
+                :class="[
+                  'tab-btn',
+                  'detail-tab',
+                  { active: activeTab === detailTab.key },
+                ]"
+                @click="activeTab = detailTab.key"
+              >
+                <span class="detail-tab-label">{{ detailTab.label }}</span>
+                <IconClose
+                  class="detail-tab-close"
+                  :title="`关闭${detailTab.label}`"
+                  @click.stop="closeMySubmissionDetail(detailTab.key)"
+                />
               </button>
             </div>
             <div class="question-reading-area">
@@ -154,16 +177,162 @@
                   </div>
                 </section>
               </div>
-              <div v-else>
-                <div v-if="questionAnswer" class="problem-section">
-                  <MdViewer :value="questionAnswer" />
+              <div v-else-if="activeTab === 'solution'">
+                <div v-if="questionSolution" class="problem-section">
+                  <MdViewer :value="questionSolution" />
                 </div>
                 <div v-else class="empty-hint">
-                  {{
-                    canViewAnswer ? "答案加载中..." : "请先通过本题后再查看答案"
-                  }}
+                  {{ canViewSolution ? "题解加载中..." : "请登录后查看题解" }}
                 </div>
               </div>
+              <section
+                v-else-if="activeTab === 'submissions'"
+                class="my-submissions"
+              >
+                <header class="submission-section-header">
+                  <div>
+                    <h2>我的提交</h2>
+                    <p>按提交时间从新到旧排列</p>
+                  </div>
+                  <button
+                    class="icon-action"
+                    type="button"
+                    title="刷新提交记录"
+                    aria-label="刷新提交记录"
+                    :disabled="mySubmissionsLoading"
+                    @click="loadMySubmissions"
+                  >
+                    <IconRefresh />
+                  </button>
+                </header>
+                <div v-if="mySubmissionsLoading" class="empty-hint">
+                  正在加载提交记录...
+                </div>
+                <div v-else-if="mySubmissionsError" class="empty-hint error">
+                  {{ mySubmissionsError }}
+                </div>
+                <div v-else-if="!mySubmissions.length" class="empty-hint">
+                  暂无提交记录
+                </div>
+                <div v-else class="submission-list">
+                  <button
+                    v-for="submission in mySubmissions"
+                    :key="submission.id"
+                    class="submission-row"
+                    type="button"
+                    @click="openMySubmissionDetail(submission)"
+                  >
+                    <span
+                      :class="[
+                        'submission-result',
+                        getSubmissionPresentation(submission).tone,
+                      ]"
+                    >
+                      {{ getSubmissionPresentation(submission).label }}
+                    </span>
+                    <span class="submission-language">
+                      {{ getLanguageText(submission.language) }}
+                    </span>
+                    <span class="submission-metric">
+                      {{ submission.judgeInfo?.time ?? "--" }} ms
+                    </span>
+                    <span class="submission-metric">
+                      {{ formatJudgeMemory(submission.judgeInfo?.memory) }}
+                    </span>
+                    <time class="submission-time">
+                      {{ formatSubmissionTime(submission.createTime) }}
+                    </time>
+                  </button>
+                </div>
+                <a-pagination
+                  v-if="mySubmissionsTotal > mySubmissionsPageSize"
+                  class="submission-pagination"
+                  :current="mySubmissionsCurrent"
+                  :page-size="mySubmissionsPageSize"
+                  :total="mySubmissionsTotal"
+                  @change="onMySubmissionsPageChange"
+                />
+              </section>
+              <section v-else class="submission-detail">
+                <div
+                  v-if="activeSubmissionDetailTab?.loading"
+                  class="empty-hint"
+                >
+                  正在加载提交详情...
+                </div>
+                <div
+                  v-else-if="activeSubmissionDetailTab?.error"
+                  class="empty-hint error"
+                >
+                  {{ activeSubmissionDetailTab.error }}
+                </div>
+                <template v-else-if="activeSubmissionDetailTab?.detail">
+                  <header class="submission-detail-header">
+                    <div>
+                      <span
+                        :class="[
+                          'submission-result',
+                          mySubmissionDetailPresentation.tone,
+                        ]"
+                      >
+                        {{ mySubmissionDetailPresentation.label }}
+                      </span>
+                      <strong>
+                        {{
+                          getLanguageText(
+                            activeSubmissionDetailTab.detail.language
+                          )
+                        }}
+                      </strong>
+                    </div>
+                    <time>
+                      {{
+                        formatSubmissionTime(
+                          activeSubmissionDetailTab.detail.createTime
+                        )
+                      }}
+                    </time>
+                  </header>
+                  <div class="submission-detail-metrics">
+                    <div>
+                      <span>执行时间</span>
+                      <strong>
+                        {{
+                          activeSubmissionDetailTab.detail.judgeInfo?.time ??
+                          "--"
+                        }}
+                        ms
+                      </strong>
+                    </div>
+                    <div>
+                      <span>内存消耗</span>
+                      <strong>
+                        {{
+                          formatJudgeMemory(
+                            activeSubmissionDetailTab.detail.judgeInfo?.memory
+                          )
+                        }}
+                      </strong>
+                    </div>
+                  </div>
+                  <div class="submission-detail-block">
+                    <h3>提交代码</h3>
+                    <pre>{{ activeSubmissionDetailTab.detail.code || "" }}</pre>
+                  </div>
+                  <div
+                    v-if="mySubmissionDetailPresentation.message"
+                    class="submission-detail-block"
+                  >
+                    <h3>判题信息</h3>
+                    <div class="submission-diagnostic">
+                      <strong>{{ mySubmissionMessageParts.title }}</strong>
+                      <pre v-if="mySubmissionMessageParts.details">{{
+                        mySubmissionMessageParts.details
+                      }}</pre>
+                    </div>
+                  </div>
+                </template>
+              </section>
             </div>
           </div>
 
@@ -355,50 +524,19 @@
       </main>
     </div>
 
-    <Teleport to="body">
-      <div
-        v-if="showResetDialog"
-        class="reset-dialog-backdrop"
-        @click.self="showResetDialog = false"
-      >
-        <section
-          class="reset-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reset-dialog-title"
-        >
-          <div class="reset-dialog-marker">!</div>
-          <div class="reset-dialog-copy">
-            <h2 id="reset-dialog-title">恢复初始代码</h2>
-            <p>
-              当前
-              {{ currentLanguageText }} 草稿将被后端模板覆盖，此操作不可撤销。
-            </p>
-          </div>
-          <div class="reset-dialog-actions">
-            <button
-              class="dialog-btn secondary"
-              type="button"
-              @click="showResetDialog = false"
-            >
-              取消
-            </button>
-            <button
-              class="dialog-btn primary"
-              type="button"
-              @click="confirmResetStarterCode"
-            >
-              恢复初始代码
-            </button>
-          </div>
-        </section>
-      </div>
-    </Teleport>
+    <ConfirmDialog
+      v-model:visible="showResetDialog"
+      title="恢复初始代码"
+      :message="`当前 ${currentLanguageText} 草稿将被后端模板覆盖，此操作不可撤销。`"
+      confirm-text="恢复初始代码"
+      @confirm="confirmResetStarterCode"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
+import { IconClose, IconRefresh } from "@arco-design/web-vue/es/icon";
 import {
   computed,
   defineAsyncComponent,
@@ -411,8 +549,9 @@ import { useStore } from "vuex";
 
 import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
+import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import MdViewer from "@/components/editor/MdViewer.vue";
-import { ApiId } from "@/services/apiId";
+import { ApiId, toGeneratedApiId } from "@/services/apiId";
 import {
   getQuestionDraft,
   removeQuestionDraft,
@@ -427,7 +566,8 @@ import {
 import {
   formatJudgeMemory,
   getJudgeResultPresentation,
-  listQuestionSubmissions,
+  listMyQuestionSubmissions,
+  requestMyQuestionSubmit,
   splitJudgeMessage,
 } from "@/services/questionSubmit";
 import { createQuestionSubmitPoller } from "@/services/questionSubmitPolling";
@@ -435,6 +575,7 @@ import {
   QuestionControllerService,
   QuestionQueryRequest,
   QuestionSubmitAddRequest,
+  QuestionSubmitSummaryVO,
   QuestionSubmitVO,
   QuestionVO,
 } from "../../../generated";
@@ -444,6 +585,20 @@ const CodeEditor = defineAsyncComponent(
 );
 
 type PageChange = number | { current?: number };
+type QuestionTab =
+  | "question"
+  | "solution"
+  | "submissions"
+  | `submission-detail:${string}`;
+
+type SubmissionDetailTab = {
+  key: `submission-detail:${string}`;
+  id: ApiId;
+  label: string;
+  detail: QuestionSubmitVO | null;
+  loading: boolean;
+  error: string;
+};
 
 const store = useStore();
 
@@ -511,9 +666,8 @@ const getDifficultyClass = (tag: string) => {
 
 // ===== Question & Editor =====
 const currentQuestion = ref<QuestionVO | null>(null);
-const activeTab = ref("question");
-const questionAnswer = ref("");
-const hasPassedQuestion = ref(false);
+const activeTab = ref<QuestionTab>("question");
+const questionSolution = ref("");
 const submitResult = ref<QuestionSubmitVO | null>(null);
 const showResult = ref(false);
 const isResultDetailsCollapsed = ref(false);
@@ -524,6 +678,17 @@ const starterCodeError = ref("");
 const activeTemplate = ref("");
 const loadedLanguage = ref("");
 const showResetDialog = ref(false);
+const mySubmissions = ref<QuestionSubmitSummaryVO[]>([]);
+const mySubmissionsCurrent = ref(1);
+const mySubmissionsPageSize = 10;
+const mySubmissionsTotal = ref(0);
+const mySubmissionsLoading = ref(false);
+const mySubmissionsError = ref("");
+const mySubmissionDetailTabs = ref<SubmissionDetailTab[]>([]);
+const mySubmissionDetailPollers = new Map<
+  string,
+  ReturnType<typeof createQuestionSubmitPoller>
+>();
 const templateCache = new Map<string, string>();
 let questionGeneration = 0;
 let templateGeneration = 0;
@@ -535,10 +700,9 @@ const currentLanguageText = computed(
       ?.text || loadedLanguage.value
 );
 
-const canViewAnswer = computed(() => {
-  const u = store.state.user.loginUser;
-  return checkAccess(u, ACCESS_ENUM.ADMIN) || hasPassedQuestion.value;
-});
+const canViewSolution = computed(() =>
+  checkAccess(store.state.user.loginUser, ACCESS_ENUM.USER)
+);
 
 const resultPresentation = computed(() =>
   getJudgeResultPresentation(submitResult.value || undefined)
@@ -547,12 +711,84 @@ const resultStatusClass = computed(() => resultPresentation.value.tone);
 const resultMessageParts = computed(() =>
   splitJudgeMessage(resultPresentation.value.message)
 );
+const activeSubmissionDetailTab = computed(() =>
+  mySubmissionDetailTabs.value.find(({ key }) => key === activeTab.value)
+);
+const mySubmissionDetailPresentation = computed(() =>
+  getJudgeResultPresentation(
+    activeSubmissionDetailTab.value?.detail || undefined
+  )
+);
+const mySubmissionMessageParts = computed(() =>
+  splitJudgeMessage(mySubmissionDetailPresentation.value.message)
+);
+
+const submissionTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const getLanguageText = (language?: string) =>
+  languageOptions.value.find(({ value }) => value === language)?.text ||
+  language ||
+  "--";
+
+const formatSubmissionTime = (value?: string) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : submissionTimeFormatter.format(date);
+};
+
+const getSubmissionPresentation = (submission: QuestionSubmitSummaryVO) =>
+  getJudgeResultPresentation(submission);
+
+const loadMySubmissions = async () => {
+  const questionId = currentQuestion.value?.id;
+  if (questionId == null) return;
+  mySubmissionsLoading.value = true;
+  mySubmissionsError.value = "";
+  try {
+    const response = await listMyQuestionSubmissions({
+      questionId,
+      current: mySubmissionsCurrent.value,
+      pageSize: mySubmissionsPageSize,
+    });
+    if (currentQuestion.value?.id !== questionId) return;
+    if (response.code !== 0) {
+      throw new Error(response.message || "加载提交记录失败");
+    }
+    mySubmissions.value = response.data?.records ?? [];
+    mySubmissionsTotal.value = Number(response.data?.total ?? 0);
+  } catch (error) {
+    if (currentQuestion.value?.id !== questionId) return;
+    mySubmissions.value = [];
+    mySubmissionsTotal.value = 0;
+    mySubmissionsError.value =
+      error instanceof Error ? error.message : "加载提交记录失败";
+  } finally {
+    if (currentQuestion.value?.id === questionId) {
+      mySubmissionsLoading.value = false;
+    }
+  }
+};
+
+const onMySubmissionsPageChange = (page: PageChange) => {
+  const current = typeof page === "number" ? page : page.current;
+  if (current == null) return;
+  mySubmissionsCurrent.value = current;
+  void loadMySubmissions();
+};
 
 const polling = createQuestionSubmitPoller({
   onUpdate: (submission) => {
     submitResult.value = submission;
     if (submission.status === 2 || submission.status === 3) {
       isResultDetailsCollapsed.value = false;
+      void loadMySubmissions();
     }
   },
   onTimeout: () => {
@@ -560,6 +796,89 @@ const polling = createQuestionSubmitPoller({
   },
   onError: () => undefined,
 });
+
+const updateSubmissionDetailTab = (
+  key: string,
+  changes: Partial<SubmissionDetailTab>
+) => {
+  const index = mySubmissionDetailTabs.value.findIndex(
+    (tab) => tab.key === key
+  );
+  if (index === -1) return;
+  mySubmissionDetailTabs.value[index] = {
+    ...mySubmissionDetailTabs.value[index],
+    ...changes,
+  };
+};
+
+const createSubmissionDetailPoller = (key: string) =>
+  createQuestionSubmitPoller({
+    request: requestMyQuestionSubmit,
+    onUpdate: (submission) => {
+      updateSubmissionDetailTab(key, {
+        detail: submission,
+        loading: false,
+        error: "",
+      });
+      if (submission.status === 2 || submission.status === 3) {
+        void loadMySubmissions();
+      }
+    },
+    onTimeout: () => {
+      updateSubmissionDetailTab(key, {
+        loading: false,
+        error: "判题等待超时，请稍后刷新提交记录",
+      });
+    },
+    onError: (error) => {
+      updateSubmissionDetailTab(key, {
+        loading: false,
+        error: error instanceof Error ? error.message : "加载提交详情失败",
+      });
+    },
+  });
+
+const openMySubmissionDetail = (submission: QuestionSubmitSummaryVO) => {
+  if (submission.id == null) return;
+  const idText = String(submission.id);
+  const key = `submission-detail:${idText}` as const;
+  const existingTab = mySubmissionDetailTabs.value.find(
+    (tab) => tab.key === key
+  );
+  if (existingTab) {
+    activeTab.value = existingTab.key;
+    return;
+  }
+
+  mySubmissionDetailTabs.value.push({
+    key,
+    id: submission.id,
+    label: `提交 #${idText.slice(-6)}`,
+    detail: null,
+    loading: true,
+    error: "",
+  });
+  activeTab.value = key;
+
+  const poller = createSubmissionDetailPoller(key);
+  mySubmissionDetailPollers.set(key, poller);
+  poller.start(submission.id);
+};
+
+const closeMySubmissionDetail = (key: string) => {
+  mySubmissionDetailPollers.get(key)?.stop();
+  mySubmissionDetailPollers.delete(key);
+  mySubmissionDetailTabs.value = mySubmissionDetailTabs.value.filter(
+    (tab) => tab.key !== key
+  );
+  if (activeTab.value === key) activeTab.value = "submissions";
+};
+
+const clearMySubmissionDetailTabs = () => {
+  for (const poller of mySubmissionDetailPollers.values()) poller.stop();
+  mySubmissionDetailPollers.clear();
+  mySubmissionDetailTabs.value = [];
+};
 
 const form = ref<QuestionSubmitAddRequest>({
   language: "",
@@ -681,8 +1000,12 @@ const onSelectQuestion = async (item: QuestionVO) => {
   submitResult.value = null;
   isResultDetailsCollapsed.value = false;
   activeTab.value = "question";
-  hasPassedQuestion.value = false;
-  questionAnswer.value = "";
+  clearMySubmissionDetailTabs();
+  mySubmissionsCurrent.value = 1;
+  mySubmissions.value = [];
+  mySubmissionsTotal.value = 0;
+  mySubmissionsError.value = "";
+  questionSolution.value = "";
   starterCodeError.value = "";
   activeTemplate.value = "";
   loadedLanguage.value = "";
@@ -692,7 +1015,7 @@ const onSelectQuestion = async (item: QuestionVO) => {
   if (generation !== questionGeneration) return;
   if (res.code === 0) {
     currentQuestion.value = res.data;
-    checkAnswerAccess();
+    void loadMySubmissions();
     await activateLanguage(form.value.language);
   } else {
     currentQuestion.value = null;
@@ -701,49 +1024,24 @@ const onSelectQuestion = async (item: QuestionVO) => {
   }
 };
 
-const checkAnswerAccess = async () => {
-  const u = store.state.user.loginUser;
-  if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
-    loadAnswer();
-    return;
-  }
-  if (u?.userRole === ACCESS_ENUM.USER) {
-    const res = await listQuestionSubmissions({
-      questionId: currentQuestion.value?.id,
-      userId: u.id,
-      pageSize: 100,
-      current: 1,
-    });
-    if (res.code === 0 && res.data.records) {
-      const passed = res.data.records.find(
-        (submission: QuestionSubmitVO) =>
-          submission.judgeInfo?.message === "Accepted"
-      );
-      hasPassedQuestion.value = !!passed;
-      if (passed) loadAnswer();
-    }
-  }
+const openSolution = () => {
+  if (!canViewSolution.value) return;
+  activeTab.value = "solution";
+  if (!questionSolution.value) void loadSolution();
 };
 
-const loadAnswer = async () => {
+const loadSolution = async () => {
   if (!currentQuestion.value?.id) return;
-  const u = store.state.user.loginUser;
-  if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
-    const res = await QuestionControllerService.getQuestionById(
-      currentQuestion.value.id
-    );
-    questionAnswer.value =
-      res.code === 0 && res.data.answer ? res.data.answer : "暂无答案";
+  const res = await QuestionControllerService.getQuestionSolution(
+    toGeneratedApiId(currentQuestion.value.id)
+  );
+  if (res.code === 0) {
+    questionSolution.value = res.data?.answer || "暂无题解";
+  } else if (res.code === 40400) {
+    questionSolution.value = "题目不存在或已删除";
   } else {
-    const res = await QuestionControllerService.listQuestionByPage({
-      id: currentQuestion.value.id,
-      pageSize: 1,
-      current: 1,
-    });
-    questionAnswer.value =
-      res.code === 0 && res.data.records?.[0]?.answer
-        ? res.data.records[0].answer
-        : "无法加载答案";
+    questionSolution.value = "无法加载题解";
+    message.error(res.message || "题解加载失败");
   }
 };
 
@@ -766,6 +1064,7 @@ const doSubmit = async () => {
     showResult.value = true;
     isResultDetailsCollapsed.value = false;
     submitResult.value = { id: res.data, status: 0 };
+    void loadMySubmissions();
     startPolling(res.data);
   } else {
     message.error("提交失败，" + res.message);
@@ -805,6 +1104,7 @@ onBeforeUnmount(() => {
   questionGeneration += 1;
   templateGeneration += 1;
   stopPolling();
+  clearMySubmissionDetailTabs();
 });
 </script>
 
@@ -1121,6 +1421,7 @@ onBeforeUnmount(() => {
   z-index: 5;
   display: flex;
   gap: 8px;
+  overflow: hidden;
   margin: 0 -36px 24px;
   padding: 12px 36px;
   border-bottom: 1px solid var(--hairline);
@@ -1129,6 +1430,7 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn {
+  flex: 0 0 auto;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
@@ -1363,6 +1665,235 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
+.empty-hint.error {
+  color: var(--error);
+}
+
+.detail-tab {
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.detail-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-tab-close {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--muted-soft);
+  border-radius: 50%;
+}
+
+.detail-tab-close:hover {
+  color: var(--error);
+}
+
+.submission-section-header,
+.submission-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.submission-section-header h2 {
+  margin: 0 0 3px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.submission-section-header p,
+.submission-detail-header time {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.icon-action {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.icon-action:hover {
+  color: var(--primary);
+  background: var(--surface-soft);
+}
+
+.icon-action:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.submission-list {
+  margin-top: 4px;
+}
+
+.submission-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 86px minmax(130px, 1fr) 88px 96px 120px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 10px;
+  color: var(--body);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--hairline-soft);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.submission-row:hover {
+  background: var(--surface-soft);
+}
+
+.submission-result {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.submission-result.pending {
+  color: var(--accent-amber);
+}
+
+.submission-result.passed {
+  color: var(--success);
+}
+
+.submission-result.failed {
+  color: var(--error);
+}
+
+.submission-language {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submission-metric,
+.submission-time {
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.submission-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.submission-detail-header > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submission-detail-header strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.submission-detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 18px 0 22px;
+  overflow: hidden;
+  background: var(--surface-cream-strong);
+  border-radius: var(--radius-md);
+}
+
+.submission-detail-metrics > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px;
+}
+
+.submission-detail-metrics > div + div {
+  border-left: 1px solid var(--surface-card);
+}
+
+.submission-detail-metrics span,
+.submission-detail-block h3 {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.submission-detail-metrics strong {
+  color: var(--ink);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.submission-detail-block {
+  margin-top: 22px;
+}
+
+.submission-detail-block h3 {
+  margin: 0 0 9px;
+}
+
+.submission-detail-block > pre,
+.submission-diagnostic {
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  color: var(--on-dark);
+  background: var(--surface-dark);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.submission-diagnostic strong {
+  color: var(--on-dark);
+  font-weight: 600;
+}
+
+.submission-diagnostic pre {
+  margin: 8px 0 0;
+  color: var(--on-dark-soft);
+  font: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 /* Editor */
 .editor-panel {
   position: absolute;
@@ -1468,97 +1999,6 @@ onBeforeUnmount(() => {
   width: 100% !important;
   overflow: hidden !important;
   contain: strict !important;
-}
-
-.reset-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(18, 17, 15, 0.52);
-  backdrop-filter: blur(3px);
-}
-
-.reset-dialog {
-  width: min(440px, 100%);
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 14px;
-  padding: 22px;
-  color: var(--body);
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
-}
-
-.reset-dialog-marker {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  color: var(--primary);
-  background: var(--primary-light);
-  border: 1px solid var(--primary);
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.reset-dialog-copy h2 {
-  margin: 1px 0 7px;
-  color: var(--ink);
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.reset-dialog-copy p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.65;
-}
-
-.reset-dialog-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.dialog-btn {
-  height: 36px;
-  padding: 0 16px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.dialog-btn.secondary {
-  color: var(--body);
-  background: transparent;
-  border: 1px solid var(--hairline);
-}
-
-.dialog-btn.primary {
-  color: var(--on-primary);
-  background: var(--primary);
-  border: 1px solid var(--primary);
-}
-
-.dialog-btn.secondary:hover {
-  color: var(--ink);
-  background: var(--surface-soft);
-}
-
-.dialog-btn.primary:hover {
-  background: var(--primary-active);
 }
 
 /* Results */

@@ -6,7 +6,9 @@
       </a-layout-header>
       <a-layout-content class="content">
         <div class="router-wrap">
-          <router-view />
+          <router-view v-slot="{ Component, route }">
+            <component :is="Component" :key="route.fullPath" />
+          </router-view>
         </div>
       </a-layout-content>
       <a-layout-footer class="footer">
@@ -76,6 +78,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -86,12 +89,9 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
-/* 约束 router-view（如果它渲染成 DOM 元素） */
-.router-wrap > :deep(router-view) {
+.router-wrap > :deep(*) {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 #basicLayout .footer {

@@ -1,6 +1,6 @@
 <template>
   <nav id="globalHeader">
-    <a class="logo" href="/">
+    <a class="logo" href="/" @click.prevent="doMenuClick('/')">
       <span class="logo-glyph">
         <svg viewBox="0 0 28 28" fill="none">
           <path
@@ -52,30 +52,57 @@
         store.state.user?.loginUser?.userName ?? "未登录"
       }}</span>
       <button
-        v-if="store.state.user?.loginUser"
+        v-if="isLoggedIn"
         class="btn btn-secondary"
         @click="doSwitchAccount"
       >
         切换账号
       </button>
+      <button v-else class="btn btn-secondary" @click="goToLogin">登录</button>
     </div>
   </nav>
+  <ConfirmDialog
+    v-model:visible="showLeaveDialog"
+    title="离开更新页面"
+    message="离开后，当前尚未提交的题目修改将不会保留。"
+    confirm-text="离开页面"
+    @confirm="confirmNavigation"
+  />
+  <ConfirmDialog
+    v-model:visible="showLogoutDialog"
+    title="退出登录"
+    message="确定退出当前账号并返回登录页面吗？"
+    confirm-text="退出登录"
+    tone="danger"
+    @confirm="confirmLogout"
+  />
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
+import message from "@arco-design/web-vue/es/message";
+import { IconMoon, IconSun } from "@arco-design/web-vue/es/icon";
 import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 import checkAccess from "@/access/checkAccess";
 import ACCESS_ENUM from "@/access/accessEnum";
+import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import { useTheme } from "@/composables/useTheme";
 import { routes } from "@/router/routes";
-import { IconMoon, IconSun } from "@arco-design/web-vue/es/icon";
+import { UserControllerService } from "../../../generated";
 
 const router = useRouter();
+const route = useRoute();
 const store = useStore();
 const { isDark, toggleTheme } = useTheme();
+const showLeaveDialog = ref(false);
+const showLogoutDialog = ref(false);
+const pendingPath = ref("");
+const isLoggedIn = computed(() => {
+  const role = store.state.user?.loginUser?.userRole;
+  return !!role && role !== ACCESS_ENUM.NOT_LOGIN;
+});
 
 const visibleRoutes = computed(() => {
   return routes.filter((item) => {
@@ -100,10 +127,37 @@ setTimeout(() => {
 }, 3000);
 
 const doMenuClick = (path: string) => {
+  if (route.path === "/update/question" && path !== route.path) {
+    pendingPath.value = path;
+    showLeaveDialog.value = true;
+    return;
+  }
   router.push({ path });
 };
 
 const doSwitchAccount = () => {
+  showLogoutDialog.value = true;
+};
+
+const goToLogin = () => {
+  router.push({ path: "/user/login" });
+};
+
+const confirmNavigation = () => {
+  const path = pendingPath.value;
+  pendingPath.value = "";
+  showLeaveDialog.value = false;
+  if (path) router.push({ path });
+};
+
+const confirmLogout = async () => {
+  const response = await UserControllerService.userLogout();
+  if (response.code !== 0) {
+    message.error(response.message || "退出登录失败");
+    return;
+  }
+  showLogoutDialog.value = false;
+  await store.dispatch("user/getLoginUser");
   router.push({ path: "/user/login" });
 };
 </script>

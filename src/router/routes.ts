@@ -49,6 +49,15 @@ export const routes: Array<RouteRecordRaw> = [
     component: QuestionSubmitView,
   },
   {
+    path: "/my/question",
+    name: "我的题目",
+    component: ManageQuestionView,
+    props: { scope: "mine" },
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
+  },
+  {
     path: "/add/question",
     name: "创建题目",
     component: AddQuestionView,
@@ -69,6 +78,7 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/manage/question/",
     name: "管理题目",
     component: ManageQuestionView,
+    props: { scope: "all" },
     meta: {
       access: ACCESS_ENUM.ADMIN,
     },

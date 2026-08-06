@@ -31,9 +31,11 @@
         </a-form>
       </div>
       <a-table
+        row-key="id"
         :columns="columns"
         :data="dataList"
-        :scroll="{ x: 1200 }"
+        :expandable="expandable"
+        table-layout-fixed
         :pagination="{
           showTotal: true,
           pageSize: searchParams.pageSize,
@@ -42,12 +44,27 @@
         }"
         @page-change="onPageChange"
       >
-        <template #judgeInfo="{ record }">
-          <span
-            :class="['judge-result', getJudgeResultPresentation(record).tone]"
-          >
-            {{ record.judgeInfo?.message || "--" }}
+        <template #submitId="{ record }">
+          <span class="table-id" :title="String(record.id ?? '')">
+            {{ record.id ?? "--" }}
           </span>
+        </template>
+        <template #language="{ record }">
+          <span class="language-name">
+            {{ getLanguageText(record.language) }}
+          </span>
+        </template>
+        <template #judgeInfo="{ record }">
+          <div class="judge-summary">
+            <strong
+              :class="['judge-result', getJudgeResultPresentation(record).tone]"
+            >
+              {{ getJudgeSummary(record).title }}
+            </strong>
+            <span v-if="getJudgeSummary(record).preview">
+              {{ getJudgeSummary(record).preview }}
+            </span>
+          </div>
         </template>
         <template #status="{ record }">
           <span :class="['status-badge', `status-${record.status}`]">
@@ -75,7 +92,17 @@
           </span>
         </template>
         <template #createTime="{ record }">
-          <span class="time">{{ formatTime(record.createTime) }}</span>
+          <span class="time">{{ formatDateTime(record.createTime) }}</span>
+        </template>
+        <template #questionId="{ record }">
+          <span class="table-id" :title="String(record.questionId ?? '')">
+            {{ record.questionId ?? "--" }}
+          </span>
+        </template>
+        <template #userId="{ record }">
+          <span class="table-id" :title="String(record.userId ?? '')">
+            {{ record.userId ?? "--" }}
+          </span>
         </template>
       </a-table>
     </div>
@@ -83,31 +110,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
+import message from "@arco-design/web-vue/es/message";
+import { h, onMounted, ref, watchEffect } from "vue";
+
+import SubmissionDiagnosticPanel from "@/components/question/SubmissionDiagnosticPanel.vue";
 import {
   QuestionSubmitQueryRequest,
   QuestionSubmitVO,
 } from "../../../generated";
-import message from "@arco-design/web-vue/es/message";
 import {
   formatJudgeMemory,
   getJudgeResultPresentation,
   listQuestionSubmissions,
+  splitJudgeMessage,
 } from "@/services/questionSubmit";
 import {
   getSupportedLanguageOptions,
   LanguageOption,
 } from "@/services/questionStarterCode";
+import { formatDateTime } from "@/utils/dateTime";
 
 const formatJudgeTime = (time?: number) => (time == null ? "--" : `${time} ms`);
-
-const formatTime = (t: string) => {
-  const d = new Date(t);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-};
 
 const dataList = ref<QuestionSubmitVO[]>([]);
 const total = ref(0);
@@ -126,8 +149,8 @@ const loadData = async () => {
     sortOrder: "descend",
   });
   if (res.code === 0) {
-    dataList.value = res.data.records;
-    total.value = res.data.total;
+    dataList.value = res.data?.records ?? [];
+    total.value = Number(res.data?.total ?? 0);
   } else {
     message.error("加载失败，" + res.message);
   }
@@ -146,16 +169,37 @@ onMounted(async () => {
 });
 
 const columns = [
-  { title: "提交号", dataIndex: "id", width: 100 },
-  { title: "编程语言", dataIndex: "language", width: 100 },
-  { title: "判题信息", slotName: "judgeInfo" },
-  { title: "判题状态", slotName: "status", width: 100 },
-  { title: "运行时间", slotName: "executionTime", width: 110 },
-  { title: "内存占用", slotName: "memory", width: 120 },
-  { title: "题目 ID", dataIndex: "questionId", width: 100 },
-  { title: "提交者 ID", dataIndex: "userId", width: 110 },
-  { title: "创建时间", slotName: "createTime", width: 160 },
+  { title: "提交号", slotName: "submitId", width: 100 },
+  { title: "编程语言", slotName: "language", width: 105 },
+  { title: "判题信息", slotName: "judgeInfo", width: 245 },
+  { title: "任务状态", slotName: "status", width: 76, align: "center" },
+  { title: "运行时间", slotName: "executionTime", width: 76 },
+  { title: "内存占用", slotName: "memory", width: 76 },
+  { title: "题目 ID", slotName: "questionId", width: 95 },
+  { title: "提交者 ID", slotName: "userId", width: 95 },
+  { title: "创建时间", slotName: "createTime", width: 96 },
 ];
+
+const expandable = {
+  title: "详情",
+  width: 40,
+  expandedRowRender: (record: QuestionSubmitVO) =>
+    h(SubmissionDiagnosticPanel, { submission: record }),
+};
+
+const getLanguageText = (language?: string) =>
+  languageOptions.value.find(({ value }) => value === language)?.text ||
+  language ||
+  "--";
+
+const getJudgeSummary = (submission: QuestionSubmitVO) => {
+  const presentation = getJudgeResultPresentation(submission);
+  const parts = splitJudgeMessage(presentation.message);
+  return {
+    title: parts.title || presentation.label,
+    preview: parts.details.split(/\r?\n/).find(Boolean) || "",
+  };
+};
 
 const onPageChange = (page: number) => {
   searchParams.value = { ...searchParams.value, current: page };
@@ -232,12 +276,28 @@ const doSubmit = () => {
   font-size: 13px;
 }
 
+.judge-summary {
+  min-width: 0;
+}
+
 .judge-result {
   display: block;
   font-size: 13px;
-  font-weight: 500;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.judge-summary > span {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .judge-result.passed {
@@ -258,6 +318,7 @@ const doSubmit = () => {
   font-weight: 500;
   padding: 2px 10px;
   border-radius: var(--radius-pill);
+  white-space: nowrap;
 }
 
 .status-2 {
@@ -280,6 +341,7 @@ const doSubmit = () => {
 .time {
   font-size: 13px;
   color: var(--muted-soft);
+  white-space: nowrap;
 }
 
 .judge-metric {
@@ -288,5 +350,69 @@ const doSubmit = () => {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.table-id {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--body-strong);
+  font-family: var(--font-code);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.language-name {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--body-strong);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.arco-table-th),
+:deep(.arco-table-td) {
+  padding-right: 12px !important;
+  padding-left: 12px !important;
+  vertical-align: middle;
+}
+
+:deep(.arco-table-th .arco-table-cell) {
+  white-space: nowrap;
+}
+
+:deep(.arco-table-th:first-child),
+:deep(.arco-table-td:first-child) {
+  padding-left: 16px !important;
+}
+
+:deep(.arco-table-container),
+:deep(.arco-table-body) {
+  max-width: 100%;
+  overflow: hidden !important;
+}
+
+:deep(.arco-table-element) {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+:deep(.arco-table-tr:not(.arco-table-tr-expand) .arco-table-td) {
+  height: 72px;
+}
+
+:deep(.arco-table-tr-expand > .arco-table-td) {
+  padding: 0;
+  background: var(--surface-soft) !important;
+}
+
+:deep(.arco-table-tr-expand:hover > .arco-table-td) {
+  background: var(--surface-cream-strong) !important;
 }
 </style>
