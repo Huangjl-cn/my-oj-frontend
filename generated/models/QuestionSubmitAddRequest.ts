@@ -4,7 +4,7 @@
 /* eslint-disable */
 
 export type QuestionSubmitAddRequest = {
-    code?: string;
-    language?: string;
     questionId?: number;
+    language?: string;
+    code?: string;
 };

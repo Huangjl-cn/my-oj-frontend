@@ -4,14 +4,14 @@
 /* eslint-disable */
 
 export type QuestionQueryRequest = {
-    answer?: string;
-    content?: string;
     current?: number;
-    id?: number;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-    tags?: Array<string>;
-    title?: string;
+    id?: number;
     userId?: number;
+    title?: string;
+    content?: string;
+    tags?: Array<string>;
+    answer?: string;
 };

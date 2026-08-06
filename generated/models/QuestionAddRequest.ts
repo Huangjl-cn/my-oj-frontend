@@ -7,10 +7,10 @@ import type { JudgeCase } from './JudgeCase';
 import type { JudgeConfig } from './JudgeConfig';
 
 export type QuestionAddRequest = {
-    answer?: string;
+    title?: string;
     content?: string;
+    tags?: Array<string>;
+    answer?: string;
     judgeCase?: Array<JudgeCase>;
     judgeConfig?: JudgeConfig;
-    tags?: Array<string>;
-    title?: string;
 };

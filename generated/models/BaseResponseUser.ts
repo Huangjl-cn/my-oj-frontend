@@ -3,6 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export type PostThumbAddRequest = {
-    postId?: number;
+import type { User } from './User';
+
+export type BaseResponseUser = {
+    code?: number;
+    data?: User;
+    message?: string;
 };

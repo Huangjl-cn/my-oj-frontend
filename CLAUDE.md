@@ -12,7 +12,7 @@ npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plu
 ```
 
 - **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `useTheme.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
-- **Regenerate the API client** from the backend OpenAPI spec (from README): `openapi --input http://localhost:8121/api/v2/api-docs --output ./generated --client axios`
+- **Regenerate the API client** from the backend OpenAPI spec (from README): `openapi --input http://localhost:8102/api/v3/api-docs --output ./generated --client axios`
 - The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.

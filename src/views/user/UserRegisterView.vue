@@ -93,7 +93,7 @@ const goToLogin = () => {
 };
 
 const handleSubmit = async () => {
-  const res = await UserControllerService.userRegisterUsingPost(form);
+  const res = await UserControllerService.userRegister(form);
   if (res.code === 0) {
     message.success("注册成功");
     router.push({

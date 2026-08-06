@@ -4,7 +4,7 @@
 /* eslint-disable */
 
 export type JudgeInfo = {
-    memory?: number;
     message?: string;
+    memory?: number;
     time?: number;
 };

@@ -6,15 +6,19 @@
 import type { OrderItem } from './OrderItem';
 import type { QuestionVO } from './QuestionVO';
 
-export type Page_QuestionVO_ = {
-    countId?: string;
-    current?: number;
-    maxLimit?: number;
-    optimizeCountSql?: boolean;
-    orders?: Array<OrderItem>;
-    pages?: number;
+export type PageQuestionVO = {
     records?: Array<QuestionVO>;
-    searchCount?: boolean;
-    size?: number;
     total?: number;
+    size?: number;
+    current?: number;
+    orders?: Array<OrderItem>;
+    optimizeCountSql?: PageQuestionVO;
+    searchCount?: PageQuestionVO;
+    optimizeJoinOfCountSql?: boolean;
+    maxLimit?: number;
+    countId?: string;
+    /**
+     * @deprecated
+     */
+    pages?: number;
 };

@@ -18,7 +18,7 @@ const userModule: Module<UserState, RootState> = {
   actions: {
     async getLoginUser({ commit, state }) {
       // 从远程请求获取登录信息
-      const res = await UserControllerService.getLoginUserUsingGet();
+      const res = await UserControllerService.getLoginUser();
       if (res.code === 0) {
         commit("updateUser", res.data);
       } else {

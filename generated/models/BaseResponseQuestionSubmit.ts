@@ -3,10 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import type { QuestionVO } from './QuestionVO';
+import type { QuestionSubmit } from './QuestionSubmit';
 
-export type BaseResponse_QuestionVO_ = {
+export type BaseResponseQuestionSubmit = {
     code?: number;
-    data?: QuestionVO;
+    data?: QuestionSubmit;
     message?: string;
 };

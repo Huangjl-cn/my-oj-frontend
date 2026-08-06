@@ -33,21 +33,28 @@ export const normalizeJudgeInfo = (
   return { message: judgeInfo };
 };
 
-export const normalizeQuestionSubmit = (
+export function normalizeQuestionSubmit(
+  submission: CompatibleQuestionSubmit
+): QuestionSubmitVO;
+export function normalizeQuestionSubmit(
   submission?: CompatibleQuestionSubmit
-): QuestionSubmitVO | undefined => {
+): QuestionSubmitVO | undefined;
+export function normalizeQuestionSubmit(
+  submission?: CompatibleQuestionSubmit
+): QuestionSubmitVO | undefined {
   if (!submission) return undefined;
   return {
     ...submission,
     judgeInfo: normalizeJudgeInfo(submission.judgeInfo),
   };
-};
+}
 
 export const listQuestionSubmissions = async (
   query: QuestionSubmitQueryRequest
 ) => {
-  const response =
-    await QuestionControllerService.listQuestionSubmitByPageUsingPost(query);
+  const response = await QuestionControllerService.listQuestionSubmitByPage(
+    query
+  );
   if (response.data?.records) {
     response.data = {
       ...response.data,
@@ -64,8 +71,7 @@ export const requestQuestionSubmit = (
   submitId: number,
   timeout = QUESTION_SUBMIT_REQUEST_TIMEOUT
 ): QuestionSubmitRequest => {
-  const request =
-    QuestionControllerService.getQuestionSubmitByIdUsingGet(submitId);
+  const request = QuestionControllerService.getQuestionSubmitById(submitId);
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   let timedOut = false;
 

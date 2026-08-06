@@ -398,7 +398,7 @@ const searchParams = ref<QuestionQueryRequest>({
 });
 
 const loadData = async () => {
-  const res = await QuestionControllerService.listQuestionVoByPageUsingPost(
+  const res = await QuestionControllerService.listQuestionVoByPage(
     searchParams.value
   );
   if (res.code === 0) {
@@ -514,9 +514,7 @@ const onSelectQuestion = async (item: QuestionVO) => {
   codeChanged.value = false;
   form.value.code = DEFAULT_CODE;
 
-  const res = await QuestionControllerService.getQuestionVoByIdUsingGet(
-    item.id
-  );
+  const res = await QuestionControllerService.getQuestionVoById(item.id);
   if (res.code === 0) {
     currentQuestion.value = res.data;
     checkAnswerAccess();
@@ -553,13 +551,13 @@ const loadAnswer = async () => {
   if (!currentQuestion.value?.id) return;
   const u = store.state.user.loginUser;
   if (checkAccess(u, ACCESS_ENUM.ADMIN)) {
-    const res = await QuestionControllerService.getQuestionByIdUsingGet(
+    const res = await QuestionControllerService.getQuestionById(
       currentQuestion.value.id
     );
     questionAnswer.value =
       res.code === 0 && res.data.answer ? res.data.answer : "暂无答案";
   } else {
-    const res = await QuestionControllerService.listQuestionByPageUsingPost({
+    const res = await QuestionControllerService.listQuestionByPage({
       id: currentQuestion.value.id,
       pageSize: 1,
       current: 1,
@@ -574,7 +572,7 @@ const loadAnswer = async () => {
 const doSubmit = async () => {
   if (!currentQuestion.value?.id) return;
   stopPolling();
-  const res = await QuestionControllerService.doQuestionSubmitUsingPost({
+  const res = await QuestionControllerService.doQuestionSubmit({
     ...form.value,
     questionId: currentQuestion.value.id,
   });

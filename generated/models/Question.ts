@@ -4,19 +4,17 @@
 /* eslint-disable */
 
 export type Question = {
-    acceptedNum?: number;
-    answer?: string;
-    content?: string;
-    createTime?: string;
-    favourNum?: number;
     id?: number;
-    isDelete?: number;
-    judgeCase?: string;
-    judgeConfig?: string;
-    submitNum?: number;
-    tags?: string;
-    thumbNum?: number;
-    title?: string;
-    updateTime?: string;
     userId?: number;
+    title?: string;
+    content?: string;
+    tags?: string;
+    answer?: string;
+    submitNum?: number;
+    acceptedNum?: number;
+    judgeConfig?: string;
+    judgeCase?: string;
+    createTime?: string;
+    updateTime?: string;
+    isDelete?: number;
 };

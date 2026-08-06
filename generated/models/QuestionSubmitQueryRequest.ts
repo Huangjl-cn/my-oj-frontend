@@ -5,11 +5,11 @@
 
 export type QuestionSubmitQueryRequest = {
     current?: number;
-    language?: string;
     pageSize?: number;
-    questionId?: number;
     sortField?: string;
     sortOrder?: string;
-    status?: number;
+    questionId?: number;
     userId?: number;
+    language?: string;
+    status?: number;
 };

@@ -170,7 +170,7 @@ const loadData = async () => {
   const id = Number(route.query.id);
   if (!Number.isFinite(id)) return;
 
-  const res = await QuestionControllerService.getQuestionByIdUsingGet(id);
+  const res = await QuestionControllerService.getQuestionById(id);
   if (res.code === 0 && res.data) {
     const defaults = createDefaultForm();
     form.value = {
@@ -193,17 +193,13 @@ onMounted(() => {
 
 const doSubmit = async () => {
   if (updatePage) {
-    const res = await QuestionControllerService.updateQuestionUsingPost(
-      form.value
-    );
+    const res = await QuestionControllerService.updateQuestion(form.value);
     if (res.code === 0) {
       message.success("更新成功");
       router.push("/manage/question");
     } else message.error("更新失败，" + res.message);
   } else {
-    const res = await QuestionControllerService.addQuestionUsingPost(
-      form.value
-    );
+    const res = await QuestionControllerService.addQuestion(form.value);
     if (res.code === 0) {
       message.success("创建成功");
       router.push("/questions");

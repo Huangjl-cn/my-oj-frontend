@@ -3,10 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import type { UserVO } from './UserVO';
+import type { PageQuestion } from './PageQuestion';
 
-export type BaseResponse_UserVO_ = {
+export type BaseResponsePageQuestion = {
     code?: number;
-    data?: UserVO;
+    data?: PageQuestion;
     message?: string;
 };

@@ -3,8 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export type BaseResponse_long_ = {
+import type { PageUser } from './PageUser';
+
+export type BaseResponsePageUser = {
     code?: number;
-    data?: number;
+    data?: PageUser;
     message?: string;
 };

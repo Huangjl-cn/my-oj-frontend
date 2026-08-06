@@ -4,11 +4,11 @@
 /* eslint-disable */
 
 export type LoginUserVO = {
-    createTime?: string;
     id?: number;
-    updateTime?: string;
-    userAvatar?: string;
     userName?: string;
+    userAvatar?: string;
     userProfile?: string;
     userRole?: string;
+    createTime?: string;
+    updateTime?: string;
 };

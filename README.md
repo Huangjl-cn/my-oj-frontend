@@ -3,9 +3,8 @@
 ## 根据后台生成代码
 
 ```shell
-openapi --input http://localhost:8121/api/v2/api-docs --output ./generated --client axios
+openapi --input http://localhost:8102/api/v3/api-docs --output ./generated --client axios
 ```
-
 
 ## Project setup
 

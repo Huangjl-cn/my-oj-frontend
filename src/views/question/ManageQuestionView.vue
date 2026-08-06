@@ -52,7 +52,7 @@ const total = ref(0);
 const searchParams = ref({ pageSize: 10, current: 1 });
 
 const loadData = async () => {
-  const res = await QuestionControllerService.listQuestionByPageUsingPost(
+  const res = await QuestionControllerService.listQuestionByPage(
     searchParams.value
   );
   if (res.code === 0) {
@@ -97,7 +97,7 @@ const doDelete = (question: Question) => {
     cancelText: "取消",
     okButtonProps: { status: "danger" },
     onOk: async () => {
-      const res = await QuestionControllerService.deleteQuestionUsingPost({
+      const res = await QuestionControllerService.deleteQuestion({
         id: question.id,
       });
       if (res.code === 0) {

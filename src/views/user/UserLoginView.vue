@@ -82,7 +82,7 @@ const goToRegister = () => {
 };
 
 const handleSubmit = async () => {
-  const res = await UserControllerService.userLoginUsingPost(form);
+  const res = await UserControllerService.userLogin(form);
   if (res.code === 0) {
     await store.dispatch("user/getLoginUser");
     router.push({

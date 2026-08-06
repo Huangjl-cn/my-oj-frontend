@@ -4,8 +4,8 @@ import "bytemd/dist/index.css";
 import { createApp } from "vue";
 
 import App from "./App.vue";
-import "@/access";
 import "@/plugins/axios";
+import "@/access";
 import "@/styles/global.css";
 import router from "./router";
 import store from "./store";

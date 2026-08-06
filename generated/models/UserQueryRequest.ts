@@ -5,12 +5,12 @@
 
 export type UserQueryRequest = {
     current?: number;
-    id?: number;
-    mpOpenId?: string;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
+    id?: number;
     unionId?: string;
+    mpOpenId?: string;
     userName?: string;
     userProfile?: string;
     userRole?: string;

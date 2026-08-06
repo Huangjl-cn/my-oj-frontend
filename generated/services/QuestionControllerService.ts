@@ -2,14 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { BaseResponse_boolean_ } from '../models/BaseResponse_boolean_';
-import type { BaseResponse_long_ } from '../models/BaseResponse_long_';
-import type { BaseResponse_Page_Question_ } from '../models/BaseResponse_Page_Question_';
-import type { BaseResponse_Page_QuestionSubmitVO_ } from '../models/BaseResponse_Page_QuestionSubmitVO_';
-import type { BaseResponse_Page_QuestionVO_ } from '../models/BaseResponse_Page_QuestionVO_';
-import type { BaseResponse_Question_ } from '../models/BaseResponse_Question_';
-import type { BaseResponse_QuestionVO_ } from '../models/BaseResponse_QuestionVO_';
-import type { BaseResponse_QuestionSubmitVO_ } from '../models/BaseResponse_QuestionSubmitVO_';
+import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
+import type { BaseResponseLong } from '../models/BaseResponseLong';
+import type { BaseResponsePageQuestion } from '../models/BaseResponsePageQuestion';
+import type { BaseResponsePageQuestionSubmitVO } from '../models/BaseResponsePageQuestionSubmitVO';
+import type { BaseResponsePageQuestionVO } from '../models/BaseResponsePageQuestionVO';
+import type { BaseResponseQuestion } from '../models/BaseResponseQuestion';
+import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
+import type { BaseResponseQuestionVO } from '../models/BaseResponseQuestionVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
 import type { QuestionAddRequest } from '../models/QuestionAddRequest';
 import type { QuestionEditRequest } from '../models/QuestionEditRequest';
@@ -25,268 +25,196 @@ import { request as __request } from '../core/request';
 export class QuestionControllerService {
 
     /**
-     * addQuestion
-     * @param questionAddRequest questionAddRequest
-     * @returns BaseResponse_long_ OK
-     * @returns any Created
+     * @param requestBody 
+     * @returns BaseResponseBoolean OK
      * @throws ApiError
      */
-    public static addQuestionUsingPost(
-questionAddRequest: QuestionAddRequest,
-): CancelablePromise<BaseResponse_long_ | any> {
+    public static updateQuestion(
+requestBody: QuestionUpdateRequest,
+): CancelablePromise<BaseResponseBoolean> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/add',
-            body: questionAddRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
+            url: '/question/update',
+            body: requestBody,
+            mediaType: 'application/json',
         });
     }
 
     /**
-     * deleteQuestion
-     * @param deleteRequest deleteRequest
-     * @returns BaseResponse_boolean_ OK
-     * @returns any Created
+     * @param requestBody 
+     * @returns BaseResponsePageQuestionSubmitVO OK
      * @throws ApiError
      */
-    public static deleteQuestionUsingPost(
-deleteRequest: DeleteRequest,
-): CancelablePromise<BaseResponse_boolean_ | any> {
+    public static listQuestionSubmitByPage(
+requestBody: QuestionSubmitQueryRequest,
+): CancelablePromise<BaseResponsePageQuestionSubmitVO> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/delete',
-            body: deleteRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
+            url: '/question/question_submit/list/page',
+            body: requestBody,
+            mediaType: 'application/json',
         });
     }
 
     /**
-     * editQuestion
-     * @param questionEditRequest questionEditRequest
-     * @returns BaseResponse_boolean_ OK
-     * @returns any Created
+     * @param requestBody 
+     * @returns BaseResponseLong OK
      * @throws ApiError
      */
-    public static editQuestionUsingPost(
-questionEditRequest: QuestionEditRequest,
-): CancelablePromise<BaseResponse_boolean_ | any> {
+    public static doQuestionSubmit(
+requestBody: QuestionSubmitAddRequest,
+): CancelablePromise<BaseResponseLong> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/edit',
-            body: questionEditRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
+            url: '/question/question_submit/do',
+            body: requestBody,
+            mediaType: 'application/json',
         });
     }
 
     /**
-     * getQuestionById
-     * @param id id
-     * @returns BaseResponse_Question_ OK
+     * @param requestBody 
+     * @returns BaseResponsePageQuestionVO OK
      * @throws ApiError
      */
-    public static getQuestionByIdUsingGet(
-id?: number,
-): CancelablePromise<BaseResponse_Question_> {
+    public static listMyQuestionVoByPage(
+requestBody: QuestionQueryRequest,
+): CancelablePromise<BaseResponsePageQuestionVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/my/list/page/vo',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponsePageQuestion OK
+     * @throws ApiError
+     */
+    public static listQuestionByPage(
+requestBody: QuestionQueryRequest,
+): CancelablePromise<BaseResponsePageQuestion> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/list/page',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponsePageQuestionVO OK
+     * @throws ApiError
+     */
+    public static listQuestionVoByPage(
+requestBody: QuestionQueryRequest,
+): CancelablePromise<BaseResponsePageQuestionVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/list/page/vo',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponseBoolean OK
+     * @throws ApiError
+     */
+    public static editQuestion(
+requestBody: QuestionEditRequest,
+): CancelablePromise<BaseResponseBoolean> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/edit',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponseBoolean OK
+     * @throws ApiError
+     */
+    public static deleteQuestion(
+requestBody: DeleteRequest,
+): CancelablePromise<BaseResponseBoolean> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/delete',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponseLong OK
+     * @throws ApiError
+     */
+    public static addQuestion(
+requestBody: QuestionAddRequest,
+): CancelablePromise<BaseResponseLong> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/add',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param id 
+     * @returns BaseResponseQuestionSubmit OK
+     * @throws ApiError
+     */
+    public static getQuestionSubmitById(
+id: number,
+): CancelablePromise<BaseResponseQuestionSubmit> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/question/get',
+            url: '/question/question_submit/get',
             query: {
                 'id': id,
             },
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
         });
     }
 
     /**
-     * getQuestionVOById
-     * @param id id
-     * @returns BaseResponse_QuestionVO_ OK
+     * @param id 
+     * @returns BaseResponseQuestion OK
      * @throws ApiError
      */
-    public static getQuestionVoByIdUsingGet(
-id?: number,
-): CancelablePromise<BaseResponse_QuestionVO_> {
+    public static getQuestionById(
+id: number,
+): CancelablePromise<BaseResponseQuestion> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/question/get/vo',
+            url: '/question/get',
             query: {
                 'id': id,
             },
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
         });
     }
 
     /**
-     * listQuestionByPage
-     * @param questionQueryRequest questionQueryRequest
-     * @returns BaseResponse_Page_Question_ OK
-     * @returns any Created
+     * @param id 
+     * @returns BaseResponseQuestionVO OK
      * @throws ApiError
      */
-    public static listQuestionByPageUsingPost(
-questionQueryRequest: QuestionQueryRequest,
-): CancelablePromise<BaseResponse_Page_Question_ | any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/question/list/page',
-            body: questionQueryRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
-        });
-    }
-
-    /**
-     * listQuestionVOByPage
-     * @param questionQueryRequest questionQueryRequest
-     * @returns BaseResponse_Page_QuestionVO_ OK
-     * @returns any Created
-     * @throws ApiError
-     */
-    public static listQuestionVoByPageUsingPost(
-questionQueryRequest: QuestionQueryRequest,
-): CancelablePromise<BaseResponse_Page_QuestionVO_ | any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/question/list/page/vo',
-            body: questionQueryRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
-        });
-    }
-
-    /**
-     * listMyQuestionVOByPage
-     * @param questionQueryRequest questionQueryRequest
-     * @returns BaseResponse_Page_QuestionVO_ OK
-     * @returns any Created
-     * @throws ApiError
-     */
-    public static listMyQuestionVoByPageUsingPost(
-questionQueryRequest: QuestionQueryRequest,
-): CancelablePromise<BaseResponse_Page_QuestionVO_ | any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/question/my/list/page/vo',
-            body: questionQueryRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
-        });
-    }
-
-    /**
-     * doQuestionSubmit
-     * @param questionSubmitAddRequest questionSubmitAddRequest
-     * @returns BaseResponse_long_ OK
-     * @returns any Created
-     * @throws ApiError
-     */
-    public static doQuestionSubmitUsingPost(
-questionSubmitAddRequest: QuestionSubmitAddRequest,
-): CancelablePromise<BaseResponse_long_ | any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/question/question_submit/do',
-            body: questionSubmitAddRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
-        });
-    }
-
-    /**
-     * getQuestionSubmitById
-     * @param id id
-     * @returns BaseResponse_QuestionSubmitVO_ OK
-     * @throws ApiError
-     */
-    public static getQuestionSubmitByIdUsingGet(
-id?: number,
-): CancelablePromise<BaseResponse_QuestionSubmitVO_> {
+    public static getQuestionVoById(
+id: number,
+): CancelablePromise<BaseResponseQuestionVO> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/question/question_submit/get',
+            url: '/question/get/vo',
             query: {
                 'id': id,
-            },
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
-        });
-    }
-
-    /**
-     * listQuestionSubmitByPage
-     * @param questionSubmitQueryRequest questionSubmitQueryRequest
-     * @returns BaseResponse_Page_QuestionSubmitVO_ OK
-     * @returns any Created
-     * @throws ApiError
-     */
-    public static listQuestionSubmitByPageUsingPost(
-questionSubmitQueryRequest: QuestionSubmitQueryRequest,
-): CancelablePromise<BaseResponse_Page_QuestionSubmitVO_ | any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/question/question_submit/list/page',
-            body: questionSubmitQueryRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
-            },
-        });
-    }
-
-    /**
-     * updateQuestion
-     * @param questionUpdateRequest questionUpdateRequest
-     * @returns BaseResponse_boolean_ OK
-     * @returns any Created
-     * @throws ApiError
-     */
-    public static updateQuestionUsingPost(
-questionUpdateRequest: QuestionUpdateRequest,
-): CancelablePromise<BaseResponse_boolean_ | any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/question/update',
-            body: questionUpdateRequest,
-            errors: {
-                401: `Unauthorized`,
-                403: `Forbidden`,
-                404: `Not Found`,
             },
         });
     }

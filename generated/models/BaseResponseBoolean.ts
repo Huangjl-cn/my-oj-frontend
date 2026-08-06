@@ -3,9 +3,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export type PostUpdateRequest = {
-    content?: string;
-    id?: number;
-    tags?: Array<string>;
-    title?: string;
+export type BaseResponseBoolean = {
+    code?: number;
+    data?: boolean;
+    message?: string;
 };
