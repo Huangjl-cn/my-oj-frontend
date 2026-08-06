@@ -4,6 +4,7 @@ import {
   QuestionSubmitRequest,
   requestQuestionSubmit,
 } from "@/services/questionSubmit";
+import { ApiId } from "@/services/apiId";
 
 export const QUESTION_SUBMIT_POLL_INTERVAL = 3000;
 export const QUESTION_SUBMIT_POLL_TIMEOUT = 75000;
@@ -12,7 +13,7 @@ type PollerOptions = {
   onUpdate: (submission: QuestionSubmitVO) => void;
   onTimeout?: () => void;
   onError?: (error: unknown) => void;
-  request?: (submitId: number) => QuestionSubmitRequest;
+  request?: (submitId: ApiId) => QuestionSubmitRequest;
   interval?: number;
   timeout?: number;
 };
@@ -30,7 +31,7 @@ export const createQuestionSubmitPoller = (options: PollerOptions) => {
     activeRequest = undefined;
   };
 
-  const start = (submitId: number) => {
+  const start = (submitId: ApiId) => {
     stop();
     const currentGeneration = generation;
     const startedAt = Date.now();

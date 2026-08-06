@@ -3,11 +3,14 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
+import type { BaseResponseListQuestionStarterCodeVO } from '../models/BaseResponseListQuestionStarterCodeVO';
+import type { BaseResponseListSupportedLanguageVO } from '../models/BaseResponseListSupportedLanguageVO';
 import type { BaseResponseLong } from '../models/BaseResponseLong';
 import type { BaseResponsePageQuestion } from '../models/BaseResponsePageQuestion';
 import type { BaseResponsePageQuestionSubmitVO } from '../models/BaseResponsePageQuestionSubmitVO';
 import type { BaseResponsePageQuestionVO } from '../models/BaseResponsePageQuestionVO';
 import type { BaseResponseQuestion } from '../models/BaseResponseQuestion';
+import type { BaseResponseQuestionStarterCodeVO } from '../models/BaseResponseQuestionStarterCodeVO';
 import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
 import type { BaseResponseQuestionVO } from '../models/BaseResponseQuestionVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
@@ -165,6 +168,54 @@ requestBody: QuestionAddRequest,
             url: '/question/add',
             body: requestBody,
             mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @returns BaseResponseListSupportedLanguageVO OK
+     * @throws ApiError
+     */
+    public static getSupportedLanguages(): CancelablePromise<BaseResponseListSupportedLanguageVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/supported-languages',
+        });
+    }
+
+    /**
+     * @param questionId 
+     * @param language 
+     * @returns BaseResponseQuestionStarterCodeVO OK
+     * @throws ApiError
+     */
+    public static getQuestionStarterCode(
+questionId: number,
+language: string,
+): CancelablePromise<BaseResponseQuestionStarterCodeVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/starter-code',
+            query: {
+                'questionId': questionId,
+                'language': language,
+            },
+        });
+    }
+
+    /**
+     * @param questionId 
+     * @returns BaseResponseListQuestionStarterCodeVO OK
+     * @throws ApiError
+     */
+    public static listQuestionStarterCode(
+questionId: number,
+): CancelablePromise<BaseResponseListQuestionStarterCodeVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/starter-code/list',
+            query: {
+                'questionId': questionId,
+            },
         });
     }
 

@@ -33,6 +33,7 @@ const codeEditorRef = ref<HTMLElement | null>(null);
 const codeEditor =
   shallowRef<import("monaco-editor").editor.IStandaloneCodeEditor>();
 let monaco: typeof import("monaco-editor") | undefined;
+let syncingValue = false;
 
 watch(
   () => props.language,
@@ -49,7 +50,9 @@ watch(
   (newVal) => {
     const editor = codeEditor.value;
     if (editor && editor.getValue() !== newVal) {
+      syncingValue = true;
       editor.setValue(newVal);
+      syncingValue = false;
     }
   }
 );
@@ -72,7 +75,7 @@ onMounted(async () => {
   });
 
   codeEditor.value.onDidChangeModelContent(() => {
-    if (codeEditor.value) {
+    if (codeEditor.value && !syncingValue) {
       props.handleChange(codeEditor.value.getValue());
     }
   });

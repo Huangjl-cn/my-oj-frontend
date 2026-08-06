@@ -4,6 +4,7 @@ import {
   QUESTION_SUBMIT_POLL_TIMEOUT,
 } from "@/services/questionSubmitPolling";
 import { QuestionSubmitRequest } from "@/services/questionSubmit";
+import { ApiId } from "@/services/apiId";
 
 const flushPromises = async () => {
   await Promise.resolve();
@@ -28,9 +29,26 @@ describe("question submit polling", () => {
     expect(QUESTION_SUBMIT_POLL_TIMEOUT).toBeGreaterThanOrEqual(75000);
   });
 
+  it("passes a Long submission ID to the request without numeric coercion", () => {
+    const submitId = "2013621883695575042";
+    const request = jest.fn<QuestionSubmitRequest, [ApiId]>(() => ({
+      promise: new Promise<QuestionSubmitVO | undefined>(() => undefined),
+      cancel: jest.fn(),
+    }));
+    const polling = createQuestionSubmitPoller({
+      request,
+      onUpdate: jest.fn(),
+    });
+
+    polling.start(submitId);
+
+    expect(request).toHaveBeenCalledWith(submitId);
+    polling.stop();
+  });
+
   it("polls through statuses 0 and 1, then stops on status 2 Wrong Answer", async () => {
     const request = jest
-      .fn<QuestionSubmitRequest, [number]>()
+      .fn<QuestionSubmitRequest, [ApiId]>()
       .mockReturnValueOnce(resolvedRequest({ status: 0 }))
       .mockReturnValueOnce(resolvedRequest({ status: 1 }))
       .mockReturnValueOnce(

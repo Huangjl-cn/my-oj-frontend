@@ -4,6 +4,7 @@ import {
   QuestionSubmitQueryRequest,
   QuestionSubmitVO,
 } from "../../generated";
+import { ApiId, toGeneratedApiId } from "@/services/apiId";
 
 type CompatibleQuestionSubmit = Omit<QuestionSubmitVO, "judgeInfo"> & {
   judgeInfo?: JudgeInfo | string | null;
@@ -68,10 +69,12 @@ export const listQuestionSubmissions = async (
 };
 
 export const requestQuestionSubmit = (
-  submitId: number,
+  submitId: ApiId,
   timeout = QUESTION_SUBMIT_REQUEST_TIMEOUT
 ): QuestionSubmitRequest => {
-  const request = QuestionControllerService.getQuestionSubmitById(submitId);
+  const request = QuestionControllerService.getQuestionSubmitById(
+    toGeneratedApiId(submitId)
+  );
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   let timedOut = false;
 

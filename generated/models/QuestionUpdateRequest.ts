@@ -5,6 +5,7 @@
 
 import type { JudgeCase } from './JudgeCase';
 import type { JudgeConfig } from './JudgeConfig';
+import type { QuestionStarterCodeSaveRequest } from './QuestionStarterCodeSaveRequest';
 
 export type QuestionUpdateRequest = {
     id?: number;
@@ -14,4 +15,5 @@ export type QuestionUpdateRequest = {
     answer?: string;
     judgeCase?: Array<JudgeCase>;
     judgeConfig?: JudgeConfig;
+    starterCodeList?: Array<QuestionStarterCodeSaveRequest>;
 };

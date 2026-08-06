@@ -112,8 +112,67 @@
           </button>
         </div>
 
+        <div class="form-section">
+          <div class="starter-section-header">
+            <h3 class="section-title">初始代码模板</h3>
+            <label v-if="!updatePage" class="starter-toggle">
+              <span>自定义模板</span>
+              <a-switch v-model="starterCodeEnabled" size="small" />
+            </label>
+          </div>
+
+          <div v-if="starterCodeLoadError" class="starter-code-alert">
+            <div>
+              <strong>模板配置异常</strong>
+              <span>{{ starterCodeLoadError }}</span>
+            </div>
+            <button
+              v-if="updatePage && languageOptions.length"
+              class="repair-template-btn"
+              type="button"
+              @click="repairStarterCodes"
+            >
+              使用后端默认模板重建
+            </button>
+          </div>
+
+          <div
+            v-if="starterCodeEnabled && languageOptions.length"
+            class="starter-code-workspace"
+          >
+            <div class="starter-language-tabs" role="tablist">
+              <button
+                v-for="language in languageOptions"
+                :key="language.value"
+                :class="[
+                  'starter-language-tab',
+                  { active: activeStarterLanguage === language.value },
+                ]"
+                type="button"
+                role="tab"
+                :aria-selected="activeStarterLanguage === language.value"
+                @click="activeStarterLanguage = language.value"
+              >
+                {{ language.text }}
+              </button>
+            </div>
+            <div class="starter-code-editor">
+              <CodeEditor
+                :value="starterCodes[activeStarterLanguage] || ''"
+                :language="activeStarterLanguage"
+                :handle-change="onStarterCodeChange"
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="form-footer">
-          <button class="claude-btn-primary" @click="doSubmit">
+          <button
+            class="claude-btn-primary"
+            type="button"
+            :disabled="starterCodeLoading || languageLoading"
+            @click="doSubmit"
+          >
             {{ updatePage ? "更新" : "提交" }}
           </button>
         </div>
@@ -124,10 +183,20 @@
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import CodeEditor from "@/components/editor/CodeEditor.vue";
 import MdEditor from "@/components/editor/MdEditor.vue";
+import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
+import {
+  buildStarterCodeList,
+  getQuestionStarterCodeMap,
+  getSupportedLanguageOptions,
+  LanguageOption,
+  StarterCodeMap,
+  StarterCodeServiceError,
+} from "@/services/questionStarterCode";
 import {
   JudgeCase,
   JudgeConfig,
@@ -135,7 +204,7 @@ import {
 } from "../../../generated";
 
 interface QuestionForm {
-  id?: number;
+  id?: ApiId;
   title: string;
   tags: string[];
   answer: string;
@@ -165,12 +234,64 @@ const route = useRoute();
 const router = useRouter();
 const updatePage = route.path.includes("update");
 const form = ref<QuestionForm>(createDefaultForm());
+const languageOptions = ref<LanguageOption[]>([]);
+const languageLoading = ref(false);
+const starterCodeLoading = ref(false);
+const starterCodeEnabled = ref(false);
+const starterCodeDirty = ref(false);
+const starterCodeLoadError = ref("");
+const starterCodes = ref<StarterCodeMap>({});
+const activeStarterLanguage = ref("");
+
+const createEmptyStarterCodeMap = () =>
+  Object.fromEntries(
+    languageOptions.value.map(({ value }) => [value, ""])
+  ) as StarterCodeMap;
+
+const loadLanguageOptions = async () => {
+  languageLoading.value = true;
+  try {
+    languageOptions.value = await getSupportedLanguageOptions();
+    activeStarterLanguage.value = languageOptions.value[0]?.value || "";
+    starterCodes.value = createEmptyStarterCodeMap();
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "加载编程语言失败");
+  } finally {
+    languageLoading.value = false;
+  }
+};
+
+const loadStarterCodes = async (questionId: ApiId) => {
+  starterCodeLoading.value = true;
+  starterCodeLoadError.value = "";
+  try {
+    starterCodes.value = await getQuestionStarterCodeMap(
+      questionId,
+      languageOptions.value
+    );
+    starterCodeEnabled.value = true;
+    starterCodeDirty.value = false;
+  } catch (error) {
+    starterCodeEnabled.value = false;
+    starterCodeLoadError.value =
+      error instanceof StarterCodeServiceError && error.code === 40400
+        ? "题目的语言模板缺失或不完整"
+        : error instanceof Error
+        ? error.message
+        : "加载初始代码模板失败";
+    message.error(starterCodeLoadError.value);
+  } finally {
+    starterCodeLoading.value = false;
+  }
+};
 
 const loadData = async () => {
-  const id = Number(route.query.id);
-  if (!Number.isFinite(id)) return;
+  const id = parseRouteApiId(route.query.id);
+  if (id == null) return;
 
-  const res = await QuestionControllerService.getQuestionById(id);
+  const res = await QuestionControllerService.getQuestionById(
+    toGeneratedApiId(id)
+  );
   if (res.code === 0 && res.data) {
     const defaults = createDefaultForm();
     form.value = {
@@ -182,24 +303,57 @@ const loadData = async () => {
       judgeCase: parseJson(res.data.judgeCase, defaults.judgeCase),
       judgeConfig: parseJson(res.data.judgeConfig, defaults.judgeConfig),
     };
+    await loadStarterCodes(id);
   } else {
     message.error("加载失败，" + res.message);
   }
 };
 
-onMounted(() => {
-  loadData();
+onMounted(async () => {
+  await loadLanguageOptions();
+  if (updatePage) await loadData();
 });
 
+watch(starterCodeEnabled, (enabled) => {
+  if (enabled && !Object.keys(starterCodes.value).length) {
+    starterCodes.value = createEmptyStarterCodeMap();
+  }
+});
+
+const onStarterCodeChange = (value: string) => {
+  if (!activeStarterLanguage.value) return;
+  starterCodes.value[activeStarterLanguage.value] = value;
+  starterCodeDirty.value = true;
+};
+
+const repairStarterCodes = () => {
+  starterCodes.value = createEmptyStarterCodeMap();
+  starterCodeEnabled.value = true;
+  starterCodeDirty.value = true;
+  starterCodeLoadError.value = "";
+};
+
 const doSubmit = async () => {
+  const starterCodeList =
+    starterCodeEnabled.value && (!updatePage || starterCodeDirty.value)
+      ? buildStarterCodeList(starterCodes.value, languageOptions.value)
+      : undefined;
+
   if (updatePage) {
-    const res = await QuestionControllerService.updateQuestion(form.value);
+    const res = await QuestionControllerService.updateQuestion({
+      ...form.value,
+      id: form.value.id == null ? undefined : toGeneratedApiId(form.value.id),
+      starterCodeList,
+    });
     if (res.code === 0) {
       message.success("更新成功");
       router.push("/manage/question");
     } else message.error("更新失败，" + res.message);
   } else {
-    const res = await QuestionControllerService.addQuestion(form.value);
+    const res = await QuestionControllerService.addQuestion({
+      ...form.value,
+      starterCodeList,
+    });
     if (res.code === 0) {
       message.success("创建成功");
       router.push("/questions");
@@ -365,6 +519,118 @@ const onAnswerChange = (value: string) => {
   background: var(--primary-light);
 }
 
+.starter-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.starter-section-header .section-title {
+  flex: 1;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.starter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.starter-code-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  padding: 12px 14px;
+  background: rgba(198, 69, 69, 0.08);
+  border-left: 3px solid var(--error);
+}
+
+.starter-code-alert > div {
+  display: grid;
+  gap: 3px;
+}
+
+.starter-code-alert strong {
+  color: var(--error);
+  font-size: 13px;
+}
+
+.starter-code-alert span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.repair-template-btn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  color: var(--error);
+  background: transparent;
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.repair-template-btn:hover {
+  background: rgba(198, 69, 69, 0.08);
+}
+
+.starter-code-workspace {
+  margin-top: var(--space-md);
+  overflow: hidden;
+  background: var(--surface-dark);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+}
+
+.starter-language-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid #333;
+}
+
+.starter-language-tab {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 12px;
+  color: var(--on-dark-soft);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.starter-language-tab:hover {
+  color: var(--on-dark);
+  background: var(--surface-dark-elevated);
+}
+
+.starter-language-tab.active {
+  color: var(--on-dark);
+  background: var(--surface-dark-elevated);
+  border-color: #444;
+}
+
+.starter-code-editor :deep(#code-editor) {
+  width: 100% !important;
+  height: 380px !important;
+  min-height: 320px !important;
+}
+
 .form-footer {
   margin-top: var(--space-lg);
   padding-top: var(--space-lg);
@@ -390,6 +656,11 @@ const onAnswerChange = (value: string) => {
 
 .claude-btn-primary:hover {
   background: var(--primary-active);
+}
+
+.claude-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 @media (max-width: 768px) {

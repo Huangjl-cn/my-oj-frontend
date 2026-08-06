@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watchEffect } from "vue";
+import { ref, watchEffect } from "vue";
 import { Question, QuestionControllerService } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
 import { Modal } from "@arco-design/web-vue";
@@ -64,9 +64,6 @@ const loadData = async () => {
 };
 
 watchEffect(() => {
-  loadData();
-});
-onMounted(() => {
   loadData();
 });
 

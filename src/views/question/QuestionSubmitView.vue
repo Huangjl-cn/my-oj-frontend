@@ -17,11 +17,11 @@
               allow-clear
             >
               <a-option
-                v-for="language in SUPPORTED_LANGUAGES"
-                :key="language"
-                :value="language"
+                v-for="language in languageOptions"
+                :key="language.value"
+                :value="language.value"
               >
-                {{ language }}
+                {{ language.text }}
               </a-option>
             </a-select>
           </a-form-item>
@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect } from "vue";
+import { onMounted, ref, watchEffect } from "vue";
 import {
   QuestionSubmitQueryRequest,
   QuestionSubmitVO,
@@ -94,7 +94,10 @@ import {
   getJudgeResultPresentation,
   listQuestionSubmissions,
 } from "@/services/questionSubmit";
-import { SUPPORTED_LANGUAGES } from "@/constants/languages";
+import {
+  getSupportedLanguageOptions,
+  LanguageOption,
+} from "@/services/questionStarterCode";
 
 const formatJudgeTime = (time?: number) => (time == null ? "--" : `${time} ms`);
 
@@ -108,6 +111,7 @@ const formatTime = (t: string) => {
 
 const dataList = ref<QuestionSubmitVO[]>([]);
 const total = ref(0);
+const languageOptions = ref<LanguageOption[]>([]);
 const searchParams = ref<QuestionSubmitQueryRequest>({
   questionId: undefined,
   language: undefined,
@@ -131,6 +135,14 @@ const loadData = async () => {
 
 watchEffect(() => {
   loadData();
+});
+
+onMounted(async () => {
+  try {
+    languageOptions.value = await getSupportedLanguageOptions();
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "加载编程语言失败");
+  }
 });
 
 const columns = [

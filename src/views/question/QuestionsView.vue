@@ -170,17 +170,39 @@
           <!-- Editor -->
           <div class="editor-panel">
             <div class="editor-toolbar">
-              <select v-model="form.language" class="lang-selector">
+              <select
+                v-model="form.language"
+                class="lang-selector"
+                :disabled="languageLoading || starterCodeLoading"
+                @change="onLanguageChange"
+              >
                 <option
-                  v-for="language in SUPPORTED_LANGUAGES"
-                  :key="language"
-                  :value="language"
+                  v-for="language in languageOptions"
+                  :key="language.value"
+                  :value="language.value"
                 >
-                  {{ language }}
+                  {{ language.text }}
                 </option>
               </select>
               <div class="editor-actions">
-                <button class="btn-submit" @click="doSubmit">提交</button>
+                <button
+                  class="btn-reset-code"
+                  type="button"
+                  :disabled="!activeTemplate || starterCodeLoading"
+                  @click="requestResetStarterCode"
+                >
+                  初始化代码
+                </button>
+                <button
+                  class="btn-submit"
+                  type="button"
+                  :disabled="
+                    starterCodeLoading || !!starterCodeError || !form.language
+                  "
+                  @click="doSubmit"
+                >
+                  提交
+                </button>
               </div>
             </div>
             <div class="editor-body">
@@ -332,11 +354,50 @@
         </div>
       </main>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="showResetDialog"
+        class="reset-dialog-backdrop"
+        @click.self="showResetDialog = false"
+      >
+        <section
+          class="reset-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-dialog-title"
+        >
+          <div class="reset-dialog-marker">!</div>
+          <div class="reset-dialog-copy">
+            <h2 id="reset-dialog-title">恢复初始代码</h2>
+            <p>
+              当前
+              {{ currentLanguageText }} 草稿将被后端模板覆盖，此操作不可撤销。
+            </p>
+          </div>
+          <div class="reset-dialog-actions">
+            <button
+              class="dialog-btn secondary"
+              type="button"
+              @click="showResetDialog = false"
+            >
+              取消
+            </button>
+            <button
+              class="dialog-btn primary"
+              type="button"
+              @click="confirmResetStarterCode"
+            >
+              恢复初始代码
+            </button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Modal } from "@arco-design/web-vue";
 import message from "@arco-design/web-vue/es/message";
 import {
   computed,
@@ -351,7 +412,18 @@ import { useStore } from "vuex";
 import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
 import MdViewer from "@/components/editor/MdViewer.vue";
-import { SUPPORTED_LANGUAGES } from "@/constants/languages";
+import { ApiId } from "@/services/apiId";
+import {
+  getQuestionDraft,
+  removeQuestionDraft,
+  saveQuestionDraft,
+} from "@/services/questionDraft";
+import {
+  getQuestionStarterCode,
+  getSupportedLanguageOptions,
+  LanguageOption,
+  StarterCodeServiceError,
+} from "@/services/questionStarterCode";
 import {
   formatJudgeMemory,
   getJudgeResultPresentation,
@@ -371,22 +443,13 @@ const CodeEditor = defineAsyncComponent(
   () => import("@/components/editor/CodeEditor.vue")
 );
 
-const DEFAULT_CODE = `import java.util.*;
-
-public class Main {
-    public static void main(String[] args) {
-        int a = Integer.parseInt(args[0]);
-        System.out.print("output the answer");
-    }
-}`;
-
 type PageChange = number | { current?: number };
 
 const store = useStore();
 
 // ===== Sidebar =====
 const isSidebarCollapsed = ref(false);
-const selectedId = ref<number | null>(null);
+const selectedId = ref<ApiId | null>(null);
 const activeFilter = ref("all");
 const dataList = ref<QuestionVO[]>([]);
 const total = ref(0);
@@ -416,8 +479,8 @@ watch(
   },
   { deep: true }
 );
-onMounted(() => {
-  loadData();
+onMounted(async () => {
+  await Promise.all([loadData(), loadLanguageOptions()]);
 });
 
 const onFilterChange = (filter: string) => {
@@ -433,7 +496,6 @@ const onPageChange = (page: PageChange) => {
   const current = typeof page === "number" ? page : page.current;
   if (current == null) return;
   searchParams.value = { ...searchParams.value, current };
-  loadData();
 };
 const onSearchInput = () => {
   searchParams.value = { ...searchParams.value, current: 1 };
@@ -455,6 +517,23 @@ const hasPassedQuestion = ref(false);
 const submitResult = ref<QuestionSubmitVO | null>(null);
 const showResult = ref(false);
 const isResultDetailsCollapsed = ref(false);
+const languageOptions = ref<LanguageOption[]>([]);
+const languageLoading = ref(false);
+const starterCodeLoading = ref(false);
+const starterCodeError = ref("");
+const activeTemplate = ref("");
+const loadedLanguage = ref("");
+const showResetDialog = ref(false);
+const templateCache = new Map<string, string>();
+let questionGeneration = 0;
+let templateGeneration = 0;
+let draftTimer: ReturnType<typeof setTimeout> | undefined;
+
+const currentLanguageText = computed(
+  () =>
+    languageOptions.value.find(({ value }) => value === loadedLanguage.value)
+      ?.text || loadedLanguage.value
+);
 
 const canViewAnswer = computed(() => {
   const u = store.state.user.loginUser;
@@ -483,27 +562,120 @@ const polling = createQuestionSubmitPoller({
 });
 
 const form = ref<QuestionSubmitAddRequest>({
-  language: "java",
-  code: DEFAULT_CODE,
+  language: "",
+  code: "",
 });
+
+const loadLanguageOptions = async () => {
+  if (languageOptions.value.length) return languageOptions.value;
+  languageLoading.value = true;
+  try {
+    languageOptions.value = await getSupportedLanguageOptions();
+    if (
+      !form.value.language ||
+      !languageOptions.value.some(({ value }) => value === form.value.language)
+    ) {
+      form.value.language = languageOptions.value[0]?.value || "";
+    }
+    return languageOptions.value;
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "加载编程语言失败");
+    return [];
+  } finally {
+    languageLoading.value = false;
+  }
+};
+
+const getDraftKey = (questionId: ApiId, language: string) => ({
+  userId: store.state.user.loginUser?.id ?? "anonymous",
+  questionId,
+  language,
+});
+
+const persistCurrentDraft = () => {
+  if (draftTimer) clearTimeout(draftTimer);
+  draftTimer = undefined;
+  const questionId = currentQuestion.value?.id;
+  if (questionId == null || !loadedLanguage.value) return;
+
+  const key = getDraftKey(questionId, loadedLanguage.value);
+  const code = form.value.code || "";
+  if (code === activeTemplate.value) {
+    removeQuestionDraft(key);
+  } else {
+    saveQuestionDraft(key, code);
+  }
+};
+
+const scheduleDraftSave = () => {
+  if (draftTimer) clearTimeout(draftTimer);
+  draftTimer = setTimeout(persistCurrentDraft, 300);
+};
+
+const clearTemplateCacheForQuestion = (questionId: ApiId) => {
+  const prefix = `${questionId}:`;
+  for (const key of templateCache.keys()) {
+    if (key.startsWith(prefix)) templateCache.delete(key);
+  }
+};
+
+const activateLanguage = async (language: string) => {
+  const questionId = currentQuestion.value?.id;
+  if (questionId == null || !language) return;
+
+  const generation = ++templateGeneration;
+  const cacheKey = `${questionId}:${language}`;
+  starterCodeLoading.value = true;
+  starterCodeError.value = "";
+  form.value.code = "";
+
+  try {
+    let template = templateCache.get(cacheKey);
+    if (template == null) {
+      template = await getQuestionStarterCode(questionId, language);
+      templateCache.set(cacheKey, template);
+    }
+    if (generation !== templateGeneration) return;
+
+    activeTemplate.value = template;
+    loadedLanguage.value = language;
+    form.value.language = language;
+    form.value.code =
+      getQuestionDraft(getDraftKey(questionId, language)) ?? template;
+  } catch (error) {
+    if (generation !== templateGeneration) return;
+    templateCache.delete(cacheKey);
+    activeTemplate.value = "";
+    loadedLanguage.value = language;
+    form.value.code = "";
+    starterCodeError.value =
+      error instanceof StarterCodeServiceError && error.code === 40400
+        ? "初始代码模板配置异常"
+        : error instanceof Error
+        ? error.message
+        : "加载初始代码失败";
+    message.error(starterCodeError.value);
+  } finally {
+    if (generation === templateGeneration) starterCodeLoading.value = false;
+  }
+};
+
+const onLanguageChange = () => {
+  persistCurrentDraft();
+  void activateLanguage(form.value.language || "");
+};
 
 const onSelectQuestion = async (item: QuestionVO) => {
   if (item.id == null) return;
+  persistCurrentDraft();
+  const generation = ++questionGeneration;
+  currentQuestion.value = null;
+  await loadLanguageOptions();
+  if (generation !== questionGeneration || !form.value.language) return;
 
-  if (codeChanged.value) {
-    const ok = await new Promise<boolean>((resolve) =>
-      Modal.confirm({
-        title: "切换题目",
-        content: "当前代码未保存，切换后将会丢失。是否继续？",
-        okText: "继续",
-        cancelText: "取消",
-        onOk: () => resolve(true),
-        onCancel: () => resolve(false),
-      })
-    );
-    if (!ok) return;
-  }
   selectedId.value = item.id;
+  clearTemplateCacheForQuestion(item.id);
+  templateGeneration += 1;
   stopPolling();
   showResult.value = false;
   submitResult.value = null;
@@ -511,14 +683,20 @@ const onSelectQuestion = async (item: QuestionVO) => {
   activeTab.value = "question";
   hasPassedQuestion.value = false;
   questionAnswer.value = "";
-  codeChanged.value = false;
-  form.value.code = DEFAULT_CODE;
+  starterCodeError.value = "";
+  activeTemplate.value = "";
+  loadedLanguage.value = "";
+  form.value.code = "";
 
   const res = await QuestionControllerService.getQuestionVoById(item.id);
+  if (generation !== questionGeneration) return;
   if (res.code === 0) {
     currentQuestion.value = res.data;
     checkAnswerAccess();
+    await activateLanguage(form.value.language);
   } else {
+    currentQuestion.value = null;
+    clearTemplateCacheForQuestion(item.id);
     message.error("加载失败");
   }
 };
@@ -570,7 +748,14 @@ const loadAnswer = async () => {
 };
 
 const doSubmit = async () => {
-  if (!currentQuestion.value?.id) return;
+  if (
+    !currentQuestion.value?.id ||
+    !form.value.language ||
+    starterCodeLoading.value ||
+    starterCodeError.value
+  )
+    return;
+  persistCurrentDraft();
   stopPolling();
   const res = await QuestionControllerService.doQuestionSubmit({
     ...form.value,
@@ -587,27 +772,38 @@ const doSubmit = async () => {
   }
 };
 
-const startPolling = (submitId: number) => polling.start(submitId);
+const startPolling = (submitId: ApiId) => polling.start(submitId);
 const stopPolling = () => polling.stop();
 
-const codeChanged = ref(false);
-
-const hash = (s: string) => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return h;
-};
-const DEFAULT_HASH = hash(DEFAULT_CODE);
-
 const changeCode = (value: string) => {
-  if (hash(value) !== DEFAULT_HASH) codeChanged.value = true;
   form.value.code = value;
+  scheduleDraftSave();
+};
+
+const resetStarterCode = () => {
+  const questionId = currentQuestion.value?.id;
+  if (questionId == null || !loadedLanguage.value) return;
+  removeQuestionDraft(getDraftKey(questionId, loadedLanguage.value));
+  form.value.code = activeTemplate.value;
+};
+
+const requestResetStarterCode = () => {
+  if (form.value.code === activeTemplate.value) {
+    resetStarterCode();
+    return;
+  }
+  showResetDialog.value = true;
+};
+
+const confirmResetStarterCode = () => {
+  resetStarterCode();
+  showResetDialog.value = false;
 };
 
 onBeforeUnmount(() => {
+  persistCurrentDraft();
+  questionGeneration += 1;
+  templateGeneration += 1;
   stopPolling();
 });
 </script>
@@ -1206,8 +1402,13 @@ onBeforeUnmount(() => {
   padding: 4px 10px;
   cursor: pointer;
   outline: none;
-  min-width: 100px;
+  min-width: 180px;
   height: 30px;
+}
+
+.lang-selector:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .editor-actions {
@@ -1215,7 +1416,8 @@ onBeforeUnmount(() => {
   gap: 6px;
 }
 
-.btn-submit {
+.btn-submit,
+.btn-reset-code {
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
@@ -1223,15 +1425,36 @@ onBeforeUnmount(() => {
   height: 30px;
   padding: 4px 14px;
   border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-submit {
   background: var(--primary);
   color: var(--on-primary);
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s;
+  border: 1px solid var(--primary);
+}
+
+.btn-reset-code {
+  color: var(--on-dark-soft);
+  background: transparent;
+  border: 1px solid #3d3d3d;
 }
 
 .btn-submit:hover {
   background: var(--primary-active);
+}
+
+.btn-reset-code:hover {
+  color: var(--on-dark);
+  border-color: #666;
+  background: var(--surface-dark-elevated);
+}
+
+.btn-submit:disabled,
+.btn-reset-code:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .editor-body {
@@ -1245,6 +1468,97 @@ onBeforeUnmount(() => {
   width: 100% !important;
   overflow: hidden !important;
   contain: strict !important;
+}
+
+.reset-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(18, 17, 15, 0.52);
+  backdrop-filter: blur(3px);
+}
+
+.reset-dialog {
+  width: min(440px, 100%);
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 14px;
+  padding: 22px;
+  color: var(--body);
+  background: var(--surface-card);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+}
+
+.reset-dialog-marker {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.reset-dialog-copy h2 {
+  margin: 1px 0 7px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.reset-dialog-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.reset-dialog-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dialog-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.dialog-btn.secondary {
+  color: var(--body);
+  background: transparent;
+  border: 1px solid var(--hairline);
+}
+
+.dialog-btn.primary {
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.dialog-btn.secondary:hover {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.dialog-btn.primary:hover {
+  background: var(--primary-active);
 }
 
 /* Results */
