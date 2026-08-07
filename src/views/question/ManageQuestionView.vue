@@ -6,6 +6,7 @@
     </header>
     <div class="page-card">
       <a-table
+        class="desktop-table"
         row-key="id"
         :columns="columns"
         :data="dataList"
@@ -28,11 +29,9 @@
           <UserIdentity :user-id="record.userId" />
         </template>
         <template #tags="{ record }">
-          <span v-if="record.tags" class="tag-list">
+          <span v-if="getQuestionTags(record).length" class="tag-list">
             <span
-              v-for="(tag, i) in typeof record.tags === 'string'
-                ? JSON.parse(record.tags)
-                : record.tags"
+              v-for="(tag, i) in getQuestionTags(record)"
               :key="i"
               class="tag"
               >{{ tag }}</span
@@ -60,6 +59,101 @@
           </span>
         </template>
       </a-table>
+      <div class="mobile-question-list">
+        <article
+          v-for="(question, index) in dataList"
+          :key="String(question.id ?? index)"
+          class="mobile-question-card"
+        >
+          <header class="mobile-question-header">
+            <UserIdentity
+              v-if="scope === 'all'"
+              :user-id="getQuestionUserId(question)"
+              :size="42"
+            />
+            <span class="mobile-question-id" :title="String(question.id ?? '')">
+              #{{ question.id ?? "--" }}
+            </span>
+          </header>
+
+          <div class="mobile-question-body">
+            <h3>{{ question.title || "未命名题目" }}</h3>
+            <div v-if="getQuestionTags(question).length" class="tag-list">
+              <span
+                v-for="(tag, tagIndex) in getQuestionTags(question)"
+                :key="tagIndex"
+                class="tag"
+              >
+                {{ tag }}
+              </span>
+            </div>
+
+            <dl class="mobile-question-stats">
+              <div>
+                <dt>提交次数</dt>
+                <dd>{{ question.submitNum ?? 0 }}</dd>
+              </div>
+              <div>
+                <dt>通过次数</dt>
+                <dd>{{ question.acceptedNum ?? 0 }}</dd>
+              </div>
+            </dl>
+
+            <div class="mobile-question-times">
+              <time>创建 {{ formatDateTime(question.createTime) }}</time>
+              <time v-if="scope === 'mine'">
+                更新 {{ formatDateTime(question.updateTime) }}
+              </time>
+            </div>
+          </div>
+
+          <footer class="mobile-question-actions">
+            <button
+              v-if="scope === 'all'"
+              class="action-btn detail"
+              type="button"
+              @click="toggleMobileQuestion(question.id)"
+            >
+              {{
+                isMobileQuestionExpanded(question.id) ? "收起详情" : "查看详情"
+              }}
+            </button>
+            <span class="action-group">
+              <button
+                class="action-btn edit"
+                type="button"
+                @click="doUpdate(question)"
+              >
+                修改
+              </button>
+              <button
+                class="action-btn delete"
+                type="button"
+                @click="doDelete(question)"
+              >
+                删除
+              </button>
+            </span>
+          </footer>
+
+          <Transition name="mobile-details">
+            <QuestionAdminDetailsPanel
+              v-if="scope === 'all' && isMobileQuestionExpanded(question.id)"
+              :question="getAdminQuestion(question)"
+            />
+          </Transition>
+        </article>
+        <p v-if="!dataList.length" class="mobile-empty">暂无题目</p>
+        <a-pagination
+          class="mobile-pagination"
+          :current="searchParams.current"
+          :page-size="searchParams.pageSize"
+          :total="total"
+          simple
+          hide-on-single-page
+          @change="onPageChange"
+        />
+      </div>
     </div>
     <ConfirmDialog
       v-model:visible="showDeleteDialog"
@@ -82,7 +176,7 @@ import { useRouter } from "vue-router";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import QuestionAdminDetailsPanel from "@/components/question/QuestionAdminDetailsPanel.vue";
 import UserIdentity from "@/components/user/UserIdentity.vue";
-import { toGeneratedApiId } from "@/services/apiId";
+import { ApiId, toGeneratedApiId } from "@/services/apiId";
 import { formatDateTime } from "@/utils/dateTime";
 import {
   Question,
@@ -112,6 +206,37 @@ const total = ref(0);
 const searchParams = ref({ pageSize: 10, current: 1 });
 const showDeleteDialog = ref(false);
 const pendingDeleteQuestion = ref<QuestionListRecord | null>(null);
+const expandedMobileQuestionIds = ref<string[]>([]);
+
+const getQuestionTags = (question: QuestionListRecord): string[] => {
+  if (Array.isArray(question.tags)) return question.tags;
+  if (!question.tags) return [];
+  try {
+    const tags = JSON.parse(question.tags);
+    return Array.isArray(tags) ? tags : [];
+  } catch {
+    return [];
+  }
+};
+
+const getQuestionUserId = (question: QuestionListRecord) =>
+  "userId" in question
+    ? question.userId
+    : question.userVO?.id ?? question.userid;
+
+const getAdminQuestion = (question: QuestionListRecord) => question as Question;
+
+const isMobileQuestionExpanded = (questionId?: ApiId) =>
+  questionId != null &&
+  expandedMobileQuestionIds.value.includes(String(questionId));
+
+const toggleMobileQuestion = (questionId?: ApiId) => {
+  if (questionId == null) return;
+  const id = String(questionId);
+  expandedMobileQuestionIds.value = isMobileQuestionExpanded(questionId)
+    ? expandedMobileQuestionIds.value.filter((item) => item !== id)
+    : [...expandedMobileQuestionIds.value, id];
+};
 
 const loadData = async () => {
   const res =
@@ -219,12 +344,16 @@ const doUpdate = (question: QuestionListRecord) => {
 
 <style scoped>
 #manageQuestionView {
-  animation: claude-fade-up 0.4s ease-out;
-  padding: var(--space-lg);
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  padding: var(--space-lg) 0;
 }
 
 .page-heading {
-  margin-bottom: var(--space-lg);
+  width: calc(100% - (var(--space-xl) * 2));
+  margin: 0 auto var(--space-lg);
 }
 
 .page-kicker {
@@ -232,11 +361,12 @@ const doUpdate = (question: QuestionListRecord) => {
   font-family: var(--font-code);
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .page-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
@@ -244,11 +374,13 @@ const doUpdate = (question: QuestionListRecord) => {
 }
 
 .page-card {
-  background: var(--canvas);
+  width: calc(100% - (var(--space-xl) * 2));
+  margin: 0 auto;
+  background: var(--surface-soft);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
   position: relative;
 }
 
@@ -261,6 +393,21 @@ const doUpdate = (question: QuestionListRecord) => {
   height: 2px;
   background: var(--primary);
   opacity: 0.3;
+}
+
+.mobile-question-list {
+  display: none;
+}
+
+.mobile-details-enter-active,
+.mobile-details-leave-active {
+  transition: opacity 180ms ease, transform 180ms var(--ease-out);
+}
+
+.mobile-details-enter-from,
+.mobile-details-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 .tag-list {
@@ -312,8 +459,15 @@ const doUpdate = (question: QuestionListRecord) => {
   border-radius: var(--radius-sm);
   padding: 3px 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
   line-height: 1.4;
+}
+
+.action-btn:active {
+  transform: translateY(1px);
 }
 
 .action-btn.edit {
@@ -334,6 +488,10 @@ const doUpdate = (question: QuestionListRecord) => {
   border-color: var(--error);
 }
 
+.action-btn.detail {
+  color: var(--muted);
+}
+
 :deep(.arco-table-th),
 :deep(.arco-table-td) {
   padding-right: 12px !important;
@@ -350,6 +508,15 @@ const doUpdate = (question: QuestionListRecord) => {
 :deep(.arco-table-body) {
   max-width: 100%;
   overflow: hidden !important;
+  background: var(--surface-soft) !important;
+}
+
+:deep(.arco-table-td) {
+  background: var(--surface-card) !important;
+}
+
+:deep(.arco-table-tr:hover .arco-table-td) {
+  background: var(--surface-cream-strong) !important;
 }
 
 :deep(.arco-table-element) {
@@ -367,6 +534,159 @@ const doUpdate = (question: QuestionListRecord) => {
 }
 
 :deep(.arco-table-tr-expand:hover > .arco-table-td) {
-  background: var(--surface-cream-strong) !important;
+  background: var(--surface-soft) !important;
+}
+
+@media (max-width: 768px) {
+  #manageQuestionView {
+    padding: 20px 16px 28px;
+  }
+
+  .page-heading {
+    width: 100%;
+    margin-bottom: 18px;
+  }
+
+  .page-title {
+    font-size: 32px;
+  }
+
+  .page-card {
+    width: 100%;
+    overflow: visible;
+    border-radius: var(--radius-md);
+  }
+
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-question-list {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .mobile-question-card {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+  }
+
+  .mobile-question-header {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-question-id {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--muted);
+    font-family: var(--font-code);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-question-body {
+    padding: 16px 14px;
+  }
+
+  .mobile-question-body h3 {
+    margin: 0 0 10px;
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .mobile-question-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 16px 0 12px;
+    overflow: hidden;
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
+  }
+
+  .mobile-question-stats > div {
+    padding: 10px 12px;
+  }
+
+  .mobile-question-stats > div + div {
+    border-left: 1px solid var(--hairline);
+  }
+
+  .mobile-question-stats dt {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .mobile-question-stats dd {
+    margin: 3px 0 0;
+    color: var(--ink);
+    font-family: var(--font-code);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .mobile-question-times {
+    display: grid;
+    gap: 3px;
+    color: var(--muted-soft);
+    font-family: var(--font-code);
+    font-size: 9px;
+  }
+
+  .mobile-question-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-question-actions > .action-group {
+    margin-left: auto;
+  }
+
+  .mobile-question-card :deep(.question-details) {
+    padding: 16px 14px;
+    border-top: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-empty {
+    padding: 48px 16px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .mobile-pagination {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    padding: 10px 0 8px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-details-enter-active,
+  .mobile-details-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .mobile-details-enter-from,
+  .mobile-details-leave-to {
+    transform: none;
+  }
 }
 </style>

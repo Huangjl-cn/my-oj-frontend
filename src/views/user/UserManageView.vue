@@ -115,13 +115,68 @@
         <div v-if="loading" class="loading-state">正在加载用户...</div>
       </div>
 
+      <div class="mobile-user-list" :class="{ loading }">
+        <article
+          v-for="user in users"
+          :key="String(user.id)"
+          class="mobile-user-card"
+        >
+          <header class="mobile-user-header">
+            <UserIdentity :user="user" :size="46" />
+            <span :class="['role-badge', roleClass(user.userRole)]">
+              {{ roleText(user.userRole) }}
+            </span>
+          </header>
+
+          <p class="mobile-user-profile">
+            {{ user.userProfile || "暂未填写简介" }}
+          </p>
+
+          <div class="mobile-user-times">
+            <time>创建 {{ formatDateTime(user.createTime) }}</time>
+            <time>更新 {{ formatDateTime(user.updateTime) }}</time>
+          </div>
+
+          <footer class="mobile-user-actions">
+            <button type="button" @click="openEditDialog(user)">
+              <IconEdit />
+              编辑
+            </button>
+            <button
+              class="danger"
+              type="button"
+              :disabled="isCurrentUser(user)"
+              :title="isCurrentUser(user) ? '不能删除当前管理员' : '删除用户'"
+              @click="askDelete(user)"
+            >
+              <IconDelete />
+              删除
+            </button>
+          </footer>
+        </article>
+        <p v-if="!loading && !users.length" class="mobile-user-empty">
+          暂无符合条件的用户
+        </p>
+        <div v-if="loading" class="mobile-user-loading">正在加载用户...</div>
+      </div>
+
       <footer class="pagination-bar">
         <span>第 {{ current }} 页</span>
         <a-pagination
+          class="desktop-pagination"
           :current="current"
           :page-size="pageSize"
           :total="total"
           :show-total="true"
+          @change="changePage"
+        />
+        <a-pagination
+          class="mobile-pagination"
+          :current="current"
+          :page-size="pageSize"
+          :total="total"
+          simple
+          hide-on-single-page
           @change="changePage"
         />
       </footer>
@@ -342,13 +397,18 @@ const deleteUser = async () => {
 
 <style scoped>
 #userManageView {
+  max-width: 1600px;
+  margin: 0 auto;
   width: 100%;
   min-width: 0;
-  padding: var(--space-lg);
-  animation: claude-fade-up 0.4s ease-out;
+  padding: var(--space-lg) 0;
+  animation: claude-fade-up var(--motion-standard) var(--ease-out);
 }
 
 .page-header {
+  width: calc(100% - (var(--space-xl) * 2));
+  margin-right: auto;
+  margin-left: auto;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -361,6 +421,7 @@ const deleteUser = async () => {
   font-family: var(--font-code);
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .page-header h1 {
@@ -400,9 +461,11 @@ const deleteUser = async () => {
 }
 
 .directory-panel {
+  width: calc(100% - (var(--space-xl) * 2));
+  margin: 0 auto;
   min-width: 0;
   overflow: hidden;
-  background: var(--canvas);
+  background: var(--surface-soft);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
 }
@@ -481,6 +544,10 @@ const deleteUser = async () => {
   min-width: 0;
 }
 
+.mobile-user-list {
+  display: none;
+}
+
 .table-wrap.loading .user-table {
   opacity: 0.45;
 }
@@ -489,6 +556,7 @@ const deleteUser = async () => {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+  background: var(--surface-soft);
   transition: opacity 150ms ease;
 }
 
@@ -536,8 +604,12 @@ const deleteUser = async () => {
   border-bottom: 0;
 }
 
+.user-table tbody tr:not(.empty-row) {
+  background: var(--surface-card);
+}
+
 .user-table tbody tr:not(.empty-row):hover {
-  background: var(--surface-soft);
+  background: var(--surface-cream-strong);
 }
 
 .role-badge {
@@ -629,13 +701,17 @@ const deleteUser = async () => {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 16px;
-  background: var(--canvas);
+  background: var(--surface-soft);
   border-top: 1px solid var(--hairline);
 }
 
 .pagination-bar > span {
   color: var(--muted);
   font-size: 11px;
+}
+
+.mobile-pagination {
+  display: none;
 }
 
 @media (max-width: 960px) {
@@ -679,7 +755,12 @@ const deleteUser = async () => {
     padding: 16px;
   }
 
+  .directory-panel {
+    width: 100%;
+  }
+
   .page-header {
+    width: 100%;
     align-items: center;
   }
 
@@ -687,53 +768,125 @@ const deleteUser = async () => {
     grid-template-columns: 1fr;
   }
 
-  .user-table colgroup,
-  .user-table thead {
+  .table-wrap {
     display: none;
   }
 
-  .user-table,
-  .user-table tbody,
-  .user-table tr,
-  .user-table td {
-    display: block;
-    width: 100%;
+  .pagination-bar {
+    justify-content: center;
+    padding-bottom: 14px;
   }
 
-  .user-table tr {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--hairline);
+  .pagination-bar > span,
+  .desktop-pagination {
+    display: none;
   }
 
-  .user-table td {
+  .mobile-pagination {
+    display: flex;
+    min-width: 0;
+  }
+
+  .mobile-user-list {
+    position: relative;
     display: grid;
-    grid-template-columns: 76px minmax(0, 1fr);
-    gap: 10px;
-    padding: 6px 0;
-    border: 0;
+    gap: 12px;
+    padding: 14px;
   }
 
-  .user-table td::before {
-    content: attr(data-label);
+  .mobile-user-list.loading .mobile-user-card {
+    opacity: 0.45;
+  }
+
+  .mobile-user-card {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--surface-card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+  }
+
+  .mobile-user-header {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-user-header .role-badge {
+    flex: 0 0 auto;
+  }
+
+  .mobile-user-profile {
+    margin: 0;
+    padding: 16px 14px 10px;
+    color: var(--body);
+    font-size: 13px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-user-times {
+    display: grid;
+    gap: 3px;
+    padding: 0 14px 16px;
     color: var(--muted-soft);
+    font-family: var(--font-code);
+    font-size: 9px;
+  }
+
+  .mobile-user-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-user-actions button {
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 10px;
+    color: var(--primary);
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
   }
 
-  .empty-row td {
-    display: block;
-    height: auto;
-    padding: 48px 0;
+  .mobile-user-actions button.danger {
+    color: var(--error);
   }
 
-  .empty-row td::before {
-    content: none;
+  .mobile-user-actions button:disabled {
+    color: var(--muted-soft);
+    background: var(--surface-soft);
+    cursor: not-allowed;
+    opacity: 0.7;
   }
 
-  .row-actions,
-  .time-stack {
-    flex-direction: row;
-    white-space: normal;
+  .mobile-user-empty,
+  .mobile-user-loading {
+    padding: 48px 16px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .mobile-user-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: var(--surface-overlay);
   }
 }
 </style>

@@ -144,11 +144,49 @@ onBeforeUnmount(() => {
 
 .quote-fade-enter-active,
 .quote-fade-leave-active {
-  transition: opacity 0.6s ease;
+  transition: opacity var(--motion-standard) ease;
 }
 
 .quote-fade-enter-from,
 .quote-fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  #basicLayout,
+  #basicLayout .layout-wrapper {
+    height: 100dvh;
+  }
+
+  #basicLayout .header {
+    min-height: 108px;
+    height: auto;
+    line-height: normal;
+  }
+
+  #basicLayout .footer {
+    padding: 9px 12px 6px;
+  }
+
+  .footer-inner {
+    margin: 0;
+  }
+
+  .footer-quote {
+    overflow: hidden;
+  }
+
+  .quote-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quote-fade-enter-active,
+  .quote-fade-leave-active {
+    transition-duration: 120ms;
+  }
 }
 </style>

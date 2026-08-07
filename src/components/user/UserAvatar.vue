@@ -82,4 +82,10 @@ watch(
     opacity: 0.35;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-loading {
+    animation: none;
+  }
+}
 </style>

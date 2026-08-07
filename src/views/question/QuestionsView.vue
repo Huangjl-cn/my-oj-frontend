@@ -44,7 +44,13 @@
             :class="['problem-item', { active: selectedId === item.id }]"
             @click="onSelectQuestion(item)"
           >
-            <span class="problem-status pending"></span>
+            <span
+              :class="['problem-status', getProblemProgress(item)]"
+              :title="getProblemProgressLabel(item)"
+              :aria-label="getProblemProgressLabel(item)"
+            >
+              {{ getProblemProgressIcon(item) }}
+            </span>
             <div class="problem-info">
               <div class="problem-name">{{ item.title }}</div>
               <div class="problem-meta">
@@ -58,11 +64,32 @@
                 >
               </div>
             </div>
+            <div
+              class="problem-rate"
+              :title="`通过 ${item.acceptedNum ?? 0} / 提交 ${
+                item.submitNum ?? 0
+              }`"
+            >
+              <strong>
+                {{ formatAcceptanceRate(item.acceptedNum, item.submitNum) }}
+              </strong>
+              <span>通过率</span>
+            </div>
           </div>
         </div>
         <div class="pagination-bar">
           <a-pagination
+            class="desktop-only-pagination"
             showTotal
+            :pageSize="searchParams.pageSize"
+            :current="searchParams.current"
+            :total="total"
+            @change="onPageChange"
+          />
+          <a-pagination
+            class="mobile-only-pagination"
+            simple
+            hide-on-single-page
             :pageSize="searchParams.pageSize"
             :current="searchParams.current"
             :total="total"
@@ -246,10 +273,19 @@
                 </div>
                 <a-pagination
                   v-if="mySubmissionsTotal > mySubmissionsPageSize"
-                  class="submission-pagination"
+                  class="submission-pagination desktop-only-pagination"
                   :current="mySubmissionsCurrent"
                   :page-size="mySubmissionsPageSize"
                   :total="mySubmissionsTotal"
+                  @change="onMySubmissionsPageChange"
+                />
+                <a-pagination
+                  v-if="mySubmissionsTotal > mySubmissionsPageSize"
+                  class="submission-pagination mobile-only-pagination"
+                  :current="mySubmissionsCurrent"
+                  :page-size="mySubmissionsPageSize"
+                  :total="mySubmissionsTotal"
+                  simple
                   @change="onMySubmissionsPageChange"
                 />
               </section>
@@ -400,151 +436,159 @@
           </div>
 
           <!-- Results -->
-          <div v-if="showResult" :class="['results-panel', resultStatusClass]">
-            <div class="results-header">
-              <div :class="['results-status', resultStatusClass]">
-                <!-- Pending/Submitting -->
-                <svg
+          <Transition name="result-panel">
+            <div
+              v-if="showResult"
+              :class="['results-panel', resultStatusClass]"
+            >
+              <div class="results-header">
+                <div :class="['results-status', resultStatusClass]">
+                  <!-- Pending/Submitting -->
+                  <svg
+                    v-if="resultPresentation.tone === 'pending'"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                  >
+                    <circle
+                      cx="7"
+                      cy="7"
+                      r="6"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+                    <circle cx="7" cy="4" r="1" fill="currentColor" />
+                  </svg>
+                  <!-- Passed -->
+                  <svg
+                    v-else-if="resultPresentation.tone === 'passed'"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                  >
+                    <circle
+                      cx="7"
+                      cy="7"
+                      r="6"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M4.5 7L6.5 9L9.5 5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <!-- Failed -->
+                  <svg
+                    v-else
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                  >
+                    <circle
+                      cx="7"
+                      cy="7"
+                      r="6"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M5 5l4 4M9 5l-4 4"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  {{ resultPresentation.label }}
+                </div>
+                <div
                   v-if="resultPresentation.tone === 'pending'"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
+                  class="judge-pacman-track"
+                  aria-hidden="true"
                 >
-                  <circle
-                    cx="7"
-                    cy="7"
-                    r="6"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  />
-                  <circle cx="7" cy="4" r="1" fill="currentColor" />
-                </svg>
-                <!-- Passed -->
-                <svg
-                  v-else-if="resultPresentation.tone === 'passed'"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                >
-                  <circle
-                    cx="7"
-                    cy="7"
-                    r="6"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M4.5 7L6.5 9L9.5 5"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                <!-- Failed -->
-                <svg
-                  v-else
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                >
-                  <circle
-                    cx="7"
-                    cy="7"
-                    r="6"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M5 5l4 4M9 5l-4 4"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                {{ resultPresentation.label }}
+                  <span class="pacman-pellets"></span>
+                  <span class="pacman-progress">
+                    <i class="pacman"></i>
+                  </span>
+                </div>
+                <div class="result-actions">
+                  <div class="result-stats">
+                    <div class="result-stat">
+                      <span class="result-stat-label">执行时间</span>
+                      <strong class="result-stat-value">
+                        {{
+                          submitResult?.judgeInfo?.time != null
+                            ? submitResult.judgeInfo.time + " ms"
+                            : "--"
+                        }}
+                      </strong>
+                    </div>
+                    <div class="result-stat">
+                      <span class="result-stat-label">内存消耗</span>
+                      <strong class="result-stat-value">
+                        {{ formatJudgeMemory(submitResult?.judgeInfo?.memory) }}
+                      </strong>
+                    </div>
+                  </div>
+                  <button
+                    v-if="resultPresentation.message"
+                    class="result-toggle"
+                    type="button"
+                    :class="{ collapsed: isResultDetailsCollapsed }"
+                    :aria-expanded="!isResultDetailsCollapsed"
+                    aria-controls="judge-result-details"
+                    :aria-label="
+                      isResultDetailsCollapsed ? '展开判题详情' : '收起判题详情'
+                    "
+                    :title="
+                      isResultDetailsCollapsed ? '展开判题详情' : '收起判题详情'
+                    "
+                    @click="
+                      isResultDetailsCollapsed = !isResultDetailsCollapsed
+                    "
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div
-                v-if="resultPresentation.tone === 'pending'"
-                class="judge-pacman-track"
-                aria-hidden="true"
+                v-if="resultPresentation.message"
+                id="judge-result-details"
+                :class="[
+                  'result-detail-shell',
+                  { collapsed: isResultDetailsCollapsed },
+                ]"
+                :aria-hidden="isResultDetailsCollapsed"
               >
-                <span class="pacman-pellets"></span>
-                <span class="pacman-progress">
-                  <i class="pacman"></i>
-                </span>
-              </div>
-              <div class="result-actions">
-                <div class="result-stats">
-                  <div class="result-stat">
-                    <span class="result-stat-label">执行时间</span>
-                    <strong class="result-stat-value">
-                      {{
-                        submitResult?.judgeInfo?.time != null
-                          ? submitResult.judgeInfo.time + " ms"
-                          : "--"
-                      }}
-                    </strong>
-                  </div>
-                  <div class="result-stat">
-                    <span class="result-stat-label">内存消耗</span>
-                    <strong class="result-stat-value">
-                      {{ formatJudgeMemory(submitResult?.judgeInfo?.memory) }}
-                    </strong>
-                  </div>
-                </div>
-                <button
-                  v-if="resultPresentation.message"
-                  class="result-toggle"
-                  type="button"
-                  :class="{ collapsed: isResultDetailsCollapsed }"
-                  :aria-expanded="!isResultDetailsCollapsed"
-                  aria-controls="judge-result-details"
-                  :aria-label="
-                    isResultDetailsCollapsed ? '展开判题详情' : '收起判题详情'
-                  "
-                  :title="
-                    isResultDetailsCollapsed ? '展开判题详情' : '收起判题详情'
-                  "
-                  @click="isResultDetailsCollapsed = !isResultDetailsCollapsed"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div
-              v-if="resultPresentation.message"
-              id="judge-result-details"
-              :class="[
-                'result-detail-shell',
-                { collapsed: isResultDetailsCollapsed },
-              ]"
-              :aria-hidden="isResultDetailsCollapsed"
-            >
-              <div class="result-detail-clip">
-                <div class="result-detail-content">
-                  <div class="result-message-title">
-                    {{ resultMessageParts.title }}
-                  </div>
-                  <div
-                    v-if="resultMessageParts.details"
-                    class="result-message-details"
-                  >
-                    {{ resultMessageParts.details }}
+                <div class="result-detail-clip">
+                  <div class="result-detail-content">
+                    <div class="result-message-title">
+                      {{ resultMessageParts.title }}
+                    </div>
+                    <div
+                      v-if="resultMessageParts.details"
+                      class="result-message-details"
+                    >
+                      {{ resultMessageParts.details }}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Transition>
         </template>
 
         <!-- Empty state -->
         <div v-else class="empty-state">
+          <span>PROBLEM WORKSPACE</span>
           <p>选择一个题目开始做题</p>
         </div>
       </main>
@@ -589,6 +633,13 @@ import {
   LanguageOption,
   StarterCodeServiceError,
 } from "@/services/questionStarterCode";
+import {
+  formatAcceptanceRate,
+  getMyQuestionProgress,
+  getQuestionProgressState,
+  QuestionProgressState,
+  setMyQuestionProgress,
+} from "@/services/questionProgress";
 import {
   formatJudgeMemory,
   getJudgeResultPresentation,
@@ -640,14 +691,75 @@ const searchParams = ref<QuestionQueryRequest>({
   pageSize: 8,
   current: 1,
 });
+const problemProgress = ref<Record<string, QuestionProgressState>>({});
+let problemProgressGeneration = 0;
+
+const progressUserId = computed<ApiId | undefined>(() => {
+  const loginUser = store.state.user.loginUser;
+  return checkAccess(loginUser, ACCESS_ENUM.USER) && loginUser?.id != null
+    ? loginUser.id
+    : undefined;
+});
+
+const loadProblemProgress = async (questions: QuestionVO[]) => {
+  const generation = ++problemProgressGeneration;
+  const userId = progressUserId.value;
+  problemProgress.value = Object.fromEntries(
+    questions
+      .filter(({ id }) => id != null)
+      .map(({ id }) => [String(id), "unattempted"])
+  );
+  if (userId == null) return;
+
+  const entries = await Promise.all(
+    questions.map(async ({ id }) => {
+      if (id == null) return undefined;
+      try {
+        return [String(id), await getMyQuestionProgress(userId, id)] as const;
+      } catch {
+        return [String(id), "unattempted"] as const;
+      }
+    })
+  );
+  if (generation !== problemProgressGeneration) return;
+  problemProgress.value = Object.fromEntries(
+    entries.filter(
+      (entry): entry is readonly [string, QuestionProgressState] => !!entry
+    )
+  );
+};
+
+const getProblemProgress = (question: QuestionVO) =>
+  question.id == null
+    ? "unattempted"
+    : problemProgress.value[String(question.id)] || "unattempted";
+
+const problemProgressLabels: Record<QuestionProgressState, string> = {
+  unattempted: "未做",
+  judging: "判题中",
+  passed: "已通过",
+  failed: "未通过",
+};
+
+const getProblemProgressLabel = (question: QuestionVO) =>
+  problemProgressLabels[getProblemProgress(question)];
+
+const getProblemProgressIcon = (question: QuestionVO) => {
+  const progress = getProblemProgress(question);
+  if (progress === "passed") return "✓";
+  if (progress === "failed") return "×";
+  return progress === "judging" ? "…" : "";
+};
 
 const loadData = async () => {
   const res = await QuestionControllerService.listQuestionVoByPage(
     searchParams.value
   );
   if (res.code === 0) {
-    dataList.value = res.data.records ?? [];
+    const records = res.data.records ?? [];
+    dataList.value = records;
     total.value = res.data.total ?? 0;
+    void loadProblemProgress(records);
   } else {
     message.error("加载失败，" + res.message);
   }
@@ -660,6 +772,9 @@ watch(
   },
   { deep: true }
 );
+watch(progressUserId, () => {
+  void loadProblemProgress(dataList.value);
+});
 onMounted(async () => {
   await Promise.all([loadData(), loadLanguageOptions()]);
 });
@@ -733,9 +848,7 @@ const currentLanguageText = computed(
       ?.text || loadedLanguage.value
 );
 
-const canViewSolution = computed(() =>
-  checkAccess(store.state.user.loginUser, ACCESS_ENUM.USER)
-);
+const canViewSolution = computed(() => progressUserId.value != null);
 
 const resultPresentation = computed(() =>
   getJudgeResultPresentation(submitResult.value || undefined)
@@ -809,6 +922,20 @@ const loadMySubmissions = async () => {
   }
 };
 
+const updateCurrentProblemProgress = (
+  submission: Pick<QuestionSubmitSummaryVO, "status" | "judgeInfo">
+) => {
+  const questionId = currentQuestion.value?.id;
+  const userId = progressUserId.value;
+  if (questionId == null || userId == null) return;
+  const progress = getQuestionProgressState(submission);
+  problemProgress.value = {
+    ...problemProgress.value,
+    [String(questionId)]: progress,
+  };
+  setMyQuestionProgress(userId, questionId, submission);
+};
+
 const onMySubmissionsPageChange = (page: PageChange) => {
   const current = typeof page === "number" ? page : page.current;
   if (current == null) return;
@@ -819,10 +946,12 @@ const onMySubmissionsPageChange = (page: PageChange) => {
 const polling = createQuestionSubmitPoller({
   onUpdate: (submission) => {
     submitResult.value = submission;
+    updateCurrentProblemProgress(submission);
     if (submission.status === 2 || submission.status === 3) {
       isSubmitting.value = false;
       isResultDetailsCollapsed.value = false;
       void loadMySubmissions();
+      void loadData();
     }
   },
   onTimeout: () => {
@@ -1102,6 +1231,7 @@ const doSubmit = async () => {
       showResult.value = true;
       isResultDetailsCollapsed.value = false;
       submitResult.value = { id: res.data, status: 0 };
+      updateCurrentProblemProgress(submitResult.value);
       void loadMySubmissions();
       startPolling(res.data);
     } else {
@@ -1163,7 +1293,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 #questionsView {
-  animation: claude-fade-up 0.4s ease-out;
+  animation: claude-fade-up var(--motion-standard) var(--ease-out);
   flex: 1;
   display: flex;
   min-height: 0;
@@ -1191,10 +1321,11 @@ onBeforeUnmount(() => {
   overflow: hidden;
   min-height: 0;
   border-right: 1px solid var(--hairline);
-  transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    flex-basis 480ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease,
-    transform 480ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease;
-  will-change: width, flex-basis, transform;
+  transition: width var(--motion-layout) var(--ease-drawer),
+    flex-basis var(--motion-layout) var(--ease-drawer),
+    opacity var(--motion-fast) ease,
+    transform var(--motion-layout) var(--ease-drawer),
+    border-color var(--motion-fast) ease;
 }
 
 .sidebar-toggle {
@@ -1215,8 +1346,8 @@ onBeforeUnmount(() => {
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transform: translateY(-50%);
-  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms ease,
-    background 150ms ease;
+  transition: left var(--motion-layout) var(--ease-drawer),
+    color var(--motion-fast) ease, background-color var(--motion-fast) ease;
 }
 
 .sidebar-toggle:hover {
@@ -1237,7 +1368,7 @@ onBeforeUnmount(() => {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--motion-layout) var(--ease-drawer);
 }
 
 .sidebar-toggle.collapsed svg {
@@ -1312,7 +1443,9 @@ onBeforeUnmount(() => {
   color: var(--muted);
   border: 1px solid var(--hairline);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
 }
 
 .filter-chip:hover {
@@ -1361,6 +1494,7 @@ onBeforeUnmount(() => {
 .problem-status {
   width: 18px;
   height: 18px;
+  border: 1px solid transparent;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1368,20 +1502,36 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 600;
+  line-height: 1;
 }
 
-.problem-status.solved {
-  background: var(--success);
-  color: #fff;
+.problem-status.passed {
+  color: var(--success);
+  background: rgba(93, 184, 114, 0.12);
+  border-color: rgba(93, 184, 114, 0.38);
 }
 
-.problem-status.attempted {
-  background: var(--warning);
-  color: #fff;
+.problem-status.failed {
+  color: var(--error);
+  background: rgba(198, 69, 69, 0.1);
+  border-color: rgba(198, 69, 69, 0.32);
 }
 
-.problem-status.pending {
+.problem-status.judging {
+  color: var(--warning);
+  background: rgba(212, 160, 23, 0.1);
+  border-color: rgba(212, 160, 23, 0.35);
+  animation: problem-status-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.problem-status.unattempted {
   border: 2px solid var(--hairline);
+}
+
+@keyframes problem-status-pulse {
+  to {
+    opacity: 0.45;
+  }
 }
 
 .problem-info {
@@ -1404,6 +1554,28 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-top: 3px;
   flex-wrap: wrap;
+}
+
+.problem-rate {
+  min-width: 48px;
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+
+.problem-rate strong {
+  color: var(--body-strong);
+  font-family: var(--font-code);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.problem-rate span {
+  color: var(--muted-soft);
+  font-size: 9px;
+  font-weight: 500;
 }
 
 .difficulty {
@@ -1462,10 +1634,10 @@ onBeforeUnmount(() => {
   border-right: 1px solid transparent;
   background: var(--surface-soft);
   min-height: 0;
-  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    width 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    height 480ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease;
-  will-change: left, width, height;
+  transition: left var(--motion-layout) var(--ease-drawer),
+    width var(--motion-layout) var(--ease-drawer),
+    height var(--motion-layout) var(--ease-drawer),
+    border-color var(--motion-fast) ease;
 }
 
 .tabs-row {
@@ -1483,6 +1655,7 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn {
+  position: relative;
   flex: 0 0 auto;
   font-family: var(--font-body);
   font-size: 14px;
@@ -1490,20 +1663,34 @@ onBeforeUnmount(() => {
   color: var(--muted);
   background: transparent;
   border: none;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
+  padding: 8px 6px 10px;
   cursor: pointer;
-  transition: color 150ms ease;
+  transition: color var(--motion-fast) ease;
+}
+
+.tab-btn::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  left: 6px;
+  height: 2px;
+  background: var(--primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms var(--ease-out);
 }
 
 .tab-btn:hover {
   color: var(--ink);
-  background: var(--surface-card);
 }
 
 .tab-btn.active {
   color: var(--ink);
-  background: var(--surface-card);
+}
+
+.tab-btn.active::after {
+  transform: scaleX(1);
 }
 
 .tab-btn:disabled {
@@ -1518,8 +1705,10 @@ onBeforeUnmount(() => {
   margin: 0 auto;
   padding: 30px 32px 32px;
   background: var(--surface-card);
+  border: 1px solid var(--hairline-soft);
   border-radius: var(--radius-lg);
-  transition: max-width 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--shadow-sm);
+  transition: max-width var(--motion-layout) var(--ease-drawer);
 }
 
 .question-heading {
@@ -1865,6 +2054,10 @@ onBeforeUnmount(() => {
   margin-top: 18px;
 }
 
+.mobile-only-pagination {
+  display: none !important;
+}
+
 .submission-detail-header > div {
   display: flex;
   align-items: center;
@@ -1959,11 +2152,10 @@ onBeforeUnmount(() => {
   min-height: 0;
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: top 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    left 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    width 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    height 480ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: top, left, width, height;
+  transition: top var(--motion-layout) var(--ease-drawer),
+    left var(--motion-layout) var(--ease-drawer),
+    width var(--motion-layout) var(--ease-drawer),
+    height var(--motion-layout) var(--ease-drawer);
 }
 
 .editor-toolbar {
@@ -2100,10 +2292,11 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0;
   left: 0;
+  right: 10px;
   z-index: 1;
-  width: 14px;
   height: 24px;
   background: var(--canvas);
+  transform: translateX(calc(-100% + 14px));
   animation: pacman-travel 30s linear infinite;
 }
 
@@ -2136,10 +2329,10 @@ onBeforeUnmount(() => {
 
 @keyframes pacman-travel {
   from {
-    width: 14px;
+    transform: translateX(calc(-100% + 14px));
   }
   to {
-    width: calc(100% - 10px);
+    transform: translateX(0);
   }
 }
 
@@ -2193,10 +2386,30 @@ onBeforeUnmount(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .submit-dots i,
-  .pacman-progress,
   .pacman,
   .btn-reset-code.confirmed:disabled {
     animation: none;
+  }
+
+  .pacman-progress {
+    display: none;
+  }
+
+  .sidebar,
+  .sidebar-toggle,
+  .description-panel,
+  .question-reading-area,
+  .editor-panel,
+  .results-panel,
+  .result-detail-shell,
+  .result-panel-enter-active,
+  .result-panel-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .result-panel-enter-from,
+  .result-panel-leave-to {
+    transform: none;
   }
 }
 
@@ -2222,7 +2435,20 @@ onBeforeUnmount(() => {
   border-top: 1px solid var(--hairline);
   background: var(--canvas);
   z-index: 10;
-  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 -8px 28px rgba(20, 20, 19, 0.06);
+  transition: left var(--motion-layout) var(--ease-drawer);
+}
+
+.result-panel-enter-active,
+.result-panel-leave-active {
+  transition: opacity var(--motion-standard) ease,
+    transform var(--motion-standard) var(--ease-out);
+}
+
+.result-panel-enter-from,
+.result-panel-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .results-header {
@@ -2335,8 +2561,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-rows: 1fr;
   opacity: 1;
-  transition: grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 220ms ease;
+  transition: grid-template-rows var(--motion-layout) var(--ease-drawer),
+    opacity var(--motion-standard) ease;
 }
 
 .result-detail-shell.collapsed {
@@ -2387,16 +2613,27 @@ onBeforeUnmount(() => {
 .empty-state {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 32px;
   color: var(--muted-soft);
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 400;
+  text-align: center;
+}
+
+.empty-state span {
+  color: var(--primary);
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .empty-state p {
-  margin: 0;
+  margin: 8px 0 0;
 }
 
 @media (max-width: 1024px) {
@@ -2461,23 +2698,207 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .workspace {
-    flex-direction: column;
+  #questionsView {
+    display: block;
+    min-height: 100%;
   }
+
+  .workspace {
+    min-height: 100%;
+    flex-direction: column;
+    overflow: visible;
+    border-radius: 0;
+    border-right: 0;
+    border-left: 0;
+  }
+
   .sidebar {
     width: 100%;
     min-width: 0;
-    flex-basis: auto;
-    max-height: 35vh;
+    flex: 0 0 auto;
+    max-height: none;
     border-right: none;
     border-bottom: 1px solid var(--hairline);
+  }
+
+  .problem-list {
+    max-height: 310px;
+    flex: 0 1 auto;
+    overflow-y: auto;
   }
 
   .sidebar-toggle {
     display: none;
   }
-  #questionsView {
-    margin: calc(-1 * var(--space-md));
+
+  .desktop-only-pagination {
+    display: none !important;
+  }
+
+  .mobile-only-pagination {
+    display: flex !important;
+  }
+
+  .main-content {
+    flex: 0 0 auto;
+    display: block;
+    min-height: 420px;
+  }
+
+  .description-panel {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+    min-height: 420px;
+    padding: 0 12px 20px;
+    overflow: visible;
+    border-right: 0;
+  }
+
+  .tabs-row {
+    gap: 4px;
+    margin: 0 -12px 14px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    padding: 7px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .detail-tab {
+    flex-basis: 128px;
+  }
+
+  .question-reading-area {
+    min-height: 0;
+    padding: 20px 16px 24px;
+    border-radius: var(--radius-md);
+  }
+
+  .question-heading {
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+  }
+
+  .problem-title {
+    font-size: 28px;
+  }
+
+  .problem-section :deep(p) {
+    font-size: 14px;
+  }
+
+  .submission-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 12px;
+    padding: 13px 6px;
+  }
+
+  .submission-time {
+    grid-column: 1 / -1;
+  }
+
+  .submission-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .submission-detail-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .submission-detail-metrics > div + div {
+    border-top: 1px solid var(--surface-card);
+    border-left: 0;
+  }
+
+  .editor-panel {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: 440px;
+    border-radius: 0;
+  }
+
+  .editor-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .lang-selector {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .editor-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .btn-submit,
+  .btn-reset-code {
+    width: 100%;
+  }
+
+  .results-panel {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    left: auto;
+  }
+
+  .results-header {
+    align-items: flex-start;
+    padding: 12px 14px;
+  }
+
+  .judge-pacman-track {
+    order: 3;
+    width: 100%;
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  .result-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .result-stats {
+    gap: 14px;
+  }
+
+  .result-stat {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .result-detail-content {
+    max-height: none;
+  }
+
+  .empty-state {
+    min-height: 420px;
+    padding: 32px 20px;
+    font-size: 24px;
+    text-align: center;
   }
 
   .limits-strip {

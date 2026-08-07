@@ -1,31 +1,33 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="confirm-dialog-backdrop" @click.self="close">
-      <section
-        class="confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-      >
-        <div :class="['confirm-dialog-marker', tone]">!</div>
-        <div class="confirm-dialog-copy">
-          <h2 :id="titleId">{{ title }}</h2>
-          <p>{{ message }}</p>
-        </div>
-        <div class="confirm-dialog-actions">
-          <button class="dialog-btn secondary" type="button" @click="close">
-            {{ cancelText }}
-          </button>
-          <button
-            :class="['dialog-btn', tone]"
-            type="button"
-            @click="$emit('confirm')"
-          >
-            {{ confirmText }}
-          </button>
-        </div>
-      </section>
-    </div>
+    <Transition name="confirm-dialog" appear>
+      <div v-if="visible" class="confirm-dialog-backdrop" @click.self="close">
+        <section
+          class="confirm-dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+        >
+          <div :class="['confirm-dialog-marker', tone]">!</div>
+          <div class="confirm-dialog-copy">
+            <h2 :id="titleId">{{ title }}</h2>
+            <p>{{ message }}</p>
+          </div>
+          <div class="confirm-dialog-actions">
+            <button class="dialog-btn secondary" type="button" @click="close">
+              {{ cancelText }}
+            </button>
+            <button
+              :class="['dialog-btn', tone]"
+              type="button"
+              @click="$emit('confirm')"
+            >
+              {{ confirmText }}
+            </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -69,6 +71,30 @@ const close = () => emit("update:visible", false);
   padding: 20px;
   background: rgba(18, 17, 15, 0.52);
   backdrop-filter: blur(3px);
+}
+
+.confirm-dialog-enter-active,
+.confirm-dialog-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.confirm-dialog-enter-active .confirm-dialog,
+.confirm-dialog-leave-active .confirm-dialog {
+  transform-origin: center;
+  transition: opacity var(--motion-standard) ease,
+    transform var(--motion-standard) var(--ease-out);
+}
+
+.confirm-dialog-enter-from,
+.confirm-dialog-leave-to,
+.confirm-dialog-enter-from .confirm-dialog,
+.confirm-dialog-leave-to .confirm-dialog {
+  opacity: 0;
+}
+
+.confirm-dialog-enter-from .confirm-dialog,
+.confirm-dialog-leave-to .confirm-dialog {
+  transform: translateY(6px) scale(0.97);
 }
 
 .confirm-dialog {
@@ -134,6 +160,28 @@ const close = () => emit("update:visible", false);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.dialog-btn:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog-enter-active,
+  .confirm-dialog-leave-active,
+  .confirm-dialog-enter-active .confirm-dialog,
+  .confirm-dialog-leave-active .confirm-dialog {
+    transition-duration: 120ms;
+  }
+
+  .confirm-dialog-enter-from .confirm-dialog,
+  .confirm-dialog-leave-to .confirm-dialog {
+    transform: none;
+  }
 }
 
 .dialog-btn.secondary {

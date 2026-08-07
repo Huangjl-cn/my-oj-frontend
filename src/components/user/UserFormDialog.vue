@@ -1,94 +1,100 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="dialog-backdrop" @click.self="close">
-      <section
-        class="user-form-dialog"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-      >
-        <header class="dialog-header">
-          <div>
-            <span class="dialog-kicker">USER DIRECTORY</span>
-            <h2 :id="titleId">{{ isEditing ? "编辑用户" : "新增用户" }}</h2>
-          </div>
-          <button
-            class="close-button"
-            type="button"
-            title="关闭"
-            aria-label="关闭"
-            @click="close"
-          >
-            <IconClose />
-          </button>
-        </header>
+    <Transition name="user-dialog" appear>
+      <div v-if="visible" class="dialog-backdrop" @click.self="close">
+        <section
+          class="user-form-dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+        >
+          <header class="dialog-header">
+            <div>
+              <span class="dialog-kicker">USER DIRECTORY</span>
+              <h2 :id="titleId">{{ isEditing ? "编辑用户" : "新增用户" }}</h2>
+            </div>
+            <button
+              class="close-button"
+              type="button"
+              title="关闭"
+              aria-label="关闭"
+              @click="close"
+            >
+              <IconClose />
+            </button>
+          </header>
 
-        <form class="user-form" @submit.prevent="submit">
-          <div class="field-row">
-            <label class="form-field">
-              <span>账号</span>
-              <input
-                v-model="form.userAccount"
-                :readonly="isEditing"
-                :class="{ readonly: isEditing }"
-                autocomplete="off"
-                placeholder="请输入登录账号"
-              />
-            </label>
-            <label class="form-field">
-              <span>昵称</span>
-              <input
-                v-model="form.userName"
-                autocomplete="off"
-                placeholder="请输入用户昵称"
-              />
-            </label>
-          </div>
+          <form class="user-form" @submit.prevent="submit">
+            <div class="field-row">
+              <label class="form-field">
+                <span>账号</span>
+                <input
+                  v-model="form.userAccount"
+                  :readonly="isEditing"
+                  :class="{ readonly: isEditing }"
+                  autocomplete="off"
+                  placeholder="请输入登录账号"
+                />
+              </label>
+              <label class="form-field">
+                <span>昵称</span>
+                <input
+                  v-model="form.userName"
+                  autocomplete="off"
+                  placeholder="请输入用户昵称"
+                />
+              </label>
+            </div>
 
-          <label class="form-field">
-            <span>角色</span>
-            <select v-model="form.userRole" :disabled="isCurrentUser">
-              <option value="" disabled>请选择角色</option>
-              <option
-                v-for="role in roles"
-                :key="role.value"
-                :value="role.value"
+            <label class="form-field">
+              <span>角色</span>
+              <select v-model="form.userRole" :disabled="isCurrentUser">
+                <option value="" disabled>请选择角色</option>
+                <option
+                  v-for="role in roles"
+                  :key="role.value"
+                  :value="role.value"
+                >
+                  {{ role.text }}
+                </option>
+              </select>
+              <small v-if="isCurrentUser">当前管理员不能降级或封禁自己</small>
+            </label>
+
+            <label class="form-field">
+              <span>简介</span>
+              <textarea
+                v-model="form.userProfile"
+                rows="3"
+                placeholder="简单介绍这位用户"
+              ></textarea>
+            </label>
+
+            <fieldset class="avatar-field">
+              <legend>头像</legend>
+              <AvatarPicker v-model="form.userAvatar" />
+            </fieldset>
+
+            <p v-if="formError" class="form-error">{{ formError }}</p>
+
+            <footer class="dialog-actions">
+              <button class="secondary-button" type="button" @click="close">
+                取消
+              </button>
+              <button
+                class="primary-button"
+                type="submit"
+                :disabled="submitting"
               >
-                {{ role.text }}
-              </option>
-            </select>
-            <small v-if="isCurrentUser">当前管理员不能降级或封禁自己</small>
-          </label>
-
-          <label class="form-field">
-            <span>简介</span>
-            <textarea
-              v-model="form.userProfile"
-              rows="3"
-              placeholder="简单介绍这位用户"
-            ></textarea>
-          </label>
-
-          <fieldset class="avatar-field">
-            <legend>头像</legend>
-            <AvatarPicker v-model="form.userAvatar" />
-          </fieldset>
-
-          <p v-if="formError" class="form-error">{{ formError }}</p>
-
-          <footer class="dialog-actions">
-            <button class="secondary-button" type="button" @click="close">
-              取消
-            </button>
-            <button class="primary-button" type="submit" :disabled="submitting">
-              {{
-                submitting ? "保存中..." : isEditing ? "保存修改" : "创建用户"
-              }}
-            </button>
-          </footer>
-        </form>
-      </section>
-    </div>
+                {{
+                  submitting ? "保存中..." : isEditing ? "保存修改" : "创建用户"
+                }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -202,6 +208,30 @@ const submit = () => {
   padding: 20px;
   background: rgba(18, 17, 15, 0.56);
   backdrop-filter: blur(4px);
+}
+
+.user-dialog-enter-active,
+.user-dialog-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.user-dialog-enter-active .user-form-dialog,
+.user-dialog-leave-active .user-form-dialog {
+  transform-origin: center;
+  transition: opacity var(--motion-standard) ease,
+    transform var(--motion-standard) var(--ease-out);
+}
+
+.user-dialog-enter-from,
+.user-dialog-leave-to,
+.user-dialog-enter-from .user-form-dialog,
+.user-dialog-leave-to .user-form-dialog {
+  opacity: 0;
+}
+
+.user-dialog-enter-from .user-form-dialog,
+.user-dialog-leave-to .user-form-dialog {
+  transform: translateY(6px) scale(0.97);
 }
 
 .user-form-dialog {
@@ -360,6 +390,15 @@ const submit = () => {
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.secondary-button:active,
+.primary-button:not(:disabled):active {
+  transform: translateY(1px);
 }
 
 .secondary-button {
@@ -389,6 +428,20 @@ const submit = () => {
   .user-form {
     padding-right: 16px;
     padding-left: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-dialog-enter-active,
+  .user-dialog-leave-active,
+  .user-dialog-enter-active .user-form-dialog,
+  .user-dialog-leave-active .user-form-dialog {
+    transition-duration: 120ms;
+  }
+
+  .user-dialog-enter-from .user-form-dialog,
+  .user-dialog-leave-to .user-form-dialog {
+    transform: none;
   }
 }
 </style>

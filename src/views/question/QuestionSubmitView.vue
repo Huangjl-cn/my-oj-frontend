@@ -34,6 +34,7 @@
         </a-form>
       </div>
       <a-table
+        class="desktop-table"
         row-key="id"
         :columns="columns"
         :data="dataList"
@@ -106,6 +107,90 @@
           </span>
         </template>
       </a-table>
+      <div class="mobile-submission-list">
+        <article
+          v-for="(submission, index) in dataList"
+          :key="String(submission.id ?? index)"
+          class="mobile-submission-card"
+        >
+          <header class="mobile-card-header">
+            <UserIdentity :user-id="submission.userId" :size="42" />
+            <span :class="['status-badge', `status-${submission.status}`]">
+              {{ getStatusText(submission.status) }}
+            </span>
+          </header>
+
+          <div class="mobile-judge-row">
+            <div class="judge-summary">
+              <strong
+                :class="[
+                  'judge-result',
+                  getJudgeResultPresentation(submission).tone,
+                ]"
+              >
+                {{ getJudgeSummary(submission).title }}
+              </strong>
+              <span v-if="getJudgeSummary(submission).preview">
+                {{ getJudgeSummary(submission).preview }}
+              </span>
+            </div>
+            <span class="mobile-language">
+              {{ getLanguageText(submission.language) }}
+            </span>
+          </div>
+
+          <dl class="mobile-metrics">
+            <div>
+              <dt>运行时间</dt>
+              <dd>{{ formatJudgeTime(submission.judgeInfo?.time) }}</dd>
+            </div>
+            <div>
+              <dt>内存占用</dt>
+              <dd>{{ formatJudgeMemory(submission.judgeInfo?.memory) }}</dd>
+            </div>
+          </dl>
+
+          <div class="mobile-card-meta">
+            <div>
+              <code :title="String(submission.id ?? '')">
+                提交 #{{ submission.id ?? "--" }}
+              </code>
+              <code :title="String(submission.questionId ?? '')">
+                题目 #{{ submission.questionId ?? "--" }}
+              </code>
+            </div>
+            <time>{{ formatDateTime(submission.createTime) }}</time>
+          </div>
+
+          <button
+            class="mobile-details-toggle"
+            type="button"
+            @click="toggleMobileSubmission(submission.id)"
+          >
+            {{
+              isMobileSubmissionExpanded(submission.id)
+                ? "收起详情"
+                : "查看详情"
+            }}
+          </button>
+          <Transition name="mobile-details">
+            <SubmissionDiagnosticPanel
+              v-if="isMobileSubmissionExpanded(submission.id)"
+              :submission="submission"
+            />
+          </Transition>
+        </article>
+        <p v-if="!dataList.length" class="mobile-empty">暂无提交记录</p>
+        <a-pagination
+          class="mobile-pagination"
+          :current="searchParams.current"
+          :page-size="searchParams.pageSize"
+          :total="total"
+          simple
+          hide-on-single-page
+          @change="onPageChange"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -137,6 +222,7 @@ const formatJudgeTime = (time?: number) => (time == null ? "--" : `${time} ms`);
 const dataList = ref<QuestionSubmitVO[]>([]);
 const total = ref(0);
 const languageOptions = ref<LanguageOption[]>([]);
+const expandedMobileSubmissionIds = ref<string[]>([]);
 const searchParams = ref<QuestionSubmitQueryRequest>({
   questionId: undefined,
   language: undefined,
@@ -203,6 +289,26 @@ const getJudgeSummary = (submission: QuestionSubmitVO) => {
   };
 };
 
+const getStatusText = (status?: number) => {
+  if (status === 0) return "待判题";
+  if (status === 1) return "判题中";
+  if (status === 2) return "完成";
+  if (status === 3) return "失败";
+  return "未知";
+};
+
+const isMobileSubmissionExpanded = (submissionId?: number) =>
+  submissionId != null &&
+  expandedMobileSubmissionIds.value.includes(String(submissionId));
+
+const toggleMobileSubmission = (submissionId?: number) => {
+  if (submissionId == null) return;
+  const id = String(submissionId);
+  expandedMobileSubmissionIds.value = isMobileSubmissionExpanded(submissionId)
+    ? expandedMobileSubmissionIds.value.filter((item) => item !== id)
+    : [...expandedMobileSubmissionIds.value, id];
+};
+
 const onPageChange = (page: number) => {
   searchParams.value = { ...searchParams.value, current: page };
 };
@@ -213,12 +319,15 @@ const doSubmit = () => {
 
 <style scoped>
 #questionSubmitView {
-  animation: claude-fade-up 0.4s ease-out;
-  padding: var(--space-lg);
+  max-width: 1600px;
+  margin: 0 auto;
+  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  padding: var(--space-lg) 0;
 }
 
 .page-heading {
-  margin-bottom: var(--space-lg);
+  width: calc(100% - (var(--space-xl) * 2));
+  margin: 0 auto var(--space-lg);
 }
 
 .page-kicker {
@@ -226,11 +335,12 @@ const doSubmit = () => {
   font-family: var(--font-code);
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .page-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
@@ -238,11 +348,13 @@ const doSubmit = () => {
 }
 
 .page-card {
-  background: var(--canvas);
+  width: calc(100% - (var(--space-xl) * 2));
+  margin: 0 auto;
+  background: var(--surface-soft);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
   position: relative;
 }
 
@@ -255,6 +367,21 @@ const doSubmit = () => {
   height: 2px;
   background: var(--primary);
   opacity: 0.3;
+}
+
+.mobile-submission-list {
+  display: none;
+}
+
+.mobile-details-enter-active,
+.mobile-details-leave-active {
+  transition: opacity 180ms ease, transform 180ms var(--ease-out);
+}
+
+.mobile-details-enter-from,
+.mobile-details-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 .filter-section {
@@ -409,6 +536,15 @@ const doSubmit = () => {
 :deep(.arco-table-body) {
   max-width: 100%;
   overflow: hidden !important;
+  background: var(--surface-soft) !important;
+}
+
+:deep(.arco-table-td) {
+  background: var(--surface-card) !important;
+}
+
+:deep(.arco-table-tr:hover .arco-table-td) {
+  background: var(--surface-cream-strong) !important;
 }
 
 :deep(.arco-table-element) {
@@ -426,6 +562,231 @@ const doSubmit = () => {
 }
 
 :deep(.arco-table-tr-expand:hover > .arco-table-td) {
-  background: var(--surface-cream-strong) !important;
+  background: var(--surface-soft) !important;
+}
+
+@media (max-width: 768px) {
+  #questionSubmitView {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 20px 16px 28px;
+  }
+
+  .page-heading {
+    width: 100%;
+    margin-bottom: 18px;
+  }
+
+  .page-title {
+    font-size: 32px;
+  }
+
+  .page-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+  }
+
+  .filter-section {
+    padding: 18px 16px;
+  }
+
+  .filter-section .arco-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filter-section :deep(.arco-form-item),
+  .filter-section :deep(.arco-form-item-content),
+  .filter-section :deep(.arco-select-view),
+  .filter-section :deep(.arco-btn) {
+    width: 100%;
+  }
+
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-submission-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .mobile-submission-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+  }
+
+  .mobile-card-header,
+  .mobile-judge-row,
+  .mobile-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .mobile-submission-card > *,
+  .mobile-card-header :deep(.user-identity),
+  .mobile-judge-row .judge-summary {
+    min-width: 0;
+  }
+
+  .mobile-card-header :deep(.user-identity) {
+    flex: 1;
+  }
+
+  .mobile-card-header {
+    padding: 14px;
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-judge-row {
+    align-items: flex-start;
+    padding: 15px 14px;
+  }
+
+  .mobile-judge-row .judge-summary {
+    flex: 1;
+  }
+
+  .mobile-language {
+    flex: 0 0 auto;
+    max-width: 42%;
+    overflow: hidden;
+    color: var(--body-strong);
+    background: var(--surface-soft);
+    border-radius: var(--radius-pill);
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0 14px;
+    overflow: hidden;
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
+  }
+
+  .mobile-metrics > div {
+    min-width: 0;
+    padding: 10px 12px;
+  }
+
+  .mobile-metrics > div + div {
+    border-left: 1px solid var(--hairline);
+  }
+
+  .mobile-metrics dt {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .mobile-metrics dd {
+    margin: 3px 0 0;
+    overflow: hidden;
+    color: var(--ink);
+    font-family: var(--font-code);
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-card-meta {
+    align-items: flex-end;
+    padding: 14px;
+  }
+
+  .mobile-card-meta > div {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  .mobile-card-meta code {
+    max-width: 180px;
+    overflow: hidden;
+    color: var(--muted);
+    font-family: var(--font-code);
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-card-meta time {
+    flex: 0 0 auto;
+    max-width: 42%;
+    overflow: hidden;
+    color: var(--muted-soft);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-details-toggle {
+    width: calc(100% - 28px);
+    height: 34px;
+    margin: 0 14px 14px;
+    color: var(--primary);
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .mobile-submission-card :deep(.diagnostic-panel) {
+    padding: 14px;
+    border-top: 1px solid var(--hairline-soft);
+  }
+
+  .mobile-empty {
+    padding: 48px 16px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .mobile-pagination {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    padding: 10px 0 8px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-details-enter-active,
+  .mobile-details-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .mobile-details-enter-from,
+  .mobile-details-leave-to {
+    transform: none;
+  }
 }
 </style>

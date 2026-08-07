@@ -70,6 +70,15 @@
   --shadow-sm: 0 1px 3px rgba(20, 20, 19, 0.06);
   --shadow-md: 0 4px 12px rgba(20, 20, 19, 0.08);
   --shadow-lg: 0 8px 24px rgba(20, 20, 19, 0.1);
+
+  /* === Motion === */
+  --motion-fast: 150ms;
+  --motion-standard: 220ms;
+  --motion-layout: 320ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --focus-ring: 0 0 0 3px rgba(204, 120, 92, 0.2);
 }
 
 :root[data-theme="dark"] {
@@ -167,6 +176,20 @@ textarea,
 .monaco-editor .view-line,
 .monaco-editor .view-lines * {
   cursor: url("../assets/cursors/pixel-text.svg") 8 10, text !important;
+}
+
+:where(
+    a[href],
+    button,
+    input,
+    textarea,
+    select,
+    [role="button"],
+    [role="tab"],
+    [role="radio"]
+  ):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* === Scrollbar === */
@@ -268,7 +291,10 @@ h4 {
   line-height: 1 !important;
   height: 40px !important;
   padding: 0 20px !important;
-  transition: all 0.15s ease !important;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out) !important;
 }
 
 .arco-btn.arco-btn-primary {
@@ -483,7 +509,8 @@ h4 {
   font-size: 14px !important;
   font-weight: 500 !important;
   border-radius: var(--radius-md) !important;
-  transition: all 0.15s ease !important;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease !important;
 }
 
 .arco-menu-item:hover {
@@ -583,7 +610,9 @@ h4 {
   border-radius: var(--radius-sm) !important;
   font-size: 14px !important;
   font-family: var(--font-body) !important;
-  transition: all 0.15s ease !important;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease !important;
 }
 
 .arco-pagination-item:hover {
@@ -706,7 +735,7 @@ h4 {
 @keyframes claude-fade-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -752,7 +781,9 @@ h4 {
   border-radius: var(--radius-sm);
   height: 34px;
   padding: 0 18px;
-  transition: all 0.15s;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
 }
 
 .arco-modal-footer .arco-btn-primary {
@@ -774,4 +805,30 @@ h4 {
 .arco-modal-footer .arco-btn-secondary:hover {
   border-color: var(--primary) !important;
   color: var(--primary) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes claude-fade-up {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  html,
+  body,
+  #app {
+    scroll-behavior: auto;
+  }
+
+  .arco-btn,
+  .arco-menu-item,
+  .arco-pagination-item,
+  .arco-tabs-header-title {
+    transition-duration: 120ms !important;
+  }
 }

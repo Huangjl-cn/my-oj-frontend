@@ -102,8 +102,10 @@ const judgeCases = computed(() =>
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0;
-  padding-left: 8px;
-  border-left: 1px solid var(--hairline);
+  overflow: hidden;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
 }
 
 .judge-metrics > div {
@@ -144,10 +146,7 @@ const judgeCases = computed(() =>
 
   .judge-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-top: 18px;
     padding-left: 0;
-    border-top: 1px solid var(--hairline);
-    border-left: 0;
   }
 
   .judge-metrics > div:nth-child(3) {

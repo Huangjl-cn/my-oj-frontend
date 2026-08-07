@@ -13,28 +13,34 @@
         {{ group.label }}
       </button>
     </div>
-    <section v-if="activeGroup" :key="activeGroup.value" class="avatar-group">
-      <header class="group-header">
-        <h3>{{ activeGroup.label }}</h3>
-        <span>{{ activeGroup.avatars.length }} 个</span>
-      </header>
-      <div class="avatar-grid">
-        <button
-          v-for="avatar in activeGroup.avatars"
-          :key="avatar.value"
-          class="avatar-option"
-          :class="{ selected: modelValue === avatar.value }"
-          type="button"
-          role="radio"
-          :aria-checked="modelValue === avatar.value"
-          :title="avatar.label"
-          @click="$emit('update:modelValue', avatar.value)"
-        >
-          <UserAvatar :avatar="avatar.value" :name="avatar.label" :size="54" />
-          <span>{{ avatar.label }}</span>
-        </button>
-      </div>
-    </section>
+    <Transition name="avatar-group" mode="out-in">
+      <section v-if="activeGroup" :key="activeGroup.value" class="avatar-group">
+        <header class="group-header">
+          <h3>{{ activeGroup.label }}</h3>
+          <span>{{ activeGroup.avatars.length }} 个</span>
+        </header>
+        <div class="avatar-grid">
+          <button
+            v-for="avatar in activeGroup.avatars"
+            :key="avatar.value"
+            class="avatar-option"
+            :class="{ selected: modelValue === avatar.value }"
+            type="button"
+            role="radio"
+            :aria-checked="modelValue === avatar.value"
+            :title="avatar.label"
+            @click="$emit('update:modelValue', avatar.value)"
+          >
+            <UserAvatar
+              :avatar="avatar.value"
+              :name="avatar.label"
+              :size="54"
+            />
+            <span>{{ avatar.label }}</span>
+          </button>
+        </div>
+      </section>
+    </Transition>
   </div>
 </template>
 
@@ -110,6 +116,17 @@ watch(
   min-width: 0;
 }
 
+.avatar-group-enter-active,
+.avatar-group-leave-active {
+  transition: opacity 160ms ease, transform 160ms var(--ease-out);
+}
+
+.avatar-group-enter-from,
+.avatar-group-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .group-header {
   display: flex;
   align-items: center;
@@ -173,6 +190,18 @@ watch(
 
   .avatar-grid {
     grid-template-columns: repeat(3, minmax(76px, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-group-enter-active,
+  .avatar-group-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .avatar-group-enter-from,
+  .avatar-group-leave-to {
+    transform: none;
   }
 }
 </style>

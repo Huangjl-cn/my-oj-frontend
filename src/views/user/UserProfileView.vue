@@ -56,102 +56,106 @@
           </button>
         </div>
 
-        <form
-          v-if="activeTab === 'profile'"
-          class="settings-form"
-          @submit.prevent="saveProfile"
-        >
-          <header class="form-heading">
-            <h2>个人资料</h2>
-            <p>更新昵称、简介和头像。</p>
-          </header>
+        <Transition name="settings-panel" mode="out-in">
+          <form
+            v-if="activeTab === 'profile'"
+            key="profile"
+            class="settings-form"
+            @submit.prevent="saveProfile"
+          >
+            <header class="form-heading">
+              <h2>个人资料</h2>
+              <p>更新昵称、简介和头像。</p>
+            </header>
 
-          <label class="form-field">
-            <span>账号</span>
-            <input :value="loginUser.userAccount" readonly />
-          </label>
-          <label class="form-field">
-            <span>昵称</span>
-            <input
-              v-model="profileForm.userName"
-              autocomplete="name"
-              placeholder="请输入昵称"
-            />
-          </label>
-          <label class="form-field">
-            <span>个人简介</span>
-            <textarea
-              v-model="profileForm.userProfile"
-              rows="4"
-              placeholder="介绍一下自己"
-            ></textarea>
-          </label>
-          <fieldset class="avatar-field">
-            <legend>选择头像</legend>
-            <AvatarPicker v-model="profileForm.userAvatar" />
-          </fieldset>
-          <p v-if="profileError" class="form-error">{{ profileError }}</p>
-          <div class="form-actions">
-            <button
-              class="primary-button"
-              type="submit"
-              :disabled="profileSaving"
-            >
-              <IconSave />
-              {{ profileSaving ? "保存中..." : "保存资料" }}
-            </button>
-          </div>
-        </form>
+            <label class="form-field">
+              <span>账号</span>
+              <input :value="loginUser.userAccount" readonly />
+            </label>
+            <label class="form-field">
+              <span>昵称</span>
+              <input
+                v-model="profileForm.userName"
+                autocomplete="name"
+                placeholder="请输入昵称"
+              />
+            </label>
+            <label class="form-field">
+              <span>个人简介</span>
+              <textarea
+                v-model="profileForm.userProfile"
+                rows="4"
+                placeholder="介绍一下自己"
+              ></textarea>
+            </label>
+            <fieldset class="avatar-field">
+              <legend>选择头像</legend>
+              <AvatarPicker v-model="profileForm.userAvatar" />
+            </fieldset>
+            <p v-if="profileError" class="form-error">{{ profileError }}</p>
+            <div class="form-actions">
+              <button
+                class="primary-button"
+                type="submit"
+                :disabled="profileSaving"
+              >
+                <IconSave />
+                {{ profileSaving ? "保存中..." : "保存资料" }}
+              </button>
+            </div>
+          </form>
 
-        <form
-          v-else
-          class="settings-form password-form"
-          @submit.prevent="savePassword"
-        >
-          <header class="form-heading">
-            <h2>修改密码</h2>
-            <p>新密码至少需要 8 位。</p>
-          </header>
+          <form
+            v-else
+            key="password"
+            class="settings-form password-form"
+            @submit.prevent="savePassword"
+          >
+            <header class="form-heading">
+              <h2>修改密码</h2>
+              <p>新密码至少需要 8 位。</p>
+            </header>
 
-          <label class="form-field">
-            <span>旧密码</span>
-            <input
-              v-model="passwordForm.oldPassword"
-              type="password"
-              autocomplete="current-password"
-              placeholder="请输入旧密码"
-            />
-          </label>
-          <label class="form-field">
-            <span>新密码</span>
-            <input
-              v-model="passwordForm.newPassword"
-              type="password"
-              autocomplete="new-password"
-              placeholder="至少 8 位"
-            />
-          </label>
-          <label class="form-field">
-            <span>确认新密码</span>
-            <input
-              v-model="passwordForm.checkPassword"
-              type="password"
-              autocomplete="new-password"
-              placeholder="再次输入新密码"
-            />
-          </label>
-          <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
-          <div class="form-actions">
-            <button
-              class="primary-button"
-              type="submit"
-              :disabled="passwordSaving"
-            >
-              <IconLock />
-              {{ passwordSaving ? "修改中..." : "修改密码" }}
-            </button>
-          </div>
-        </form>
+            <label class="form-field">
+              <span>旧密码</span>
+              <input
+                v-model="passwordForm.oldPassword"
+                type="password"
+                autocomplete="current-password"
+                placeholder="请输入旧密码"
+              />
+            </label>
+            <label class="form-field">
+              <span>新密码</span>
+              <input
+                v-model="passwordForm.newPassword"
+                type="password"
+                autocomplete="new-password"
+                placeholder="至少 8 位"
+              />
+            </label>
+            <label class="form-field">
+              <span>确认新密码</span>
+              <input
+                v-model="passwordForm.checkPassword"
+                type="password"
+                autocomplete="new-password"
+                placeholder="再次输入新密码"
+              />
+            </label>
+            <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
+            <div class="form-actions">
+              <button
+                class="primary-button"
+                type="submit"
+                :disabled="passwordSaving"
+              >
+                <IconLock />
+                {{ passwordSaving ? "修改中..." : "修改密码" }}
+              </button>
+            </div>
+          </form>
+        </Transition>
       </section>
     </div>
   </main>
@@ -290,7 +294,7 @@ const savePassword = async () => {
   min-width: 0;
   margin: 0 auto;
   padding: var(--space-lg);
-  animation: claude-fade-up 0.4s ease-out;
+  animation: claude-fade-up var(--motion-standard) var(--ease-out);
 }
 
 .page-header {
@@ -302,6 +306,7 @@ const savePassword = async () => {
   font-family: var(--font-code);
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .page-header h1 {
@@ -407,7 +412,7 @@ const savePassword = async () => {
 .settings-panel {
   min-width: 0;
   overflow: hidden;
-  background: var(--canvas);
+  background: var(--surface-soft);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
 }
@@ -446,6 +451,17 @@ const savePassword = async () => {
   display: grid;
   gap: 18px;
   padding: 26px;
+}
+
+.settings-panel-enter-active,
+.settings-panel-leave-active {
+  transition: opacity 180ms ease, transform 180ms var(--ease-out);
+}
+
+.settings-panel-enter-from,
+.settings-panel-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 .password-form {
@@ -550,6 +566,13 @@ const savePassword = async () => {
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
+  transition: background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.primary-button:not(:disabled):active {
+  transform: translateY(1px);
 }
 
 .primary-button:disabled {
@@ -605,6 +628,18 @@ const savePassword = async () => {
 
   .settings-form {
     padding: 20px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-panel-enter-active,
+  .settings-panel-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .settings-panel-enter-from,
+  .settings-panel-leave-to {
+    transform: none;
   }
 }
 </style>

@@ -143,34 +143,36 @@
             </button>
           </div>
 
-          <div
-            v-if="starterCodeEnabled && languageOptions.length"
-            class="starter-code-workspace"
-          >
-            <div class="starter-language-tabs" role="tablist">
-              <button
-                v-for="language in languageOptions"
-                :key="language.value"
-                :class="[
-                  'starter-language-tab',
-                  { active: activeStarterLanguage === language.value },
-                ]"
-                type="button"
-                role="tab"
-                :aria-selected="activeStarterLanguage === language.value"
-                @click="activeStarterLanguage = language.value"
-              >
-                {{ language.text }}
-              </button>
+          <Transition name="starter-workspace">
+            <div
+              v-if="starterCodeEnabled && languageOptions.length"
+              class="starter-code-workspace"
+            >
+              <div class="starter-language-tabs" role="tablist">
+                <button
+                  v-for="language in languageOptions"
+                  :key="language.value"
+                  :class="[
+                    'starter-language-tab',
+                    { active: activeStarterLanguage === language.value },
+                  ]"
+                  type="button"
+                  role="tab"
+                  :aria-selected="activeStarterLanguage === language.value"
+                  @click="activeStarterLanguage = language.value"
+                >
+                  {{ language.text }}
+                </button>
+              </div>
+              <div class="starter-code-editor">
+                <CodeEditor
+                  :value="starterCodes[activeStarterLanguage] || ''"
+                  :language="activeStarterLanguage"
+                  :handle-change="onStarterCodeChange"
+                />
+              </div>
             </div>
-            <div class="starter-code-editor">
-              <CodeEditor
-                :value="starterCodes[activeStarterLanguage] || ''"
-                :language="activeStarterLanguage"
-                :handle-change="onStarterCodeChange"
-              />
-            </div>
-          </div>
+          </Transition>
         </div>
 
         <div class="form-footer">
@@ -389,13 +391,15 @@ const onAnswerChange = (value: string) => {
   max-width: 1600px;
   margin: 0 auto;
   padding: var(--space-lg) 0;
-  animation: claude-fade-up 0.4s ease-out;
+  animation: claude-fade-up var(--motion-standard) var(--ease-out);
 }
 
 .form-wrapper {
-  background: var(--surface-card);
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Make description/answer labels compact inside 50% columns */
@@ -419,11 +423,12 @@ const onAnswerChange = (value: string) => {
   font-family: var(--font-code);
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .page-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
@@ -435,12 +440,23 @@ const onAnswerChange = (value: string) => {
 }
 
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 18px;
   font-weight: 500;
   color: var(--ink);
   margin-bottom: var(--space-md);
   padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--hairline);
+}
+
+.section-title::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  flex: 0 0 auto;
+  background: var(--primary);
 }
 
 .arco-form-item {
@@ -510,7 +526,10 @@ const onAnswerChange = (value: string) => {
   border-radius: var(--radius-sm);
   padding: 2px 10px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
   line-height: 1.4;
 }
 
@@ -530,7 +549,26 @@ const onAnswerChange = (value: string) => {
   border-radius: var(--radius-sm);
   padding: 10px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.delete-btn:active,
+.add-case-btn:active {
+  transform: translateY(1px);
+}
+
+.starter-workspace-enter-active,
+.starter-workspace-leave-active {
+  transition: opacity 180ms ease, transform 180ms var(--ease-out);
+}
+
+.starter-workspace-enter-from,
+.starter-workspace-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 .add-case-btn:hover {
@@ -599,6 +637,10 @@ const onAnswerChange = (value: string) => {
   font-family: var(--font-body);
   font-size: 12px;
   cursor: pointer;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
 }
 
 .repair-template-btn:hover {
@@ -671,7 +713,13 @@ const onAnswerChange = (value: string) => {
   color: var(--on-primary);
   border: none;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.repair-template-btn:active,
+.claude-btn-primary:not(:disabled):active {
+  transform: translateY(1px);
 }
 
 .claude-btn-primary:hover {
@@ -685,10 +733,194 @@ const onAnswerChange = (value: string) => {
 
 @media (max-width: 768px) {
   #addQuestionView {
-    padding: var(--space-md) 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 20px 16px 32px;
   }
+
   .form-wrapper {
-    padding: var(--space-md);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 20px 16px;
+    border-radius: var(--radius-md);
+  }
+
+  .page-heading {
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+  }
+
+  .page-title {
+    font-size: 32px;
+  }
+
+  .form-section {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-bottom: 30px;
+  }
+
+  .section-title {
+    font-size: 17px;
+  }
+
+  :deep(.arco-row) {
+    display: block;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  :deep(.arco-col-8),
+  :deep(.arco-col-12) {
+    width: 100%;
+    max-width: 100%;
+    display: block;
+    flex: 0 0 100%;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  :deep(.arco-form-item) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.arco-form-item-label-col),
+  :deep(.arco-form-item-wrapper-col) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    display: block;
+    flex: 0 0 100%;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  :deep(.arco-form-item-label) {
+    width: 100% !important;
+    padding: 0 0 6px !important;
+    text-align: left !important;
+  }
+
+  :deep(.arco-form-item-content) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .form-section :deep(.bytemd) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 320px !important;
+    min-height: 280px !important;
+    overflow: hidden;
+  }
+
+  .form-section :deep(.bytemd-preview) {
+    display: none;
+  }
+
+  .form-section :deep(.bytemd-editor) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-right: 0 !important;
+  }
+
+  .form-section :deep(.bytemd-toolbar) {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+  }
+
+  .form-section :deep(.bytemd-toolbar-left),
+  .form-section :deep(.bytemd-toolbar-right) {
+    float: none;
+    flex: 0 0 auto;
+  }
+
+  .form-section :deep(.bytemd-body),
+  .form-section :deep(.CodeMirror) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .form-section :deep(.bytemd-status) {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+  }
+
+  .form-section :deep(.bytemd-status-left),
+  .form-section :deep(.bytemd-status-right) {
+    float: none;
+    flex: 0 0 auto;
+  }
+
+  .test-case-card {
+    padding: 14px;
+  }
+
+  .starter-section-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .starter-toggle {
+    justify-content: space-between;
+  }
+
+  .starter-code-alert {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .repair-template-btn {
+    width: 100%;
+  }
+
+  .starter-code-editor :deep(#code-editor) {
+    height: 320px !important;
+    min-height: 280px !important;
+  }
+
+  .form-footer {
+    padding-top: 18px;
+  }
+
+  .claude-btn-primary {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .starter-workspace-enter-active,
+  .starter-workspace-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .starter-workspace-enter-from,
+  .starter-workspace-leave-to {
+    transform: none;
   }
 }
 </style>
