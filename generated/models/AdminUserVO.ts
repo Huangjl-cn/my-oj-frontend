@@ -3,17 +3,13 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export type User = {
+export type AdminUserVO = {
     id?: number;
     userAccount?: string;
-    userPassword?: string;
-    unionId?: string;
-    mpOpenId?: string;
     userName?: string;
     userAvatar?: string;
     userProfile?: string;
     userRole?: string;
     createTime?: string;
     updateTime?: string;
-    isDelete?: number;
 };

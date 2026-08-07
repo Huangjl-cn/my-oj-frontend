@@ -21,8 +21,10 @@ const checkAccess = (
   }
   // 如果用户登录才能访问
   if (needAccess === ACCESS_ENUM.USER) {
-    // 如果用户没登录，那么表示无权限
-    if (loginUserAccess === ACCESS_ENUM.NOT_LOGIN) {
+    if (
+      loginUserAccess !== ACCESS_ENUM.USER &&
+      loginUserAccess !== ACCESS_ENUM.ADMIN
+    ) {
       return false;
     }
   }

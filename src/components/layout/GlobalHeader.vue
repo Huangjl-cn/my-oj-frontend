@@ -45,12 +45,26 @@
         <IconSun v-if="isDark" />
         <IconMoon v-else />
       </button>
-      <span class="user-avatar">{{
-        (store.state.user?.loginUser?.userName ?? "?")[0]
-      }}</span>
-      <span class="user-name">{{
-        store.state.user?.loginUser?.userName ?? "未登录"
-      }}</span>
+      <button
+        v-if="isLoggedIn"
+        class="user-entry"
+        type="button"
+        title="进入个人中心"
+        @click="doMenuClick('/profile')"
+      >
+        <UserAvatar
+          :avatar="store.state.user.loginUser?.userAvatar"
+          :name="store.state.user.loginUser?.userName"
+          :size="32"
+        />
+        <span class="user-name">{{
+          store.state.user.loginUser?.userName ?? "用户"
+        }}</span>
+      </button>
+      <template v-else>
+        <span class="guest-avatar">?</span>
+        <span class="user-name">未登录</span>
+      </template>
       <button
         v-if="isLoggedIn"
         class="btn btn-secondary"
@@ -88,6 +102,7 @@ import { useStore } from "vuex";
 import checkAccess from "@/access/checkAccess";
 import ACCESS_ENUM from "@/access/accessEnum";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import UserAvatar from "@/components/user/UserAvatar.vue";
 import { useTheme } from "@/composables/useTheme";
 import { routes } from "@/router/routes";
 import { UserControllerService } from "../../../generated";
@@ -118,13 +133,6 @@ const selectedKeys = ref(["/"]);
 router.afterEach((to) => {
   selectedKeys.value = [to.path];
 });
-
-setTimeout(() => {
-  store.dispatch("user/getLoginUser", {
-    userName: "鱼皮管理员",
-    userRole: ACCESS_ENUM.ADMIN,
-  });
-}, 3000);
 
 const doMenuClick = (path: string) => {
   if (route.path === "/update/question" && path !== route.path) {
@@ -280,7 +288,7 @@ const confirmLogout = async () => {
   height: 17px;
 }
 
-.user-avatar {
+.guest-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -293,6 +301,22 @@ const confirmLogout = async () => {
   color: var(--ink);
   border: 1px solid var(--hairline);
   flex-shrink: 0;
+}
+
+.user-entry {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 4px 2px 2px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+}
+
+.user-entry:hover {
+  background: var(--surface-card);
 }
 
 .user-name {

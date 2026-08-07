@@ -5,6 +5,7 @@
 
 export type LoginUserVO = {
     id?: number;
+    userAccount?: string;
     userName?: string;
     userAvatar?: string;
     userProfile?: string;

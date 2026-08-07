@@ -1,6 +1,9 @@
 <template>
   <div id="questionSubmitView">
-    <h2 class="page-title">浏览题目提交</h2>
+    <header class="page-heading">
+      <span class="page-kicker">SUBMISSION ARCHIVE</span>
+      <h2 class="page-title">浏览题目提交</h2>
+    </header>
     <div class="page-card">
       <div class="filter-section">
         <a-form :model="searchParams" layout="inline">
@@ -48,6 +51,9 @@
           <span class="table-id" :title="String(record.id ?? '')">
             {{ record.id ?? "--" }}
           </span>
+        </template>
+        <template #user="{ record }">
+          <UserIdentity :user-id="record.userId" />
         </template>
         <template #language="{ record }">
           <span class="language-name">
@@ -99,11 +105,6 @@
             {{ record.questionId ?? "--" }}
           </span>
         </template>
-        <template #userId="{ record }">
-          <span class="table-id" :title="String(record.userId ?? '')">
-            {{ record.userId ?? "--" }}
-          </span>
-        </template>
       </a-table>
     </div>
   </div>
@@ -114,6 +115,7 @@ import message from "@arco-design/web-vue/es/message";
 import { h, onMounted, ref, watchEffect } from "vue";
 
 import SubmissionDiagnosticPanel from "@/components/question/SubmissionDiagnosticPanel.vue";
+import UserIdentity from "@/components/user/UserIdentity.vue";
 import {
   QuestionSubmitQueryRequest,
   QuestionSubmitVO,
@@ -169,15 +171,15 @@ onMounted(async () => {
 });
 
 const columns = [
-  { title: "提交号", slotName: "submitId", width: 100 },
-  { title: "编程语言", slotName: "language", width: 105 },
+  { title: "用户", slotName: "user", width: 155 },
+  { title: "提交 ID", slotName: "submitId", width: 90 },
+  { title: "语言", slotName: "language", width: 95 },
   { title: "判题信息", slotName: "judgeInfo", width: 245 },
-  { title: "任务状态", slotName: "status", width: 76, align: "center" },
+  { title: "判题状态", slotName: "status", width: 76, align: "center" },
   { title: "运行时间", slotName: "executionTime", width: 76 },
   { title: "内存占用", slotName: "memory", width: 76 },
   { title: "题目 ID", slotName: "questionId", width: 95 },
-  { title: "提交者 ID", slotName: "userId", width: 95 },
-  { title: "创建时间", slotName: "createTime", width: 96 },
+  { title: "提交时间", slotName: "createTime", width: 105 },
 ];
 
 const expandable = {
@@ -215,13 +217,24 @@ const doSubmit = () => {
   padding: var(--space-lg);
 }
 
+.page-heading {
+  margin-bottom: var(--space-lg);
+}
+
+.page-kicker {
+  color: var(--primary);
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .page-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
   font-size: 28px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
-  margin: 0 0 var(--space-lg) 0;
+  margin: 2px 0 0;
 }
 
 .page-card {

@@ -1,7 +1,14 @@
 <template>
   <div id="addQuestionView">
     <div class="form-wrapper">
-      <h2 class="page-title">{{ updatePage ? "更新题目" : "创建题目" }}</h2>
+      <header class="page-heading">
+        <span class="page-kicker">
+          {{ updatePage ? "EDIT PROBLEM" : "CREATE PROBLEM" }}
+        </span>
+        <h2 class="page-title">
+          {{ updatePage ? "更新题目" : "创建题目" }}
+        </h2>
+      </header>
       <a-form :model="form" label-align="left">
         <div class="form-section">
           <h3 class="section-title">基本信息</h3>
@@ -401,15 +408,26 @@ const onAnswerChange = (value: string) => {
   flex: 1 !important;
 }
 
+.page-heading {
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.page-kicker {
+  color: var(--primary);
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .page-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
   font-size: 28px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
-  margin: 0 0 var(--space-lg);
-  padding-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--hairline);
+  margin: 2px 0 0;
 }
 
 .form-section {

@@ -10,7 +10,7 @@
         <div class="sidebar-search">
           <input
             class="search-input"
-            v-model="searchParams.title"
+            :value="searchParams.title"
             placeholder="搜索题目..."
             @input="onSearchInput"
           />
@@ -357,20 +357,36 @@
                 <button
                   class="btn-reset-code"
                   type="button"
-                  :disabled="!activeTemplate || starterCodeLoading"
+                  :class="{ confirmed: resetFeedbackVisible }"
+                  :disabled="
+                    !activeTemplate ||
+                    starterCodeLoading ||
+                    resetFeedbackVisible
+                  "
                   @click="requestResetStarterCode"
                 >
-                  初始化代码
+                  {{ resetFeedbackVisible ? "已初始化" : "初始化代码" }}
                 </button>
                 <button
                   class="btn-submit"
                   type="button"
+                  :class="{ submitting: isSubmitting }"
                   :disabled="
-                    starterCodeLoading || !!starterCodeError || !form.language
+                    isSubmitting ||
+                    starterCodeLoading ||
+                    !!starterCodeError ||
+                    !form.language
                   "
                   @click="doSubmit"
                 >
-                  提交
+                  <span>{{ isSubmitting ? "判题中" : "提交" }}</span>
+                  <span
+                    v-if="isSubmitting"
+                    class="submit-dots"
+                    aria-hidden="true"
+                  >
+                    <i></i><i></i><i></i>
+                  </span>
                 </button>
               </div>
             </div>
@@ -450,6 +466,16 @@
                   />
                 </svg>
                 {{ resultPresentation.label }}
+              </div>
+              <div
+                v-if="resultPresentation.tone === 'pending'"
+                class="judge-pacman-track"
+                aria-hidden="true"
+              >
+                <span class="pacman-pellets"></span>
+                <span class="pacman-progress">
+                  <i class="pacman"></i>
+                </span>
               </div>
               <div class="result-actions">
                 <div class="result-stats">
@@ -535,8 +561,8 @@
 </template>
 
 <script setup lang="ts">
-import message from "@arco-design/web-vue/es/message";
 import { IconClose, IconRefresh } from "@arco-design/web-vue/es/icon";
+import message from "@arco-design/web-vue/es/message";
 import {
   computed,
   defineAsyncComponent,
@@ -652,8 +678,12 @@ const onPageChange = (page: PageChange) => {
   if (current == null) return;
   searchParams.value = { ...searchParams.value, current };
 };
-const onSearchInput = () => {
-  searchParams.value = { ...searchParams.value, current: 1 };
+const onSearchInput = (event: Event) => {
+  searchParams.value = {
+    ...searchParams.value,
+    title: (event.target as HTMLInputElement).value,
+    current: 1,
+  };
 };
 
 const getDifficultyClass = (tag: string) => {
@@ -678,6 +708,8 @@ const starterCodeError = ref("");
 const activeTemplate = ref("");
 const loadedLanguage = ref("");
 const showResetDialog = ref(false);
+const resetFeedbackVisible = ref(false);
+const isSubmitting = ref(false);
 const mySubmissions = ref<QuestionSubmitSummaryVO[]>([]);
 const mySubmissionsCurrent = ref(1);
 const mySubmissionsPageSize = 10;
@@ -693,6 +725,7 @@ const templateCache = new Map<string, string>();
 let questionGeneration = 0;
 let templateGeneration = 0;
 let draftTimer: ReturnType<typeof setTimeout> | undefined;
+let resetFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 
 const currentLanguageText = computed(
   () =>
@@ -787,11 +820,13 @@ const polling = createQuestionSubmitPoller({
   onUpdate: (submission) => {
     submitResult.value = submission;
     if (submission.status === 2 || submission.status === 3) {
+      isSubmitting.value = false;
       isResultDetailsCollapsed.value = false;
       void loadMySubmissions();
     }
   },
   onTimeout: () => {
+    isSubmitting.value = false;
     message.warning("判题等待超时，请稍后在提交记录中查看结果");
   },
   onError: () => undefined,
@@ -1049,30 +1084,41 @@ const doSubmit = async () => {
   if (
     !currentQuestion.value?.id ||
     !form.value.language ||
+    isSubmitting.value ||
     starterCodeLoading.value ||
     starterCodeError.value
   )
     return;
   persistCurrentDraft();
   stopPolling();
-  const res = await QuestionControllerService.doQuestionSubmit({
-    ...form.value,
-    questionId: currentQuestion.value.id,
-  });
-  if (res.code === 0) {
-    message.success("提交成功");
-    showResult.value = true;
-    isResultDetailsCollapsed.value = false;
-    submitResult.value = { id: res.data, status: 0 };
-    void loadMySubmissions();
-    startPolling(res.data);
-  } else {
-    message.error("提交失败，" + res.message);
+  isSubmitting.value = true;
+  try {
+    const res = await QuestionControllerService.doQuestionSubmit({
+      ...form.value,
+      questionId: currentQuestion.value.id,
+    });
+    if (res.code === 0) {
+      message.success("提交成功");
+      showResult.value = true;
+      isResultDetailsCollapsed.value = false;
+      submitResult.value = { id: res.data, status: 0 };
+      void loadMySubmissions();
+      startPolling(res.data);
+    } else {
+      isSubmitting.value = false;
+      message.error("提交失败，" + res.message);
+    }
+  } catch {
+    isSubmitting.value = false;
+    message.error("提交失败，请稍后重试");
   }
 };
 
 const startPolling = (submitId: ApiId) => polling.start(submitId);
-const stopPolling = () => polling.stop();
+const stopPolling = () => {
+  polling.stop();
+  isSubmitting.value = false;
+};
 
 const changeCode = (value: string) => {
   form.value.code = value;
@@ -1084,6 +1130,12 @@ const resetStarterCode = () => {
   if (questionId == null || !loadedLanguage.value) return;
   removeQuestionDraft(getDraftKey(questionId, loadedLanguage.value));
   form.value.code = activeTemplate.value;
+  resetFeedbackVisible.value = true;
+  if (resetFeedbackTimer) clearTimeout(resetFeedbackTimer);
+  resetFeedbackTimer = setTimeout(() => {
+    resetFeedbackVisible.value = false;
+    resetFeedbackTimer = undefined;
+  }, 900);
 };
 
 const requestResetStarterCode = () => {
@@ -1104,6 +1156,7 @@ onBeforeUnmount(() => {
   questionGeneration += 1;
   templateGeneration += 1;
   stopPolling();
+  if (resetFeedbackTimer) clearTimeout(resetFeedbackTimer);
   clearMySubmissionDetailTabs();
 });
 </script>
@@ -1949,6 +2002,10 @@ onBeforeUnmount(() => {
 
 .btn-submit,
 .btn-reset-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
@@ -1961,12 +2018,14 @@ onBeforeUnmount(() => {
 }
 
 .btn-submit {
+  min-width: 72px;
   background: var(--primary);
   color: var(--on-primary);
   border: 1px solid var(--primary);
 }
 
 .btn-reset-code {
+  min-width: 88px;
   color: var(--on-dark-soft);
   background: transparent;
   border: 1px solid #3d3d3d;
@@ -1986,6 +2045,159 @@ onBeforeUnmount(() => {
 .btn-reset-code:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.btn-submit.submitting:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.submit-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 8px;
+}
+
+.submit-dots i {
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: submit-dot-bounce 900ms ease-in-out infinite;
+}
+
+.submit-dots i:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.submit-dots i:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.judge-pacman-track {
+  position: relative;
+  flex: 1 1 220px;
+  width: clamp(180px, 28vw, 360px);
+  max-width: 360px;
+  height: 24px;
+  overflow: hidden;
+}
+
+.pacman-pellets {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      circle at center,
+      currentColor 0 1px,
+      transparent 1.5px
+    )
+    4px 50% / 18px 18px repeat-x;
+  opacity: 0.8;
+}
+
+.pacman-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 14px;
+  height: 24px;
+  background: var(--canvas);
+  animation: pacman-travel 30s linear infinite;
+}
+
+.pacman {
+  position: absolute;
+  top: 2px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  background: #f6cf45;
+  border-radius: 50%;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 32%,
+    62% 50%,
+    100% 68%,
+    100% 100%,
+    0 100%
+  );
+  animation: pacman-chomp 320ms steps(2, end) infinite;
+}
+
+.btn-reset-code.confirmed:disabled {
+  color: var(--success);
+  border-color: var(--success);
+  opacity: 1;
+  animation: reset-confirmed 420ms ease-out;
+}
+
+@keyframes pacman-travel {
+  from {
+    width: 14px;
+  }
+  to {
+    width: calc(100% - 10px);
+  }
+}
+
+@keyframes submit-dot-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pacman-chomp {
+  from {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 32%,
+      62% 50%,
+      100% 68%,
+      100% 100%,
+      0 100%
+    );
+  }
+  to {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 47%,
+      94% 50%,
+      100% 53%,
+      100% 100%,
+      0 100%
+    );
+  }
+}
+
+@keyframes reset-confirmed {
+  0% {
+    transform: scale(0.96);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submit-dots i,
+  .pacman-progress,
+  .pacman,
+  .btn-reset-code.confirmed:disabled {
+    animation: none;
+  }
 }
 
 .editor-body {
@@ -2178,7 +2390,13 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   color: var(--muted-soft);
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.empty-state p {
+  margin: 0;
 }
 
 @media (max-width: 1024px) {

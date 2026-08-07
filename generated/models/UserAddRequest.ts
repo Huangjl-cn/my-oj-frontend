@@ -7,5 +7,6 @@ export type UserAddRequest = {
     userName?: string;
     userAccount?: string;
     userAvatar?: string;
+    userProfile?: string;
     userRole?: string;
 };

@@ -1,6 +1,9 @@
 <template>
   <div id="manageQuestionView">
-    <h2 class="page-title">{{ pageTitle }}</h2>
+    <header class="page-heading">
+      <span class="page-kicker">{{ pageKicker }}</span>
+      <h2 class="page-title">{{ pageTitle }}</h2>
+    </header>
     <div class="page-card">
       <a-table
         row-key="id"
@@ -21,6 +24,9 @@
             {{ record.id ?? "--" }}
           </span>
         </template>
+        <template #user="{ record }">
+          <UserIdentity :user-id="record.userId" />
+        </template>
         <template #tags="{ record }">
           <span v-if="record.tags" class="tag-list">
             <span
@@ -31,11 +37,6 @@
               class="tag"
               >{{ tag }}</span
             >
-          </span>
-        </template>
-        <template #userId="{ record }">
-          <span class="table-id" :title="String(record.userId ?? '')">
-            {{ record.userId ?? "--" }}
           </span>
         </template>
         <template #createTime="{ record }">
@@ -80,6 +81,7 @@ import { useRouter } from "vue-router";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import QuestionAdminDetailsPanel from "@/components/question/QuestionAdminDetailsPanel.vue";
+import UserIdentity from "@/components/user/UserIdentity.vue";
 import { toGeneratedApiId } from "@/services/apiId";
 import { formatDateTime } from "@/utils/dateTime";
 import {
@@ -101,6 +103,9 @@ const props = withDefaults(
 
 const pageTitle = computed(() =>
   props.scope === "mine" ? "我的题目" : "题目管理"
+);
+const pageKicker = computed(() =>
+  props.scope === "mine" ? "MY PROBLEMS" : "PROBLEM ADMINISTRATION"
 );
 const dataList = ref<QuestionListRecord[]>([]);
 const total = ref(0);
@@ -128,24 +133,24 @@ watchEffect(() => {
 });
 
 const adminColumns = [
-  { title: "ID", slotName: "id", width: 130 },
+  { title: "用户", slotName: "user", width: 170 },
+  { title: "题目 ID", slotName: "id", width: 120 },
   {
     title: "标题",
     dataIndex: "title",
-    width: 180,
+    width: 160,
     ellipsis: true,
     tooltip: true,
   },
   { title: "标签", slotName: "tags", width: 120 },
-  { title: "提交数", dataIndex: "submitNum", width: 60, align: "center" },
-  { title: "通过数", dataIndex: "acceptedNum", width: 60, align: "center" },
-  { title: "创建者 ID", slotName: "userId", width: 130 },
+  { title: "提交次数", dataIndex: "submitNum", width: 70, align: "center" },
+  { title: "通过次数", dataIndex: "acceptedNum", width: 70, align: "center" },
   { title: "创建时间", slotName: "createTime", width: 130 },
-  { title: "操作", slotName: "optional", width: 130 },
+  { title: "操作", slotName: "optional", width: 112 },
 ];
 
 const myQuestionColumns = [
-  { title: "ID", slotName: "id", width: 130 },
+  { title: "题目 ID", slotName: "id", width: 130 },
   {
     title: "标题",
     dataIndex: "title",
@@ -154,8 +159,8 @@ const myQuestionColumns = [
     tooltip: true,
   },
   { title: "标签", slotName: "tags", width: 120 },
-  { title: "提交数", dataIndex: "submitNum", width: 60, align: "center" },
-  { title: "通过数", dataIndex: "acceptedNum", width: 60, align: "center" },
+  { title: "提交次数", dataIndex: "submitNum", width: 70, align: "center" },
+  { title: "通过次数", dataIndex: "acceptedNum", width: 70, align: "center" },
   { title: "创建时间", slotName: "createTime", width: 130 },
   { title: "更新时间", slotName: "updateTime", width: 130 },
   { title: "操作", slotName: "optional", width: 130 },
@@ -218,13 +223,24 @@ const doUpdate = (question: QuestionListRecord) => {
   padding: var(--space-lg);
 }
 
+.page-heading {
+  margin-bottom: var(--space-lg);
+}
+
+.page-kicker {
+  color: var(--primary);
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .page-title {
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
   font-size: 28px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: -0.02em;
-  margin: 0 0 var(--space-lg) 0;
+  margin: 2px 0 0;
 }
 
 .page-card {

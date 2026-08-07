@@ -11,11 +11,15 @@ npm run lint -- --fix      # Lint and auto-fix (use this instead of npx prettier
 npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plugin-unit-jest)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `useTheme.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `useTheme.spec.ts`, `apiConfig.spec.ts`, `apiId.spec.ts`, `questionStarterCode.spec.ts` (language options + starter code normalization), `questionDraft.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - **Regenerate the API client** from the backend OpenAPI spec (from README): `openapi --input http://localhost:8102/api/v3/api-docs --output ./generated --client axios`
 - The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.
+
+## Package Manager
+
+Both `yarn.lock` and `package-lock.json` coexist in this repo. Use **npm** for installs (`npm install`) — `npm run` scripts work regardless of lockfile.
 
 ## Tech Stack
 
@@ -35,35 +39,49 @@ npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plu
 ```
 src/
 ├── access/               # Route-level permission guard
-│   ├── accessEnum.ts     # NOT_LOGIN / USER / ADMIN roles
+│   ├── accessEnum.ts     # NOT_LOGIN / USER / ADMIN / BAN roles
 │   ├── checkAccess.ts    # Permission check logic
 │   └── index.ts          # Vue Router beforeEach guard (auto-login, route auth)
 ├── components/
+│   ├── common/
+│   │   └── ConfirmDialog.vue    # Reusable confirmation modal
 │   ├── editor/
-│   │   ├── CodeEditor.vue  # Monaco Editor wrapper (do not modify)
-│   │   ├── MdEditor.vue    # ByteMD editor (for question content/answer editing)
-│   │   └── MdViewer.vue    # ByteMD viewer (read-only markdown rendering)
-│   └── layout/
-│       └── GlobalHeader.vue  # Top nav: logo + links + user avatar + theme toggle + switch-account
+│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (do not modify)
+│   │   ├── MdEditor.vue         # ByteMD editor (for question content/answer editing)
+│   │   └── MdViewer.vue         # ByteMD viewer (read-only markdown rendering)
+│   ├── layout/
+│   │   └── GlobalHeader.vue     # Top nav: logo + links + user avatar + theme toggle + switch-account
+│   ├── question/
+│   │   ├── QuestionAdminDetailsPanel.vue   # Admin-only question details panel
+│   │   └── SubmissionDiagnosticPanel.vue   # Judge result display with diagnostics
+│   └── user/
+│       ├── AvatarPicker.vue     # Avatar selection grid
+│       ├── UserAvatar.vue       # Avatar display (DiceBear or custom URL)
+│       ├── UserFormDialog.vue   # Create/edit user dialog
+│       └── UserIdentity.vue     # Role badge display
 ├── composables/
 │   └── useTheme.ts       # Dark/light theme toggle (data-theme on <html>, arco-theme on <body>, localStorage "myoj-theme")
 ├── constants/
 │   ├── quotes.ts         # Footer cycling quotes
-│   └── languages.ts      # Code editor language options
+│   └── userAvatars.ts    # DiceBear avatar URL generators (by seed)
 ├── layouts/
 │   ├── BasicLayout.vue   # Main layout: height:100vh fixed viewport, sticky header, footer with cycling quotes
 │   └── UserLayout.vue    # Minimal layout for login/register
 ├── plugins/
-│   └── axios.ts          # Axios config (credentials, interceptors)
+│   └── axios.ts          # Axios config (credentials, interceptors, unauthorized redirect handler)
 ├── router/
 │   ├── index.ts          # Router instance
 │   └── routes.ts         # Route definitions with access meta
 ├── services/
+│   ├── apiId.ts                   # ApiId type (string|number), route param parsing, generated ID casting
 │   ├── questionSubmit.ts          # Judge-info adaptation (normalizeJudgeInfo, getJudgeResultPresentation) + submission request wrapper
-│   └── questionSubmitPolling.ts   # createQuestionSubmitPoller (poll/cancel/timeout)
+│   ├── questionSubmitPolling.ts   # createQuestionSubmitPoller (poll/cancel/timeout)
+│   ├── questionStarterCode.ts     # Language options normalization, starter code fetching/validation
+│   ├── questionDraft.ts          # sessionStorage-based code drafts (per user+question+language)
+│   └── userSummary.ts            # Cached user info fetches (getUserSummary, clear cache)
 ├── store/
 │   ├── index.ts          # Vuex store
-│   └── user.ts           # User state (loginUser), getLoginUser action
+│   └── user.ts           # User state (loginUser, initialized), getLoginUser action, draft-clearing mutations
 ├── styles/
 │   └── global.css        # Claude Design System tokens + Arco overrides + dark theme (imported in main.ts)
 ├── views/
@@ -72,10 +90,12 @@ src/
 │   │   ├── AddQuestionView.vue       # Create/edit form (judge config, test cases, side-by-side editors)
 │   │   ├── ManageQuestionView.vue    # Admin CRUD table in card
 │   │   └── QuestionSubmitView.vue    # Submission history list with filters in card
-│   ├── NoAuthView.vue               # 403 page (route /noAuth)
-│   └── user/
-│       ├── UserLoginView.vue         # Login form
-│       └── UserRegisterView.vue      # Register form
+│   ├── user/
+│   │   ├── UserLoginView.vue         # Login form
+│   │   ├── UserRegisterView.vue      # Register form
+│   │   ├── UserProfileView.vue       # User profile page
+│   │   └── UserManageView.vue        # Admin user management table
+│   └── NoAuthView.vue                # 403 page (route /noAuth)
 ├── App.vue              # Thin shell: route-based layout switching (UserLayout for /user/*) + useTheme() init
 └── main.ts              # Bootstrap: ArcoVue + router + store + axios + access guard + global.css
 
@@ -176,6 +196,31 @@ The main "题库" page uses a sidebar + embedded editor pattern (no page navigat
 - Main content: description panel (`flex: 4`, scrollable) + Monaco CodeEditor (`flex: 6`, fixed) + results panel (absolutely positioned, doesn't affect flex flow)
 - Backend API: `listQuestionVoByPageUsingPost` (supports `title` and `tags` filter params, where `tags` uses English values: `["easy"]`, `["medium"]`, `["hard"]`)
 
+### ApiId: Bridging Java Long ↔ Routing
+
+The backend exposes Java `Long` IDs. The generated client declares them as `number`, but JSON serializes them as strings. `src/services/apiId.ts` provides:
+- `ApiId = string | number` — the canonical ID type used throughout the app
+- `parseRouteApiId(value)` — extracts and validates a route param (accepts string or array, validates numeric format)
+- `toGeneratedApiId(id: ApiId): number` — casts for the generated client (which expects `number` even when the wire format is string)
+
+Always use `ApiId` in app code; only cast with `toGeneratedApiId` at the generated service boundary.
+
+### Language Configuration
+
+Programming languages are fetched dynamically from the backend (`getSupportedLanguages()`), not hardcoded. `src/services/questionStarterCode.ts` handles:
+- **`getSupportedLanguageOptions()`** — fetches and normalizes language options from the backend (cached via module-level promise deduplication)
+- **`normalizeLanguageOptions()`** — validates the backend response, ensures `text` and `value` are present and unique
+- **Starter code templates** — fetched per-question, validated against supported languages, normalized into `StarterCodeMap` (language → code)
+- Errors are thrown as `StarterCodeServiceError` (includes backend `code` for error display)
+
+### Code Drafts (sessionStorage)
+
+`src/services/questionDraft.ts` manages per-user+question+language code drafts in `sessionStorage`:
+- **Key format:** `myoj:question-draft:<userId>:<questionId>:<language>`
+- **Storage:** `sessionStorage` (cleared when tab closes, does not survive across sessions)
+- **`clearQuestionDraftsForUser(userId)`** is called by the Vuex user module when a user logs out or switches accounts (see `mutations.updateUser` and `mutations.resetUser` in `store/user.ts`)
+- Draft functions silently catch storage errors (unavailable/full) — editing must never break due to draft failures
+
 ### Code Submission & Polling
 Polling logic lives in `src/services/` — do not re-implement inline in views:
 1. `questionSubmit.ts` — `requestQuestionSubmit(submitId)` wraps `getQuestionSubmitByIdUsingGet` with a 10s per-request timeout + cancellation; `normalizeQuestionSubmit`/`normalizeJudgeInfo` parse the judgeInfo JSON string (falling back to raw text when it isn't JSON); `getJudgeResultPresentation` maps submissions to `{ label, message, tone }` for the UI — status 2 is only "通过" when the message is exactly `Accepted`, never inferred from status alone
@@ -193,6 +238,15 @@ Polling logic lives in `src/services/` — do not re-implement inline in views:
 - All methods are static, return `{ code, data, message }` — check `res.code === 0` for success
 - Do NOT edit generated files
 
+### Route Access Control
+
+`src/access/accessEnum.ts` defines four roles: `NOT_LOGIN`, `USER`, `ADMIN`, `BAN`. The router guard (`src/access/index.ts`) runs `beforeEach`:
+1. If `store.state.user.initialized` is false, dispatches `user/getLoginUser` (auto-login)
+2. Checks `to.meta.access` against the user's role
+3. Redirects unauthenticated users to `/user/login?redirect=...`
+4. Redirects unauthorized users to `/noAuth`
+5. `BAN` role users are blocked like `NOT_LOGIN`
+
 ### GlobalHeader Mock Login
 In `GlobalHeader.vue`, there's a 3-second `setTimeout` that dispatches a mock admin user to `store.dispatch("user/getLoginUser", ...)`. This is a development convenience — the real login flow goes through `UserLoginView.vue` which calls the backend.
 
@@ -203,7 +257,6 @@ In `GlobalHeader.vue`, there's a 3-second `setTimeout` that dispatches a mock ad
 - `vue.config.js` splits node_modules into 4 chunks: `chunk-vue` (Vue core), `chunk-arco` (Arco Design), `chunk-vendors` (rest), `chunk-common` (shared); prefetch/preload are disabled
 - Monaco is configured with only `["coreCommands", "find"]` features (plus the 5 languages listed above)
 - Monaco Editor is lazy-loaded via `defineAsyncComponent` in QuestionsView
-- `moment.js` was removed — use native `formatTime()` helper for date formatting instead
 
 ### Nginx Configuration
 - The full config lives in `nginx.conf` at the repo root; `docker-compose.yml` mounts it (plus `dist/`) into an nginx:1.20.2 container on port 80

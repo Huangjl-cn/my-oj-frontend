@@ -64,7 +64,7 @@
 import { reactive } from "vue";
 import { UserControllerService, UserLoginRequest } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 const form = reactive({
@@ -73,6 +73,7 @@ const form = reactive({
 } as UserLoginRequest);
 
 const router = useRouter();
+const route = useRoute();
 const store = useStore();
 
 const goToRegister = () => {
@@ -85,10 +86,14 @@ const handleSubmit = async () => {
   const res = await UserControllerService.userLogin(form);
   if (res.code === 0) {
     await store.dispatch("user/getLoginUser");
-    router.push({
-      path: "/",
-      replace: true,
-    });
+    const requestedRedirect = route.query.redirect;
+    const redirect =
+      typeof requestedRedirect === "string" &&
+      requestedRedirect.startsWith("/") &&
+      !requestedRedirect.startsWith("//")
+        ? requestedRedirect
+        : "/";
+    router.replace(redirect);
   } else {
     message.error("登陆失败，" + res.message);
   }

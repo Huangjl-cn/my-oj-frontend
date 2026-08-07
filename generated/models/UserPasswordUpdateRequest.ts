@@ -3,10 +3,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import type { User } from './User';
-
-export type BaseResponseUser = {
-    code?: number;
-    data?: User;
-    message?: string;
+export type UserPasswordUpdateRequest = {
+    oldPassword?: string;
+    newPassword?: string;
+    checkPassword?: string;
 };

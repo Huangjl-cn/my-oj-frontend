@@ -9,6 +9,7 @@ export type UserQueryRequest = {
     sortField?: string;
     sortOrder?: string;
     id?: number;
+    userAccount?: string;
     unionId?: string;
     mpOpenId?: string;
     userName?: string;

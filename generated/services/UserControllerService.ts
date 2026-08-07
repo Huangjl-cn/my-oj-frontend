@@ -2,16 +2,18 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { BaseResponseAdminUserVO } from '../models/BaseResponseAdminUserVO';
 import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
+import type { BaseResponseListUserRoleVO } from '../models/BaseResponseListUserRoleVO';
 import type { BaseResponseLoginUserVO } from '../models/BaseResponseLoginUserVO';
 import type { BaseResponseLong } from '../models/BaseResponseLong';
-import type { BaseResponsePageUser } from '../models/BaseResponsePageUser';
+import type { BaseResponsePageAdminUserVO } from '../models/BaseResponsePageAdminUserVO';
 import type { BaseResponsePageUserVO } from '../models/BaseResponsePageUserVO';
-import type { BaseResponseUser } from '../models/BaseResponseUser';
 import type { BaseResponseUserVO } from '../models/BaseResponseUserVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
 import type { UserAddRequest } from '../models/UserAddRequest';
 import type { UserLoginRequest } from '../models/UserLoginRequest';
+import type { UserPasswordUpdateRequest } from '../models/UserPasswordUpdateRequest';
 import type { UserQueryRequest } from '../models/UserQueryRequest';
 import type { UserRegisterRequest } from '../models/UserRegisterRequest';
 import type { UserUpdateMyRequest } from '../models/UserUpdateMyRequest';
@@ -34,6 +36,22 @@ requestBody: UserUpdateRequest,
         return __request(OpenAPI, {
             method: 'POST',
             url: '/user/update',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponseBoolean OK
+     * @throws ApiError
+     */
+    public static updateMyPassword(
+requestBody: UserPasswordUpdateRequest,
+): CancelablePromise<BaseResponseBoolean> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/user/update/password',
             body: requestBody,
             mediaType: 'application/json',
         });
@@ -100,12 +118,12 @@ requestBody: UserLoginRequest,
 
     /**
      * @param requestBody 
-     * @returns BaseResponsePageUser OK
+     * @returns BaseResponsePageAdminUserVO OK
      * @throws ApiError
      */
     public static listUserByPage(
 requestBody: UserQueryRequest,
-): CancelablePromise<BaseResponsePageUser> {
+): CancelablePromise<BaseResponsePageAdminUserVO> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/user/list/page',
@@ -163,13 +181,24 @@ requestBody: UserAddRequest,
     }
 
     /**
+     * @returns BaseResponseListUserRoleVO OK
+     * @throws ApiError
+     */
+    public static getSupportedRoles(): CancelablePromise<BaseResponseListUserRoleVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/user/supported-roles',
+        });
+    }
+
+    /**
      * @param id 
-     * @returns BaseResponseUser OK
+     * @returns BaseResponseAdminUserVO OK
      * @throws ApiError
      */
     public static getUserById(
 id: number,
-): CancelablePromise<BaseResponseUser> {
+): CancelablePromise<BaseResponseAdminUserVO> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/user/get',

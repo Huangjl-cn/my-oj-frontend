@@ -3,17 +3,17 @@
 /* tslint:disable */
 /* eslint-disable */
 
+import type { AdminUserVO } from './AdminUserVO';
 import type { OrderItem } from './OrderItem';
-import type { User } from './User';
 
-export type PageUser = {
-    records?: Array<User>;
+export type PageAdminUserVO = {
+    records?: Array<AdminUserVO>;
     total?: number;
     size?: number;
     current?: number;
     orders?: Array<OrderItem>;
-    optimizeCountSql?: PageUser;
-    searchCount?: PageUser;
+    optimizeCountSql?: PageAdminUserVO;
+    searchCount?: PageAdminUserVO;
     optimizeJoinOfCountSql?: boolean;
     maxLimit?: number;
     countId?: string;

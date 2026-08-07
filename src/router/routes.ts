@@ -8,6 +8,8 @@ import AddQuestionView from "@/views/question/AddQuestionView.vue";
 import ManageQuestionView from "@/views/question/ManageQuestionView.vue";
 import QuestionsView from "@/views/question/QuestionsView.vue";
 import QuestionSubmitView from "@/views/question/QuestionSubmitView.vue";
+import UserManageView from "@/views/user/UserManageView.vue";
+import UserProfileView from "@/views/user/UserProfileView.vue";
 
 export const routes: Array<RouteRecordRaw> = [
   {
@@ -81,6 +83,23 @@ export const routes: Array<RouteRecordRaw> = [
     props: { scope: "all" },
     meta: {
       access: ACCESS_ENUM.ADMIN,
+    },
+  },
+  {
+    path: "/manage/user",
+    name: "用户管理",
+    component: UserManageView,
+    meta: {
+      access: ACCESS_ENUM.ADMIN,
+    },
+  },
+  {
+    path: "/profile",
+    name: "个人中心",
+    component: UserProfileView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
     },
   },
   {

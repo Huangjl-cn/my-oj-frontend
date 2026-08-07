@@ -123,6 +123,52 @@ body {
   transition: background-color 240ms ease;
 }
 
+html,
+body,
+#app {
+  cursor: url("../assets/cursors/pixel-arrow.svg") 1 1, auto !important;
+}
+
+a[href],
+button:not(:disabled),
+select:not(:disabled),
+option,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+input[type="color"],
+input[type="file"],
+[role="button"]:not([aria-disabled="true"]),
+.problem-item,
+.filter-chip,
+.lang-selector,
+.arco-btn:not(.arco-btn-disabled),
+.arco-pagination-item,
+.arco-select-view:not(.arco-select-view-disabled),
+.arco-select-option,
+.arco-trigger-menu-item,
+.arco-table-expand-btn,
+.monaco-list-row,
+.monaco-action-bar .action-item {
+  cursor: url("../assets/cursors/pixel-pointer.svg") 9 2, pointer !important;
+}
+
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not(
+    [type="checkbox"]
+  ):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+    [type="file"]
+  ),
+textarea,
+[contenteditable="true"],
+.monaco-editor .view-lines,
+.monaco-editor .view-line,
+.monaco-editor .view-lines * {
+  cursor: url("../assets/cursors/pixel-text.svg") 8 10, text !important;
+}
+
 /* === Scrollbar === */
 ::-webkit-scrollbar {
   width: 8px;
