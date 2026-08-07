@@ -58,7 +58,7 @@
         </template>
         <template #language="{ record }">
           <span class="language-name">
-            {{ getLanguageText(record.language) }}
+            {{ getLanguageText(record.language, languageOptions) }}
           </span>
         </template>
         <template #judgeInfo="{ record }">
@@ -135,7 +135,7 @@
               </span>
             </div>
             <span class="mobile-language">
-              {{ getLanguageText(submission.language) }}
+              {{ getLanguageText(submission.language, languageOptions) }}
             </span>
           </div>
 
@@ -212,6 +212,7 @@ import {
   splitJudgeMessage,
 } from "@/services/questionSubmit";
 import {
+  getLanguageText,
   getSupportedLanguageOptions,
   LanguageOption,
 } from "@/services/questionStarterCode";
@@ -274,11 +275,6 @@ const expandable = {
   expandedRowRender: (record: QuestionSubmitVO) =>
     h(SubmissionDiagnosticPanel, { submission: record }),
 };
-
-const getLanguageText = (language?: string) =>
-  languageOptions.value.find(({ value }) => value === language)?.text ||
-  language ||
-  "--";
 
 const getJudgeSummary = (submission: QuestionSubmitVO) => {
   const presentation = getJudgeResultPresentation(submission);

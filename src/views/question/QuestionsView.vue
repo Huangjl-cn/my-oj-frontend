@@ -258,7 +258,9 @@
                       {{ getSubmissionPresentation(submission).label }}
                     </span>
                     <span class="submission-language">
-                      {{ getLanguageText(submission.language) }}
+                      {{
+                        getLanguageText(submission.language, languageOptions)
+                      }}
                     </span>
                     <span class="submission-metric">
                       {{ submission.judgeInfo?.time ?? "--" }} ms
@@ -316,7 +318,8 @@
                       <strong>
                         {{
                           getLanguageText(
-                            activeSubmissionDetailTab.detail.language
+                            activeSubmissionDetailTab.detail.language,
+                            languageOptions
                           )
                         }}
                       </strong>
@@ -628,6 +631,7 @@ import {
   saveQuestionDraft,
 } from "@/services/questionDraft";
 import {
+  getLanguageText,
   getQuestionStarterCode,
   getSupportedLanguageOptions,
   LanguageOption,
@@ -842,10 +846,8 @@ let templateGeneration = 0;
 let draftTimer: ReturnType<typeof setTimeout> | undefined;
 let resetFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 
-const currentLanguageText = computed(
-  () =>
-    languageOptions.value.find(({ value }) => value === loadedLanguage.value)
-      ?.text || loadedLanguage.value
+const currentLanguageText = computed(() =>
+  getLanguageText(loadedLanguage.value, languageOptions.value, "")
 );
 
 const canViewSolution = computed(() => progressUserId.value != null);
@@ -875,11 +877,6 @@ const submissionTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-const getLanguageText = (language?: string) =>
-  languageOptions.value.find(({ value }) => value === language)?.text ||
-  language ||
-  "--";
 
 const formatSubmissionTime = (value?: string) => {
   if (!value) return "--";

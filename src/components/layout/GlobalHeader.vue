@@ -46,7 +46,13 @@
         <IconSun v-if="isDark" />
         <IconMoon v-else />
       </button>
-      <div v-if="isLoggedIn" class="user-entry-wrap">
+      <div
+        v-if="isLoggedIn"
+        :class="[
+          'user-entry-wrap',
+          { 'profile-active': route.path === '/profile' },
+        ]"
+      >
         <button
           class="user-entry"
           type="button"
@@ -72,7 +78,9 @@
               <strong>{{ loginUser.userName || "未设置昵称" }}</strong>
               <span>@{{ loginUser.userAccount || "--" }}</span>
             </div>
-            <span class="user-role">{{ roleText(loginUser.userRole) }}</span>
+            <span class="user-role">{{
+              formatUserRole(loginUser.userRole)
+            }}</span>
           </header>
           <p class="user-profile">
             {{ loginUser.userProfile || "暂未填写个人简介" }}
@@ -135,6 +143,7 @@ import UserAvatar from "@/components/user/UserAvatar.vue";
 import { useTheme } from "@/composables/useTheme";
 import { routes } from "@/router/routes";
 import { formatDateTime } from "@/utils/dateTime";
+import { formatUserRole } from "@/utils/userRole";
 import { UserControllerService } from "../../../generated";
 
 const router = useRouter();
@@ -149,12 +158,6 @@ const isLoggedIn = computed(() => {
   const role = loginUser.value?.userRole;
   return !!role && role !== ACCESS_ENUM.NOT_LOGIN;
 });
-
-const roleText = (role?: string) => {
-  if (role === ACCESS_ENUM.ADMIN) return "管理员";
-  if (role === ACCESS_ENUM.USER) return "用户";
-  return role || "--";
-};
 
 const visibleRoutes = computed(() => {
   return routes.filter((item) => {
@@ -445,6 +448,13 @@ const confirmLogout = async () => {
   }
 }
 
+.user-entry-wrap.profile-active .user-summary {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
 .user-summary-header {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -531,6 +541,32 @@ const confirmLogout = async () => {
   color: var(--on-dark-soft);
   font-size: 10px;
   text-align: right;
+}
+
+:global(:root[data-theme="dark"] .user-summary) {
+  color: #3d3d3a;
+  background: #f5f0e8;
+  border-color: #e6dfd8;
+}
+
+:global(:root[data-theme="dark"] .user-summary-header) {
+  border-bottom-color: #e6dfd8;
+}
+
+:global(:root[data-theme="dark"] .user-summary-header strong),
+:global(:root[data-theme="dark"] .user-meta dd) {
+  color: #141413;
+}
+
+:global(:root[data-theme="dark"] .user-summary-header > div > span),
+:global(:root[data-theme="dark"] .user-profile),
+:global(:root[data-theme="dark"] .user-meta dt),
+:global(:root[data-theme="dark"] .profile-hint) {
+  color: #6c6a64;
+}
+
+:global(:root[data-theme="dark"] .user-meta) {
+  background: #efe9de;
 }
 
 .user-name {

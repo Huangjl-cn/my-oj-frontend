@@ -16,7 +16,9 @@
           <h2>{{ loginUser.userName || "未设置昵称" }}</h2>
           <p>@{{ loginUser.userAccount || "--" }}</p>
         </div>
-        <span class="identity-role">{{ roleText(loginUser.userRole) }}</span>
+        <span class="identity-role">{{
+          formatUserRole(loginUser.userRole)
+        }}</span>
         <p class="identity-profile">
           {{ loginUser.userProfile || "暂未填写个人简介" }}
         </p>
@@ -174,6 +176,7 @@ import {
   normalizeUserAvatar,
 } from "@/constants/userAvatars";
 import { formatDateTime } from "@/utils/dateTime";
+import { formatUserRole } from "@/utils/userRole";
 import { UserControllerService } from "../../../generated";
 
 const store = useStore();
@@ -213,12 +216,6 @@ onMounted(async () => {
     message.error("加载个人资料失败");
   }
 });
-
-const roleText = (role?: string) => {
-  if (role === "admin") return "管理员";
-  if (role === "user") return "用户";
-  return role || "--";
-};
 
 const saveProfile = async () => {
   const userName = profileForm.userName.trim();
@@ -336,6 +333,13 @@ const savePassword = async () => {
   border-radius: var(--radius-lg);
 }
 
+:global(:root[data-theme="dark"] .identity-panel) {
+  color: #141413;
+  background: #f5f0e8;
+  border: 1px solid #e6dfd8;
+  box-shadow: var(--shadow-md);
+}
+
 .identity-heading {
   max-width: 100%;
   margin-top: 16px;
@@ -407,6 +411,27 @@ const savePassword = async () => {
   font-family: var(--font-code);
   font-size: 9px;
   text-align: right;
+}
+
+:global(:root[data-theme="dark"] .identity-heading h2),
+:global(:root[data-theme="dark"] .identity-meta dd) {
+  color: #141413;
+}
+
+:global(:root[data-theme="dark"] .identity-heading p),
+:global(:root[data-theme="dark"] .identity-profile),
+:global(:root[data-theme="dark"] .identity-meta dt) {
+  color: #6c6a64;
+}
+
+:global(:root[data-theme="dark"] .identity-role) {
+  color: #3d3d3a;
+  background: #efe9de;
+  border-color: #e6dfd8;
+}
+
+:global(:root[data-theme="dark"] .identity-meta) {
+  border-top-color: #e6dfd8;
 }
 
 .settings-panel {

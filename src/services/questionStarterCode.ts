@@ -13,6 +13,15 @@ export type LanguageOption = {
 
 export type StarterCodeMap = Record<string, string>;
 
+export const getLanguageText = (
+  language: string | undefined,
+  options: LanguageOption[],
+  emptyText = "--"
+) =>
+  options.find(({ value }) => value === language)?.text ||
+  language ||
+  emptyText;
+
 export class StarterCodeServiceError extends Error {
   constructor(message: string, public readonly code?: number) {
     super(message);

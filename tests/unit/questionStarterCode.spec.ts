@@ -1,5 +1,6 @@
 import {
   buildStarterCodeList,
+  getLanguageText,
   normalizeLanguageOptions,
   normalizeStarterCodeList,
   StarterCodeServiceError,
@@ -11,6 +12,14 @@ const languages = normalizeLanguageOptions([
 ]);
 
 describe("question starter code adaptation", () => {
+  it.each([
+    ["java", "Java 25"],
+    ["rust", "rust"],
+    [undefined, "--"],
+  ])("resolves language %p to %s", (language, expected) => {
+    expect(getLanguageText(language, languages)).toBe(expected);
+  });
+
   it("keeps display text separate from the backend language value", () => {
     expect(languages).toEqual([
       { text: "Java 25", value: "java" },
