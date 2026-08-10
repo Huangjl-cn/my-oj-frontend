@@ -3,10 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import type { Question } from './Question';
+import type { SupportedJudgeTypeVO } from './SupportedJudgeTypeVO';
 
-export type BaseResponseQuestion = {
+export type BaseResponseListSupportedJudgeTypeVO = {
     code?: number;
-    data?: Question;
+    data?: Array<SupportedJudgeTypeVO>;
     message?: string;
 };

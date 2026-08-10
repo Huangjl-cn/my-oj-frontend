@@ -59,3 +59,22 @@ export const clearQuestionDraftsForUser = (userId: ApiId) => {
     // Ignore unavailable browser storage.
   }
 };
+
+export const clearQuestionDraftsForQuestion = (questionId: ApiId) => {
+  try {
+    const prefix = `${DRAFT_PREFIX}:`;
+    const questionIdText = String(questionId);
+    const keys = Array.from({ length: sessionStorage.length }, (_, index) =>
+      sessionStorage.key(index)
+    );
+    for (const key of keys) {
+      if (!key?.startsWith(prefix)) continue;
+      const [, storedQuestionId] = key.slice(prefix.length).split(":");
+      if (decodeURIComponent(storedQuestionId || "") === questionIdText) {
+        sessionStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // Ignore unavailable browser storage.
+  }
+};

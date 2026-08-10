@@ -83,38 +83,162 @@
         </div>
 
         <div class="form-section">
+          <h3 class="section-title">输入输出定义</h3>
+          <div class="definition-layout">
+            <section class="definition-panel">
+              <header class="definition-header">
+                <div>
+                  <h4>输入参数</h4>
+                  <p>用例输入顺序与这里的参数顺序一致</p>
+                </div>
+                <button
+                  class="definition-command"
+                  type="button"
+                  @click="handleAddParameter"
+                >
+                  <IconPlus />
+                  添加参数
+                </button>
+              </header>
+              <div
+                v-for="(parameter, index) in form.judgeCase.inputDefinitions"
+                :key="parameter.key"
+                class="parameter-row"
+              >
+                <span class="parameter-index">{{ index + 1 }}</span>
+                <a-input
+                  v-model="parameter.name"
+                  placeholder="参数名称"
+                  allow-clear
+                />
+                <a-select
+                  v-model="parameter.type"
+                  placeholder="参数类型"
+                  @change="handleInputTypeChange(index)"
+                >
+                  <a-option
+                    v-for="type in judgeTypeOptions"
+                    :key="type.value"
+                    :value="type.value"
+                  >
+                    {{ type.text }}
+                  </a-option>
+                </a-select>
+                <div class="parameter-actions">
+                  <button
+                    class="icon-action"
+                    type="button"
+                    title="上移参数"
+                    :disabled="index === 0"
+                    @click="moveParameter(index, -1)"
+                  >
+                    <IconUp />
+                  </button>
+                  <button
+                    class="icon-action"
+                    type="button"
+                    title="下移参数"
+                    :disabled="
+                      index === form.judgeCase.inputDefinitions.length - 1
+                    "
+                    @click="moveParameter(index, 1)"
+                  >
+                    <IconDown />
+                  </button>
+                  <button
+                    class="icon-action danger"
+                    type="button"
+                    title="删除参数"
+                    @click="handleDeleteParameter(index)"
+                  >
+                    <IconDelete />
+                  </button>
+                </div>
+              </div>
+              <p
+                v-if="!form.judgeCase.inputDefinitions.length"
+                class="definition-empty"
+              >
+                暂无输入参数
+              </p>
+            </section>
+
+            <section class="definition-panel output-definition">
+              <header class="definition-header">
+                <div>
+                  <h4>输出类型</h4>
+                  <p>所有测试用例共用同一种输出类型</p>
+                </div>
+              </header>
+              <a-select
+                v-model="form.judgeCase.outputDefinition.type"
+                placeholder="选择输出类型"
+                @change="handleOutputTypeChange"
+              >
+                <a-option
+                  v-for="type in judgeTypeOptions"
+                  :key="type.value"
+                  :value="type.value"
+                >
+                  {{ type.text }}
+                </a-option>
+              </a-select>
+            </section>
+          </div>
+        </div>
+
+        <div class="form-section">
           <h3 class="section-title">测试用例</h3>
           <div
-            v-for="(judgeCaseItem, index) of form.judgeCase"
-            :key="index"
+            v-for="(judgeCaseItem, index) of form.judgeCase.cases"
+            :key="judgeCaseItem.key"
             class="test-case-card"
           >
             <div class="test-case-header">
               <span class="test-case-label">用例 {{ index + 1 }}</span>
-              <button class="delete-btn" @click="handleDelete(index)">
+              <button
+                class="delete-btn"
+                type="button"
+                @click="handleDeleteCase(index)"
+              >
                 删除
               </button>
             </div>
-            <a-row :gutter="16">
-              <a-col :span="12">
-                <a-form-item :field="`input-${index}`" label="输入">
-                  <a-input
-                    v-model="judgeCaseItem.input"
-                    placeholder="测试输入"
-                  />
-                </a-form-item>
-              </a-col>
-              <a-col :span="12">
-                <a-form-item :field="`output-${index}`" label="输出">
-                  <a-input
-                    v-model="judgeCaseItem.output"
-                    placeholder="测试输出"
-                  />
-                </a-form-item>
-              </a-col>
-            </a-row>
+            <div class="case-values">
+              <section
+                v-for="(parameter, inputIndex) in form.judgeCase
+                  .inputDefinitions"
+                :key="parameter.key"
+                class="case-value-block"
+              >
+                <header class="case-value-heading">
+                  <strong>{{
+                    parameter.name || `参数 ${inputIndex + 1}`
+                  }}</strong>
+                  <span>{{ getJudgeTypeText(parameter.type) }}</span>
+                </header>
+                <JudgeValueEditor
+                  v-model="judgeCaseItem.inputs[inputIndex]"
+                  :type="parameter.type"
+                  :types="judgeTypeOptions"
+                />
+              </section>
+              <section class="case-value-block expected-output">
+                <header class="case-value-heading">
+                  <strong>预期输出</strong>
+                  <span>{{
+                    getJudgeTypeText(form.judgeCase.outputDefinition.type)
+                  }}</span>
+                </header>
+                <JudgeValueEditor
+                  v-model="judgeCaseItem.expectedOutput"
+                  :type="form.judgeCase.outputDefinition.type"
+                  :types="judgeTypeOptions"
+                />
+              </section>
+            </div>
           </div>
-          <button class="add-case-btn" @click="handleAdd">
+          <button class="add-case-btn" type="button" @click="handleAddCase">
             + 新增测试用例
           </button>
         </div>
@@ -122,6 +246,18 @@
         <div class="form-section">
           <div class="starter-section-header">
             <h3 class="section-title">初始代码模板</h3>
+            <button
+              v-if="
+                updatePage && languageOptions.length && !starterCodeLoadError
+              "
+              class="sync-template-btn"
+              type="button"
+              :disabled="starterCodeLoading"
+              @click="syncStarterCodesToJudgeCase"
+            >
+              <IconRefresh />
+              按参数同步模板
+            </button>
             <label v-if="!updatePage" class="starter-toggle">
               <span>自定义模板</span>
               <a-switch v-model="starterCodeEnabled" size="small" />
@@ -137,9 +273,9 @@
               v-if="updatePage && languageOptions.length"
               class="repair-template-btn"
               type="button"
-              @click="repairStarterCodes"
+              @click="syncStarterCodesToJudgeCase"
             >
-              使用后端默认模板重建
+              按参数同步模板
             </button>
           </div>
 
@@ -179,7 +315,12 @@
           <button
             class="claude-btn-primary"
             type="button"
-            :disabled="starterCodeLoading || languageLoading"
+            :disabled="
+              starterCodeLoading ||
+              languageLoading ||
+              judgeTypeLoading ||
+              !judgeTypeOptions.length
+            "
             @click="doSubmit"
           >
             {{ updatePage ? "更新" : "提交" }}
@@ -188,29 +329,58 @@
       </a-form>
     </div>
   </div>
+  <ConfirmDialog
+    v-if="!updatePage"
+    v-model:visible="showCreateLeaveDialog"
+    title="离开创建页面"
+    message="离开后，当前尚未提交的题目内容将会丢失。"
+    confirm-text="放弃内容"
+    tone="danger"
+    @confirm="confirmCreateLeave"
+  />
 </template>
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {
+  IconDelete,
+  IconDown,
+  IconPlus,
+  IconRefresh,
+  IconUp,
+} from "@arco-design/web-vue/es/icon";
+import { computed, onMounted, ref, watch } from "vue";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 
+import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import CodeEditor from "@/components/editor/CodeEditor.vue";
 import MdEditor from "@/components/editor/MdEditor.vue";
+import JudgeValueEditor from "@/components/question/JudgeValueEditor.vue";
 import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
 import {
+  buildJudgeCaseConfig,
+  createDefaultJudgeCaseConfig,
+  createDefaultJudgeValue,
+  createJudgeCaseConfigDraft,
+  createJudgeCaseDraft,
+  createJudgeParameterDraft,
+  getJudgeTypeOption,
+  getSupportedJudgeTypeOptions,
+  JudgeCaseConfigDraft,
+  JudgeTypeOption,
+  validateJudgeCaseConfig,
+} from "@/services/questionJudgeCase";
+import {
   buildStarterCodeList,
+  clearQuestionStarterCodeCache,
   getQuestionStarterCodeMap,
   getSupportedLanguageOptions,
   LanguageOption,
   StarterCodeMap,
   StarterCodeServiceError,
 } from "@/services/questionStarterCode";
-import {
-  JudgeCase,
-  JudgeConfig,
-  QuestionControllerService,
-} from "../../../generated";
+import { clearQuestionDraftsForQuestion } from "@/services/questionDraft";
+import { JudgeConfig, QuestionControllerService } from "../../../generated";
 
 interface QuestionForm {
   id?: ApiId;
@@ -219,7 +389,7 @@ interface QuestionForm {
   answer: string;
   content: string;
   judgeConfig: JudgeConfig;
-  judgeCase: JudgeCase[];
+  judgeCase: JudgeCaseConfigDraft;
 }
 
 const createDefaultForm = (): QuestionForm => ({
@@ -232,17 +402,19 @@ const createDefaultForm = (): QuestionForm => ({
     stackLimit: 1000,
     timeLimit: 1000,
   },
-  judgeCase: [{ input: "", output: "" }],
+  judgeCase: {
+    inputDefinitions: [],
+    outputDefinition: { type: "" },
+    cases: [],
+  },
 });
-
-function parseJson<T>(value: string | undefined, fallback: T): T {
-  return value ? (JSON.parse(value) as T) : fallback;
-}
 
 const route = useRoute();
 const router = useRouter();
 const updatePage = route.path.includes("update");
 const form = ref<QuestionForm>(createDefaultForm());
+const judgeTypeOptions = ref<JudgeTypeOption[]>([]);
+const judgeTypeLoading = ref(false);
 const languageOptions = ref<LanguageOption[]>([]);
 const languageLoading = ref(false);
 const starterCodeLoading = ref(false);
@@ -251,6 +423,35 @@ const starterCodeDirty = ref(false);
 const starterCodeLoadError = ref("");
 const starterCodes = ref<StarterCodeMap>({});
 const activeStarterLanguage = ref("");
+const initialCreateFormSnapshot = ref("");
+const showCreateLeaveDialog = ref(false);
+const pendingCreateLeavePath = ref("");
+let allowCreateLeave = false;
+
+const getCreateFormSnapshot = () =>
+  JSON.stringify({
+    form: form.value,
+    starterCodeEnabled: starterCodeEnabled.value,
+    starterCodes: starterCodeEnabled.value ? starterCodes.value : {},
+  });
+
+const isCreateFormDirty = computed(
+  () =>
+    !updatePage &&
+    initialCreateFormSnapshot.value !== "" &&
+    initialCreateFormSnapshot.value !== getCreateFormSnapshot()
+);
+
+const loadJudgeTypeOptions = async () => {
+  judgeTypeLoading.value = true;
+  try {
+    judgeTypeOptions.value = await getSupportedJudgeTypeOptions();
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "加载判题类型失败");
+  } finally {
+    judgeTypeLoading.value = false;
+  }
+};
 
 const createEmptyStarterCodeMap = () =>
   Object.fromEntries(
@@ -308,9 +509,12 @@ const loadData = async () => {
       title: res.data.title ?? "",
       answer: res.data.answer ?? "",
       content: res.data.content ?? "",
-      tags: parseJson(res.data.tags, defaults.tags),
-      judgeCase: parseJson(res.data.judgeCase, defaults.judgeCase),
-      judgeConfig: parseJson(res.data.judgeConfig, defaults.judgeConfig),
+      tags: res.data.tags ?? defaults.tags,
+      judgeCase: createJudgeCaseConfigDraft(
+        res.data.judgeCase,
+        judgeTypeOptions.value
+      ),
+      judgeConfig: res.data.judgeConfig ?? defaults.judgeConfig,
     };
     await loadStarterCodes(id);
   } else {
@@ -318,9 +522,32 @@ const loadData = async () => {
   }
 };
 
+onBeforeRouteLeave((to) => {
+  if (allowCreateLeave || !isCreateFormDirty.value) return true;
+  pendingCreateLeavePath.value = to.fullPath;
+  showCreateLeaveDialog.value = true;
+  return false;
+});
+
+const confirmCreateLeave = () => {
+  if (!pendingCreateLeavePath.value) return;
+  const path = pendingCreateLeavePath.value;
+  pendingCreateLeavePath.value = "";
+  showCreateLeaveDialog.value = false;
+  allowCreateLeave = true;
+  void router.push(path);
+};
+
 onMounted(async () => {
-  await loadLanguageOptions();
-  if (updatePage) await loadData();
+  await Promise.all([loadLanguageOptions(), loadJudgeTypeOptions()]);
+  if (updatePage) {
+    await loadData();
+  } else if (judgeTypeOptions.value.length) {
+    form.value.judgeCase = createDefaultJudgeCaseConfig(judgeTypeOptions.value);
+  }
+  if (!updatePage) {
+    initialCreateFormSnapshot.value = getCreateFormSnapshot();
+  }
 });
 
 watch(starterCodeEnabled, (enabled) => {
@@ -335,48 +562,142 @@ const onStarterCodeChange = (value: string) => {
   starterCodeDirty.value = true;
 };
 
-const repairStarterCodes = () => {
+const syncStarterCodesToJudgeCase = () => {
+  if (!updatePage || !languageOptions.value.length) return;
   starterCodes.value = createEmptyStarterCodeMap();
   starterCodeEnabled.value = true;
   starterCodeDirty.value = true;
   starterCodeLoadError.value = "";
+  message.info("已清空模板，提交更新后将按当前参数重新生成");
 };
 
 const doSubmit = async () => {
+  const judgeCaseError = validateJudgeCaseConfig(
+    form.value.judgeCase,
+    judgeTypeOptions.value
+  );
+  if (judgeCaseError) {
+    message.warning(judgeCaseError);
+    return;
+  }
+
   const starterCodeList =
     starterCodeEnabled.value && (!updatePage || starterCodeDirty.value)
       ? buildStarterCodeList(starterCodes.value, languageOptions.value)
       : undefined;
+  const requestBody = {
+    title: form.value.title,
+    tags: form.value.tags,
+    answer: form.value.answer,
+    content: form.value.content,
+    judgeConfig: form.value.judgeConfig,
+    judgeCase: buildJudgeCaseConfig(form.value.judgeCase),
+    starterCodeList,
+  };
 
   if (updatePage) {
     const res = await QuestionControllerService.editQuestion({
-      ...form.value,
+      ...requestBody,
       id: form.value.id == null ? undefined : toGeneratedApiId(form.value.id),
-      starterCodeList,
     });
     if (res.code === 0) {
+      if (form.value.id != null) {
+        clearQuestionStarterCodeCache(form.value.id);
+        clearQuestionDraftsForQuestion(form.value.id);
+      }
       message.success("更新成功");
       router.push(
         route.query.from === "my" ? "/my/question" : "/manage/question"
       );
     } else message.error("更新失败，" + res.message);
   } else {
-    const res = await QuestionControllerService.addQuestion({
-      ...form.value,
-      starterCodeList,
-    });
+    const res = await QuestionControllerService.addQuestion(requestBody);
     if (res.code === 0) {
+      if (res.data != null) {
+        clearQuestionStarterCodeCache(res.data);
+        clearQuestionDraftsForQuestion(res.data);
+      }
+      allowCreateLeave = true;
       message.success("创建成功");
       router.push("/questions");
     } else message.error("创建失败，" + res.message);
   }
 };
 
-const handleAdd = () => {
-  form.value.judgeCase.push({ input: "", output: "" });
+const getJudgeTypeText = (type: string) =>
+  getJudgeTypeOption(type, judgeTypeOptions.value)?.text || type || "未选择";
+
+const handleAddParameter = () => {
+  const type = judgeTypeOptions.value[0]?.value;
+  if (!type) return;
+  const index = form.value.judgeCase.inputDefinitions.length;
+  form.value.judgeCase.inputDefinitions.push(
+    createJudgeParameterDraft(`arg${index + 1}`, type)
+  );
+  form.value.judgeCase.cases.forEach((judgeCase) => {
+    judgeCase.inputs.push(
+      createDefaultJudgeValue(type, judgeTypeOptions.value)
+    );
+  });
 };
-const handleDelete = (index: number) => {
-  form.value.judgeCase.splice(index, 1);
+
+const handleDeleteParameter = (index: number) => {
+  form.value.judgeCase.inputDefinitions.splice(index, 1);
+  form.value.judgeCase.cases.forEach((judgeCase) => {
+    judgeCase.inputs.splice(index, 1);
+  });
+};
+
+const moveParameter = (index: number, offset: -1 | 1) => {
+  const targetIndex = index + offset;
+  if (
+    targetIndex < 0 ||
+    targetIndex >= form.value.judgeCase.inputDefinitions.length
+  ) {
+    return;
+  }
+  const definitions = form.value.judgeCase.inputDefinitions;
+  [definitions[index], definitions[targetIndex]] = [
+    definitions[targetIndex],
+    definitions[index],
+  ];
+  form.value.judgeCase.cases.forEach((judgeCase) => {
+    [judgeCase.inputs[index], judgeCase.inputs[targetIndex]] = [
+      judgeCase.inputs[targetIndex],
+      judgeCase.inputs[index],
+    ];
+  });
+};
+
+const handleInputTypeChange = (index: number) => {
+  const type = form.value.judgeCase.inputDefinitions[index]?.type;
+  if (!type) return;
+  form.value.judgeCase.cases.forEach((judgeCase) => {
+    judgeCase.inputs[index] = createDefaultJudgeValue(
+      type,
+      judgeTypeOptions.value
+    );
+  });
+};
+
+const handleOutputTypeChange = () => {
+  const type = form.value.judgeCase.outputDefinition.type;
+  form.value.judgeCase.cases.forEach((judgeCase) => {
+    judgeCase.expectedOutput = createDefaultJudgeValue(
+      type,
+      judgeTypeOptions.value
+    );
+  });
+};
+
+const handleAddCase = () => {
+  form.value.judgeCase.cases.push(
+    createJudgeCaseDraft(form.value.judgeCase, judgeTypeOptions.value)
+  );
+};
+
+const handleDeleteCase = (index: number) => {
+  form.value.judgeCase.cases.splice(index, 1);
 };
 const onContentChange = (value: string) => {
   form.value.content = value;
@@ -473,15 +794,19 @@ const onAnswerChange = (value: string) => {
   padding-right: 12px !important;
 }
 
-/* Fix input-tag width issue */
 .arco-input-tag {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   width: 100% !important;
   min-width: 0 !important;
 }
 
 .arco-input-tag input {
-  width: 100% !important;
-  min-width: 60px !important;
+  width: auto !important;
+  min-width: 120px !important;
+  flex: 1 1 120px !important;
 }
 
 /* Fix input-number width */
@@ -493,6 +818,126 @@ const onAnswerChange = (value: string) => {
 .arco-form-item-content {
   flex: 1 !important;
   overflow: hidden;
+}
+
+.definition-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: var(--space-md);
+}
+
+.definition-panel {
+  min-width: 0;
+  padding: var(--space-md);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+}
+
+.definition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: 14px;
+}
+
+.definition-header h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.definition-header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.definition-command {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.definition-command:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.parameter-row {
+  display: grid;
+  grid-template-columns: 24px minmax(110px, 0.8fr) minmax(170px, 1.2fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.parameter-index {
+  color: var(--muted-soft);
+  font-family: var(--font-code);
+  font-size: 11px;
+  text-align: center;
+}
+
+.parameter-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-action {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.icon-action:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-soft);
+  border-color: var(--hairline);
+}
+
+.icon-action.danger:hover:not(:disabled) {
+  color: var(--error);
+  background: rgba(198, 69, 69, 0.08);
+  border-color: rgba(198, 69, 69, 0.24);
+}
+
+.icon-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.definition-empty {
+  margin: 0;
+  padding: 18px;
+  color: var(--muted-soft);
+  border-top: 1px solid var(--hairline-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+.output-definition :deep(.arco-select-view) {
+  width: 100%;
 }
 
 .test-case-card {
@@ -514,6 +959,42 @@ const onAnswerChange = (value: string) => {
   font-size: 13px;
   font-weight: 500;
   color: var(--body);
+}
+
+.case-values {
+  display: grid;
+  gap: 18px;
+}
+
+.case-value-block {
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.case-value-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.case-value-heading strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.case-value-heading span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.expected-output {
+  padding: 14px;
+  background: var(--surface-soft);
+  border-top: 2px solid var(--primary);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
 .delete-btn {
@@ -589,6 +1070,40 @@ const onAnswerChange = (value: string) => {
   flex: 1;
   margin-bottom: 0;
   border-bottom: 0;
+}
+
+.sync-template-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.sync-template-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.sync-template-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sync-template-btn:active {
+  transform: translateY(1px);
 }
 
 .starter-toggle {
@@ -879,10 +1394,42 @@ const onAnswerChange = (value: string) => {
     padding: 14px;
   }
 
+  .definition-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .definition-header {
+    align-items: flex-start;
+  }
+
+  .parameter-row {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+  }
+
+  .parameter-row > :deep(.arco-select) {
+    grid-column: 2 / -1;
+  }
+
+  .parameter-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .case-value-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .starter-section-header {
     align-items: stretch;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .sync-template-btn {
+    justify-content: center;
+    width: 100%;
   }
 
   .starter-toggle {

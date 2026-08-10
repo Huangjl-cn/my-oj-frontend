@@ -1,4 +1,5 @@
 import {
+  clearQuestionDraftsForQuestion,
   clearQuestionDraftsForUser,
   getQuestionDraft,
   removeQuestionDraft,
@@ -31,5 +32,23 @@ describe("question draft session cache", () => {
 
     expect(getQuestionDraft(firstUser)).toBeUndefined();
     expect(getQuestionDraft(secondUser)).toBe("second");
+  });
+
+  it("clears every language draft for the selected question", () => {
+    const firstLanguage = { userId: "7", questionId: "42", language: "java" };
+    const secondLanguage = {
+      ...firstLanguage,
+      language: "python",
+    };
+    const otherQuestion = { ...firstLanguage, questionId: "43" };
+    saveQuestionDraft(firstLanguage, "java");
+    saveQuestionDraft(secondLanguage, "python");
+    saveQuestionDraft(otherQuestion, "other");
+
+    clearQuestionDraftsForQuestion("42");
+
+    expect(getQuestionDraft(firstLanguage)).toBeUndefined();
+    expect(getQuestionDraft(secondLanguage)).toBeUndefined();
+    expect(getQuestionDraft(otherQuestion)).toBe("other");
   });
 });

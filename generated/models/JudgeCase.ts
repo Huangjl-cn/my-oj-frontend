@@ -3,7 +3,9 @@
 /* tslint:disable */
 /* eslint-disable */
 
+import type { JsonNode } from './JsonNode';
+
 export type JudgeCase = {
-    input?: string;
-    output?: string;
+    inputs?: Array<JsonNode>;
+    expectedOutput?: JsonNode;
 };

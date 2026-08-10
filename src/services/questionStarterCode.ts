@@ -13,6 +13,39 @@ export type LanguageOption = {
 
 export type StarterCodeMap = Record<string, string>;
 
+const starterCodeCache = new Map<string, string>();
+
+const getStarterCodeCacheKey = (questionId: ApiId, language: string) =>
+  `${String(questionId)}:${language}`;
+
+export const getCachedStarterCode = (questionId: ApiId, language: string) =>
+  starterCodeCache.get(getStarterCodeCacheKey(questionId, language));
+
+export const setCachedStarterCode = (
+  questionId: ApiId,
+  language: string,
+  starterCode: string
+) => {
+  starterCodeCache.set(
+    getStarterCodeCacheKey(questionId, language),
+    starterCode
+  );
+};
+
+export const removeCachedStarterCode = (
+  questionId: ApiId,
+  language: string
+) => {
+  starterCodeCache.delete(getStarterCodeCacheKey(questionId, language));
+};
+
+export const clearQuestionStarterCodeCache = (questionId: ApiId) => {
+  const prefix = `${String(questionId)}:`;
+  for (const key of starterCodeCache.keys()) {
+    if (key.startsWith(prefix)) starterCodeCache.delete(key);
+  }
+};
+
 export const getLanguageText = (
   language: string | undefined,
   options: LanguageOption[],

@@ -21,7 +21,7 @@
       </div>
       <div>
         <dt>测试用例</dt>
-        <dd>{{ judgeCases.length }} <small>个</small></dd>
+        <dd>{{ judgeCaseCount }} <small>个</small></dd>
       </div>
     </dl>
   </section>
@@ -31,7 +31,7 @@
 import { computed, defineProps } from "vue";
 
 import { formatJudgeMemory } from "@/services/questionSubmit";
-import { JudgeCase, JudgeConfig, Question } from "../../../generated";
+import { JudgeCaseConfig, JudgeConfig, Question } from "../../../generated";
 
 const props = defineProps<{
   question: Question;
@@ -49,9 +49,10 @@ function parseJson<T>(value: string | undefined, fallback: T): T {
 const judgeConfig = computed(() =>
   parseJson<JudgeConfig>(props.question.judgeConfig, {})
 );
-const judgeCases = computed(() =>
-  parseJson<JudgeCase[]>(props.question.judgeCase, [])
+const judgeCaseConfig = computed(() =>
+  parseJson<JudgeCaseConfig>(props.question.judgeCase, {})
 );
+const judgeCaseCount = computed(() => judgeCaseConfig.value.cases?.length ?? 0);
 </script>
 
 <style scoped>

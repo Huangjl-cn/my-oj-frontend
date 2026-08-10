@@ -10,6 +10,10 @@
         {{ formatJudgeMemory(submission.judgeInfo?.memory) }}
       </span>
     </header>
+    <div v-if="submission.code" class="submission-code">
+      <h3>提交代码</h3>
+      <pre>{{ submission.code }}</pre>
+    </div>
     <div v-if="messageParts.title" class="diagnostic-content">
       <strong>{{ messageParts.title }}</strong>
       <pre v-if="messageParts.details">{{ messageParts.details }}</pre>
@@ -69,6 +73,31 @@ const messageParts = computed(() =>
 
 .diagnostic-result.pending {
   color: var(--accent-amber);
+}
+
+.submission-code {
+  margin-bottom: 14px;
+}
+
+.submission-code h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.submission-code pre {
+  max-height: 360px;
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  color: var(--on-dark);
+  background: var(--surface-dark);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  font: 12px/1.65 var(--font-code);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .diagnostic-metrics {

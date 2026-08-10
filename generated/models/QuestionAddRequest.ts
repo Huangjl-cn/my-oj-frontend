@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import type { JudgeCase } from './JudgeCase';
+import type { JudgeCaseConfig } from './JudgeCaseConfig';
 import type { JudgeConfig } from './JudgeConfig';
 import type { QuestionStarterCodeSaveRequest } from './QuestionStarterCodeSaveRequest';
 
@@ -12,7 +12,7 @@ export type QuestionAddRequest = {
     content?: string;
     tags?: Array<string>;
     answer?: string;
-    judgeCase?: Array<JudgeCase>;
+    judgeCase?: JudgeCaseConfig;
     judgeConfig?: JudgeConfig;
     starterCodeList?: Array<QuestionStarterCodeSaveRequest>;
 };

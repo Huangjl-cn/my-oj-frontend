@@ -4,13 +4,14 @@
 /* eslint-disable */
 import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
 import type { BaseResponseListQuestionStarterCodeVO } from '../models/BaseResponseListQuestionStarterCodeVO';
+import type { BaseResponseListSupportedJudgeTypeVO } from '../models/BaseResponseListSupportedJudgeTypeVO';
 import type { BaseResponseListSupportedLanguageVO } from '../models/BaseResponseListSupportedLanguageVO';
 import type { BaseResponseLong } from '../models/BaseResponseLong';
 import type { BaseResponsePageQuestion } from '../models/BaseResponsePageQuestion';
 import type { BaseResponsePageQuestionSubmitSummaryVO } from '../models/BaseResponsePageQuestionSubmitSummaryVO';
 import type { BaseResponsePageQuestionSubmitVO } from '../models/BaseResponsePageQuestionSubmitVO';
 import type { BaseResponsePageQuestionVO } from '../models/BaseResponsePageQuestionVO';
-import type { BaseResponseQuestion } from '../models/BaseResponseQuestion';
+import type { BaseResponseQuestionManageVO } from '../models/BaseResponseQuestionManageVO';
 import type { BaseResponseQuestionSolutionVO } from '../models/BaseResponseQuestionSolutionVO';
 import type { BaseResponseQuestionStarterCodeVO } from '../models/BaseResponseQuestionStarterCodeVO';
 import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
@@ -202,6 +203,17 @@ requestBody: QuestionAddRequest,
     }
 
     /**
+     * @returns BaseResponseListSupportedJudgeTypeVO OK
+     * @throws ApiError
+     */
+    public static getSupportedJudgeTypes(): CancelablePromise<BaseResponseListSupportedJudgeTypeVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/supported-judge-types',
+        });
+    }
+
+    /**
      * @param questionId 
      * @param language 
      * @returns BaseResponseQuestionStarterCodeVO OK
@@ -291,12 +303,12 @@ id: number,
 
     /**
      * @param id 
-     * @returns BaseResponseQuestion OK
+     * @returns BaseResponseQuestionManageVO OK
      * @throws ApiError
      */
     public static getQuestionById(
 id: number,
-): CancelablePromise<BaseResponseQuestion> {
+): CancelablePromise<BaseResponseQuestionManageVO> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/question/get',

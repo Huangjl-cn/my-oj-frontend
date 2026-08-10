@@ -159,7 +159,41 @@
             <div class="question-reading-area">
               <div v-if="activeTab === 'question'">
                 <header class="question-heading">
-                  <h1 class="problem-title">{{ currentQuestion.title }}</h1>
+                  <div class="problem-title-row">
+                    <h1 class="problem-title">{{ currentQuestion.title }}</h1>
+                    <div class="problem-author">
+                      <UserAvatar
+                        :avatar="currentQuestion.userVO?.userAvatar"
+                        :name="currentQuestion.userVO?.userName || '题目作者'"
+                        :size="36"
+                      />
+                      <div class="problem-author-copy">
+                        <strong>
+                          作者
+                          {{ currentQuestion.userVO?.userName || "未知作者" }}
+                        </strong>
+                        <code
+                          :title="
+                            String(
+                              currentQuestion.userVO?.id ??
+                                currentQuestion.userid ??
+                                '--'
+                            )
+                          "
+                        >
+                          #{{
+                            currentQuestion.userVO?.id ??
+                            currentQuestion.userid ??
+                            "--"
+                          }}
+                        </code>
+                        <time :datetime="currentQuestion.createTime">
+                          创建于
+                          {{ formatDateTime(currentQuestion.createTime) }}
+                        </time>
+                      </div>
+                    </div>
+                  </div>
                   <div class="problem-header">
                     <span
                       class="tag"
@@ -624,6 +658,7 @@ import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import MdViewer from "@/components/editor/MdViewer.vue";
+import UserAvatar from "@/components/user/UserAvatar.vue";
 import { ApiId, toGeneratedApiId } from "@/services/apiId";
 import {
   getQuestionDraft,
@@ -631,10 +666,14 @@ import {
   saveQuestionDraft,
 } from "@/services/questionDraft";
 import {
+  clearQuestionStarterCodeCache,
+  getCachedStarterCode,
   getLanguageText,
   getQuestionStarterCode,
   getSupportedLanguageOptions,
   LanguageOption,
+  removeCachedStarterCode,
+  setCachedStarterCode,
   StarterCodeServiceError,
 } from "@/services/questionStarterCode";
 import {
@@ -652,6 +691,7 @@ import {
   splitJudgeMessage,
 } from "@/services/questionSubmit";
 import { createQuestionSubmitPoller } from "@/services/questionSubmitPolling";
+import { formatDateTime } from "@/utils/dateTime";
 import {
   QuestionControllerService,
   QuestionQueryRequest,
@@ -840,7 +880,6 @@ const mySubmissionDetailPollers = new Map<
   string,
   ReturnType<typeof createQuestionSubmitPoller>
 >();
-const templateCache = new Map<string, string>();
 let questionGeneration = 0;
 let templateGeneration = 0;
 let draftTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1093,10 +1132,7 @@ const scheduleDraftSave = () => {
 };
 
 const clearTemplateCacheForQuestion = (questionId: ApiId) => {
-  const prefix = `${questionId}:`;
-  for (const key of templateCache.keys()) {
-    if (key.startsWith(prefix)) templateCache.delete(key);
-  }
+  clearQuestionStarterCodeCache(questionId);
 };
 
 const activateLanguage = async (language: string) => {
@@ -1104,16 +1140,15 @@ const activateLanguage = async (language: string) => {
   if (questionId == null || !language) return;
 
   const generation = ++templateGeneration;
-  const cacheKey = `${questionId}:${language}`;
   starterCodeLoading.value = true;
   starterCodeError.value = "";
   form.value.code = "";
 
   try {
-    let template = templateCache.get(cacheKey);
+    let template = getCachedStarterCode(questionId, language);
     if (template == null) {
       template = await getQuestionStarterCode(questionId, language);
-      templateCache.set(cacheKey, template);
+      setCachedStarterCode(questionId, language, template);
     }
     if (generation !== templateGeneration) return;
 
@@ -1124,7 +1159,7 @@ const activateLanguage = async (language: string) => {
       getQuestionDraft(getDraftKey(questionId, language)) ?? template;
   } catch (error) {
     if (generation !== templateGeneration) return;
-    templateCache.delete(cacheKey);
+    removeCachedStarterCode(questionId, language);
     activeTemplate.value = "";
     loadedLanguage.value = language;
     form.value.code = "";
@@ -1714,14 +1749,69 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--surface-cream-strong);
 }
 
+.problem-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 10px;
+}
+
 .problem-title {
+  min-width: 0;
   font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
   font-size: 32px;
   font-weight: 400;
   color: var(--ink);
   letter-spacing: 0;
-  margin: 0 0 10px;
+  margin: 0;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.problem-author {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--hairline);
+}
+
+.problem-author-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.problem-author-copy strong,
+.problem-author-copy code,
+.problem-author-copy time {
+  display: block;
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.problem-author-copy strong {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.problem-author-copy code {
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.problem-author-copy time {
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 10px;
 }
 
 .problem-header {
@@ -2790,6 +2880,18 @@ onBeforeUnmount(() => {
 
   .problem-title {
     font-size: 28px;
+  }
+
+  .problem-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .problem-author {
+    width: 100%;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .problem-section :deep(p) {
