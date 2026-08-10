@@ -1,6 +1,35 @@
-import ArcoVue from "@arco-design/web-vue";
-import "@arco-design/web-vue/dist/arco.css";
-import "bytemd/dist/index.css";
+import {
+  Button,
+  Col,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+  InputPassword,
+  InputTag,
+  Layout,
+  LayoutContent,
+  LayoutFooter,
+  LayoutHeader,
+  Option,
+  Pagination,
+  Row,
+  Select,
+  Switch,
+  Table,
+} from "@arco-design/web-vue";
+import "@arco-design/web-vue/es/button/style/css.js";
+import "@arco-design/web-vue/es/form/style/css.js";
+import "@arco-design/web-vue/es/grid/style/css.js";
+import "@arco-design/web-vue/es/input/style/css.js";
+import "@arco-design/web-vue/es/input-number/style/css.js";
+import "@arco-design/web-vue/es/input-tag/style/css.js";
+import "@arco-design/web-vue/es/layout/style/css.js";
+import "@arco-design/web-vue/es/message/style/css.js";
+import "@arco-design/web-vue/es/pagination/style/css.js";
+import "@arco-design/web-vue/es/select/style/css.js";
+import "@arco-design/web-vue/es/switch/style/css.js";
+import "@arco-design/web-vue/es/table/style/css.js";
 import { createApp } from "vue";
 
 import App from "./App.vue";
@@ -39,4 +68,25 @@ window.addEventListener("error", (e) => {
   }
 });
 
-createApp(App).use(ArcoVue).use(store).use(router).mount("#app");
+const app = createApp(App);
+
+app.component("AButton", Button);
+app.component("ACol", Col);
+app.component("AForm", Form);
+app.component("AFormItem", FormItem);
+app.component("AInput", Input);
+app.component("AInputNumber", InputNumber);
+app.component("AInputPassword", InputPassword);
+app.component("AInputTag", InputTag);
+app.component("ALayout", Layout);
+app.component("ALayoutContent", LayoutContent);
+app.component("ALayoutFooter", LayoutFooter);
+app.component("ALayoutHeader", LayoutHeader);
+app.component("AOption", Option);
+app.component("APagination", Pagination);
+app.component("ARow", Row);
+app.component("ASelect", Select);
+app.component("ASwitch", Switch);
+app.component("ATable", Table);
+
+app.use(store).use(router).mount("#app");

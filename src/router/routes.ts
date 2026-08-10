@@ -1,15 +1,40 @@
 import { RouteRecordRaw } from "vue-router";
-import UserLayout from "@/layouts/UserLayout.vue";
-import UserLoginView from "@/views/user/UserLoginView.vue";
-import UserRegisterView from "@/views/user/UserRegisterView.vue";
-import NoAuthView from "@/views/NoAuthView.vue";
 import ACCESS_ENUM from "@/access/accessEnum";
-import AddQuestionView from "@/views/question/AddQuestionView.vue";
-import ManageQuestionView from "@/views/question/ManageQuestionView.vue";
-import QuestionsView from "@/views/question/QuestionsView.vue";
-import QuestionSubmitView from "@/views/question/QuestionSubmitView.vue";
-import UserManageView from "@/views/user/UserManageView.vue";
-import UserProfileView from "@/views/user/UserProfileView.vue";
+
+const UserLayout = () =>
+  import(/* webpackChunkName: "page-auth" */ "@/layouts/UserLayout.vue");
+const UserLoginView = () =>
+  import(/* webpackChunkName: "page-auth" */ "@/views/user/UserLoginView.vue");
+const UserRegisterView = () =>
+  import(
+    /* webpackChunkName: "page-auth" */ "@/views/user/UserRegisterView.vue"
+  );
+const NoAuthView = () =>
+  import(/* webpackChunkName: "page-no-auth" */ "@/views/NoAuthView.vue");
+const AddQuestionView = () =>
+  import(
+    /* webpackChunkName: "page-question-editor" */ "@/views/question/AddQuestionView.vue"
+  );
+const ManageQuestionView = () =>
+  import(
+    /* webpackChunkName: "page-question-manage" */ "@/views/question/ManageQuestionView.vue"
+  );
+const QuestionsView = () =>
+  import(
+    /* webpackChunkName: "page-questions" */ "@/views/question/QuestionsView.vue"
+  );
+const QuestionSubmitView = () =>
+  import(
+    /* webpackChunkName: "page-submissions" */ "@/views/question/QuestionSubmitView.vue"
+  );
+const UserManageView = () =>
+  import(
+    /* webpackChunkName: "page-user-manage" */ "@/views/user/UserManageView.vue"
+  );
+const UserProfileView = () =>
+  import(
+    /* webpackChunkName: "page-user-profile" */ "@/views/user/UserProfileView.vue"
+  );
 
 export const routes: Array<RouteRecordRaw> = [
   {

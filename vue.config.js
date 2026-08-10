@@ -48,14 +48,14 @@ module.exports = defineConfig({
     },
     plugins: [
       new MonacoWebpackPlugin({
-        languages: ["java", "javascript", "typescript", "python", "cpp"],
+        filename: "js/[name].[contenthash:8].worker.js",
+        languages: ["java", "javascript", "typescript", "python", "cpp", "go"],
         features: ["coreCommands", "find"],
       }),
     ],
   },
   chainWebpack(config) {
     config.plugins.delete("prefetch");
-    config.plugins.delete("preload");
 
     // 配置 gzip 压缩
     config

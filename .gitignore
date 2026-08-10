@@ -2,6 +2,7 @@
 Thumbs.db
 node_modules
 /dist
+/deploy/oj-frontend/dist
 /coverage
 .cache
 *.tsbuildinfo

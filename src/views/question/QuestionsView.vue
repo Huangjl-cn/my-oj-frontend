@@ -657,7 +657,6 @@ import { useStore } from "vuex";
 import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
-import MdViewer from "@/components/editor/MdViewer.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import { ApiId, toGeneratedApiId } from "@/services/apiId";
 import {
@@ -703,6 +702,9 @@ import {
 
 const CodeEditor = defineAsyncComponent(
   () => import("@/components/editor/CodeEditor.vue")
+);
+const MdViewer = defineAsyncComponent(
+  () => import("@/components/editor/MdViewer.vue")
 );
 
 type PageChange = number | { current?: number };
