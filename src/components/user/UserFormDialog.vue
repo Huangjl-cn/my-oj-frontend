@@ -184,6 +184,10 @@ const submit = () => {
     formError.value = "请输入登录账号";
     return;
   }
+  if (!isEditing.value && value.userAccount.length < 4) {
+    formError.value = "登录账号不能少于 4 个字符";
+    return;
+  }
   if (!value.userName) {
     formError.value = "请输入用户昵称";
     return;

@@ -379,6 +379,7 @@ import {
   StarterCodeMap,
   StarterCodeServiceError,
 } from "@/services/questionStarterCode";
+import { normalizeJudgeConfig } from "@/services/questionJudgeConfig";
 import { clearQuestionDraftsForQuestion } from "@/services/questionDraft";
 import { JudgeConfig, QuestionControllerService } from "../../../generated";
 
@@ -514,7 +515,10 @@ const loadData = async () => {
         res.data.judgeCase,
         judgeTypeOptions.value
       ),
-      judgeConfig: res.data.judgeConfig ?? defaults.judgeConfig,
+      judgeConfig: normalizeJudgeConfig(
+        res.data.judgeConfig,
+        defaults.judgeConfig
+      ),
     };
     await loadStarterCodes(id);
   } else {
