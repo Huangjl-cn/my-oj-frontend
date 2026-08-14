@@ -7,6 +7,7 @@ import gfm from "@bytemd/plugin-gfm";
 import highlight from "@bytemd/plugin-highlight";
 import { Viewer } from "@bytemd/vue-next";
 import "bytemd/dist/index.css";
+import "highlight.js/styles/atom-one-dark.css";
 import { withDefaults, defineProps } from "vue";
 
 interface Props {
@@ -47,14 +48,13 @@ withDefaults(defineProps<Props>(), {
 }
 
 .markdown-body pre {
-  background: var(--surface-soft) !important;
+  background: var(--surface-dark) !important;
   border-radius: var(--radius-md) !important;
   border: 1px solid var(--hairline) !important;
 }
 
 .markdown-body pre code {
   background: transparent !important;
-  color: var(--body) !important;
   font-family: var(--font-code) !important;
   font-size: 13px !important;
 }

@@ -12,10 +12,13 @@
     </header>
     <div v-if="submission.code" class="submission-code">
       <h3>提交代码</h3>
-      <pre>{{ submission.code }}</pre>
+      <CodeBlock
+        :code="submission.code"
+        :language="submission.language ?? ''"
+      />
     </div>
     <div v-if="messageParts.title" class="diagnostic-content">
-      <strong>{{ messageParts.title }}</strong>
+      <strong :class="presentation.tone">{{ messageParts.title }}</strong>
       <pre v-if="messageParts.details">{{ messageParts.details }}</pre>
     </div>
     <p v-else class="diagnostic-empty">暂无判题诊断</p>
@@ -25,6 +28,7 @@
 <script setup lang="ts">
 import { computed, defineProps } from "vue";
 
+import CodeBlock from "@/components/editor/CodeBlock.vue";
 import {
   formatJudgeMemory,
   getJudgeResultPresentation,
@@ -121,6 +125,18 @@ const messageParts = computed(() =>
 
 .diagnostic-content strong {
   font-weight: 600;
+}
+
+.diagnostic-content strong.passed {
+  color: var(--success);
+}
+
+.diagnostic-content strong.failed {
+  color: var(--error);
+}
+
+.diagnostic-content strong.pending {
+  color: var(--accent-amber);
 }
 
 .diagnostic-content pre {

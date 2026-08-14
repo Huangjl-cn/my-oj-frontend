@@ -6,13 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run serve              # Start dev server (vue-cli-service serve, port 8080)
-npm run build              # Production build (sourcemaps disabled)
-npm run lint -- --fix      # Lint and auto-fix (use this instead of npx prettier --write)
+npm run build              # Production build (sourcemaps disabled, outputs to deploy/oj-frontend/dist)
+npm run lint:fix           # Lint and auto-fix (shorthand for lint -- --fix)
+npm run format             # Prettier format all src/**/*.{ts,vue,css}
 npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plugin-unit-jest)
+npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `useTheme.spec.ts`, `apiConfig.spec.ts`, `apiId.spec.ts`, `questionStarterCode.spec.ts` (language options + starter code normalization), `questionDraft.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
-- **Regenerate the API client** from the backend OpenAPI spec (from README): `openapi --input http://localhost:8102/api/v3/api-docs --output ./generated --client axios`
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (progress state), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.
@@ -29,8 +30,9 @@ Both `yarn.lock` and `package-lock.json` coexist in this repo. Use **npm** for i
 - **State:** Vuex 4 (namespaced `user` module)
 - **Router:** Vue Router 4 (`createWebHistory`)
 - **HTTP:** Axios (`withCredentials: true`, interceptors in `src/plugins/axios.ts`)
-- **Editor:** Monaco Editor via `monaco-editor-webpack-plugin` (java, javascript, typescript, python, cpp)
+- **Editor:** Monaco Editor via `monaco-editor-webpack-plugin` (java, javascript, typescript, python, cpp, go)
 - **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight
+- **Syntax highlighting:** `highlight.js` (direct dependency) — used by `CodeBlock.vue` and by ByteMD's plugin-highlight via the `atom-one-dark` theme
 - **Codegen:** `openapi-typescript-codegen` generates API client from OpenAPI spec into `generated/`
 - **Tests:** Jest 27 via `@vue/cli-plugin-unit-jest` (vue3-jest + ts-jest)
 
@@ -46,16 +48,20 @@ src/
 │   ├── common/
 │   │   └── ConfirmDialog.vue    # Reusable confirmation modal
 │   ├── editor/
-│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (do not modify)
+│   │   ├── CodeBlock.vue        # Read-only syntax-highlighted code display (highlight.js, 6 registered languages)
+│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (format() via defineExpose, onFormat callback, Ctrl+Alt+L)
 │   │   ├── MdEditor.vue         # ByteMD editor (for question content/answer editing)
-│   │   └── MdViewer.vue         # ByteMD viewer (read-only markdown rendering)
+│   │   └── MdViewer.vue         # ByteMD viewer (read-only markdown rendering, imports atom-one-dark hljs theme, lazy-loaded in QuestionsView)
 │   ├── layout/
-│   │   └── GlobalHeader.vue     # Top nav: logo + links + user avatar + theme toggle + switch-account
+│   │   └── GlobalHeader.vue     # Top nav: logo + links + user avatar + theme toggle + user info popover
 │   ├── question/
-│   │   ├── QuestionAdminDetailsPanel.vue   # Admin-only question details panel
-│   │   └── SubmissionDiagnosticPanel.vue   # Judge result display with diagnostics
+│   │   ├── JudgeScalarInput.vue            # Scalar value input for judge cases
+│   │   ├── JudgeValueEditor.vue            # Structured judge value editor (supports 0D/1D/2D arrays)
+│   │   ├── QuestionAdminDetailsPanel.vue   # Admin-only question details panel (author, create time)
+│   │   └── SubmissionDiagnosticPanel.vue   # Judge result display with diagnostics + submission code
 │   └── user/
-│       ├── AvatarPicker.vue     # Avatar selection grid
+│       ├── AuthShell.vue        # Shared login/register layout wrapper
+│       ├── AvatarPicker.vue     # Avatar selection grid (DiceBear avatars)
 │       ├── UserAvatar.vue       # Avatar display (DiceBear or custom URL)
 │       ├── UserFormDialog.vue   # Create/edit user dialog
 │       └── UserIdentity.vue     # Role badge display
@@ -74,11 +80,17 @@ src/
 │   └── routes.ts         # Route definitions with access meta
 ├── services/
 │   ├── apiId.ts                   # ApiId type (string|number), route param parsing, generated ID casting
-│   ├── questionSubmit.ts          # Judge-info adaptation (normalizeJudgeInfo, getJudgeResultPresentation) + submission request wrapper
-│   ├── questionSubmitPolling.ts   # createQuestionSubmitPoller (poll/cancel/timeout)
+│   ├── questionDraft.ts           # sessionStorage-based code drafts (per user+question+language)
+│   ├── questionJudgeCase.ts       # Judge case config types, normalization, validation, build for submission
+│   ├── questionJudgeConfig.ts     # normalizeJudgeConfig — handles JudgeConfig | string | null input
+│   ├── questionProgress.ts        # Per-user question progress cache (unattempted/judging/passed/failed); formatAcceptanceRate
 │   ├── questionStarterCode.ts     # Language options normalization, starter code fetching/validation
-│   ├── questionDraft.ts          # sessionStorage-based code drafts (per user+question+language)
-│   └── userSummary.ts            # Cached user info fetches (getUserSummary, clear cache)
+│   ├── questionSubmit.ts          # normalizeJudgeInfo, getJudgeResultPresentation, listMyQuestionSubmissions
+│   ├── questionSubmitPolling.ts   # createQuestionSubmitPoller (poll/cancel/timeout)
+│   └── userSummary.ts             # Cached user info fetches (getUserSummary, clear cache)
+├── utils/
+│   ├── dateTime.ts                # formatDateTime helper
+│   └── userRole.ts                # formatUserRole (role string → display label)
 ├── store/
 │   ├── index.ts          # Vuex store
 │   └── user.ts           # User state (loginUser, initialized), getLoginUser action, draft-clearing mutations
@@ -97,7 +109,7 @@ src/
 │   │   └── UserManageView.vue        # Admin user management table
 │   └── NoAuthView.vue                # 403 page (route /noAuth)
 ├── App.vue              # Thin shell: route-based layout switching (UserLayout for /user/*) + useTheme() init
-└── main.ts              # Bootstrap: ArcoVue + router + store + axios + access guard + global.css
+└── main.ts              # Bootstrap: ArcoVue (tree-shaken, per-component imports) + router + store + axios + access guard + global.css
 
 generated/               # Auto-generated API client — DO NOT EDIT
 └── services/            # e.g. QuestionControllerService, UserControllerService
@@ -218,8 +230,22 @@ Programming languages are fetched dynamically from the backend (`getSupportedLan
 `src/services/questionDraft.ts` manages per-user+question+language code drafts in `sessionStorage`:
 - **Key format:** `myoj:question-draft:<userId>:<questionId>:<language>`
 - **Storage:** `sessionStorage` (cleared when tab closes, does not survive across sessions)
-- **`clearQuestionDraftsForUser(userId)`** is called by the Vuex user module when a user logs out or switches accounts (see `mutations.updateUser` and `mutations.resetUser` in `store/user.ts`)
+- **`clearQuestionDraftsForUser(userId)`** clears all drafts for a user (called by Vuex on logout/account switch)
+- **`clearQuestionDraftsForQuestion(questionId)`** clears all drafts for a specific question (called after question update/deletion)
 - Draft functions silently catch storage errors (unavailable/full) — editing must never break due to draft failures
+
+### Code Highlighting
+
+- **`CodeBlock.vue`** (`src/components/editor/`) — read-only code display with highlight.js: registers only the 6 supported languages (java, javascript, typescript, python, cpp, go) + aliases (`c++`→cpp, `golang`→go, `js`, `ts`); falls back to `highlightAuto` for unknown languages. Props: `code`, `language`. Token colors are hand-written atom-one-dark style rules embedded in the component (no external theme CSS), background uses `--surface-dark`
+- **`MdViewer.vue`** — imports `highlight.js/styles/atom-one-dark.css` because `@bytemd/plugin-highlight` only applies hljs token spans to the DOM and ships **no CSS**. Note: any `.markdown-body pre code { color: ... !important }` override would wipe out hljs token colors — don't re-add one
+- Used in `SubmissionDiagnosticPanel.vue` (browse submissions expand rows/mobile details) and QuestionsView's my-submission detail panel; 题解 (solution) tab gets highlighting for free via ByteMD's plugin
+
+### Code Editor Formatting
+
+`CodeEditor.vue` exposes `format()` via `defineExpose` and calls the `onFormat` prop callback afterwards (QuestionsView uses it to show "已格式化" button feedback):
+- **Shortcut:** Ctrl+Alt+L, registered via `editor.addCommand` — both button and shortcut go through the same `format()`
+- **Supported languages:** Monaco has built-in formatting providers only for `javascript`/`typescript` (the standalone build never sets the `editorHasDocumentFormattingProvider` context key, so `action.isSupported()` is unreliable — a `FORMATTABLE_LANGUAGES` whitelist is used instead). For other languages, a hint "暂不支持 xxx 格式化" fades in/out over the editor (2.2s, `<Transition>`), and `onFormat` is NOT called
+- If you add formatting for other languages, update the whitelist or register a real `DocumentFormattingEditProvider`
 
 ### Code Submission & Polling
 Polling logic lives in `src/services/` — do not re-implement inline in views:
@@ -227,11 +253,39 @@ Polling logic lives in `src/services/` — do not re-implement inline in views:
 2. `questionSubmitPolling.ts` — `createQuestionSubmitPoller({ request, onUpdate, onTimeout, interval?, timeout? })` polls every 3s by default with a **75s overall timeout** (deliberately covers the backend's 60s sandbox limit); stops on `!isJudging(status)` (statuses 0 and 1 = judging) or timeout; `stop()` cancels the in-flight request
 3. Status enum: 0=等待中, 1=判题中, 2=已判完, 3=判题失败
 4. Tests in `tests/unit/questionSubmitPolling.spec.ts` and `questionSubmit.spec.ts` pin this behavior — update them when touching these services
+5. Judge message titles ("Accepted", "Wrong Answer", …) are color-coded by `tone` class: `passed` → `--success` (green), `failed` → `--error` (red), `pending` → `--accent-amber` — in `SubmissionDiagnosticPanel.vue` (`.diagnostic-content strong`) and QuestionsView (`.submission-diagnostic strong`)
 
 ### Question Answer Visibility
 - Admins always see answers
 - Normal users see answers only after an "Accepted" submission on that question
 - Implemented in QuestionsView.vue's `canViewAnswer` computed, which queries submission history for `judgeInfo.message === "Accepted"`
+
+### Judge Case Architecture
+
+`src/services/questionJudgeCase.ts` manages the structured judge case system (replacing the old flat JSON):
+
+- **`getSupportedJudgeTypeOptions()`** — fetches supported judge value types from backend (cached), returns `JudgeTypeOption[]` with `{ value, text, category, dimensions, elementType }`
+- **`createJudgeCaseConfigDraft(config, options)`** — normalizes a backend `JudgeCaseConfig` into a UI-friendly `JudgeCaseConfigDraft` with stable draft keys
+- **`validateJudgeCaseConfig(config, options)`** — validates the entire config (unique parameter names, valid types, correct input counts, valid values), returns the first error message or `undefined`
+- **`buildJudgeCaseConfig(config)`** — strips draft keys and builds the `JudgeCaseConfig` for submission
+- Judge values support 0D scalars, 1D arrays, and 2D arrays based on `dimensions`; each type (BOOLEAN, INTEGER, LONG, DOUBLE, STRING) has its own default value and validation
+
+Components: `JudgeValueEditor.vue` renders the full config editor (parameters + cases), `JudgeScalarInput.vue` renders individual scalar input fields.
+
+### Question Progress Tracking
+
+`src/services/questionProgress.ts` provides per-user question progress:
+- **`getMyQuestionProgress(userId, questionId)`** — fetches latest submission and returns `QuestionProgressState` (`unattempted` | `judging` | `passed` | `failed`), with in-memory cache
+- **`setMyQuestionProgress(userId, questionId, submission)`** — manually updates the cache (used after polling completes)
+- **`formatAcceptanceRate(accepted, submitted)`** — formats a percentage string for display
+
+### ArcoVue On-Demand Import
+
+`main.ts` imports ArcoVue components individually (not full `ArcoVue` plugin). Only 18 components are registered: `Button, Col, Form, FormItem, Input, InputNumber, InputPassword, InputTag, Layout, LayoutContent, LayoutFooter, LayoutHeader, Option, Pagination, Row, Select, Switch, Table`. Each component's CSS is imported separately via `@arco-design/web-vue/es/<component>/style/css.js`.
+
+### ResizeObserver Error Suppression
+
+`main.ts` adds a global `window.addEventListener("error", ...)` to suppress benign "ResizeObserver loop completed with undelivered notifications" and "ResizeObserver loop limit exceeded" errors from Monaco Editor. These are harmless and noisy — they are stopped from propagating via `e.stopPropagation()`.
 
 ### API Client
 - `openapi-typescript-codegen` generates static service classes (e.g., `QuestionControllerService.listQuestionByPageUsingPost`)
@@ -247,19 +301,29 @@ Polling logic lives in `src/services/` — do not re-implement inline in views:
 4. Redirects unauthorized users to `/noAuth`
 5. `BAN` role users are blocked like `NOT_LOGIN`
 
-### GlobalHeader Mock Login
-In `GlobalHeader.vue`, there's a 3-second `setTimeout` that dispatches a mock admin user to `store.dispatch("user/getLoginUser", ...)`. This is a development convenience — the real login flow goes through `UserLoginView.vue` which calls the backend.
+### Route Lazy Loading
+
+All page-level routes use dynamic imports with webpack chunk names for code splitting:
+
+```typescript
+const QuestionsView = () =>
+  import(/* webpackChunkName: "page-questions" */ "@/views/question/QuestionsView.vue");
+```
+
+Named chunks: `page-auth` (login/register), `page-questions`, `page-question-editor`, `page-question-manage`, `page-submissions`, `page-user-manage`, `page-user-profile`, `page-no-auth`.
 
 ## Build & Deployment
 
 ### Build Optimization
 - `compression-webpack-plugin` generates `.gz` files for all JS/CSS/HTML/SVG during build
+- `image-webpack-loader` compresses images (mozjpeg quality 65, pngquant 0.65-0.9) during build
 - `vue.config.js` splits node_modules into 4 chunks: `chunk-vue` (Vue core), `chunk-arco` (Arco Design), `chunk-vendors` (rest), `chunk-common` (shared); prefetch/preload are disabled
-- Monaco is configured with only `["coreCommands", "find"]` features (plus the 5 languages listed above)
-- Monaco Editor is lazy-loaded via `defineAsyncComponent` in QuestionsView
+- Monaco is configured with only `["coreCommands", "find"]` features (plus the 6 languages listed above)
+- Monaco Editor is lazy-loaded via `defineAsyncComponent` in QuestionsView; MdViewer is lazy-loaded too
 
-### Nginx Configuration
-- The full config lives in `nginx.conf` at the repo root; `docker-compose.yml` mounts it (plus `dist/`) into an nginx:1.20.2 container on port 80
-- Use `gzip_static on` alongside `gzip on` to serve pre-built `.gz` files
-- Nginx reverse-proxies `/api/` to the backend service (port 8101 in Docker, 8102 in dev)
-- SPA fallback via `try_files $uri $uri/ /index.html;` for `createWebHistory` mode
+### Docker & Nginx Configuration
+
+Deployment files live in `deploy/`:
+- `deploy/docker-compose.yml` — orchestrates MySQL (8.4), Java backend, and nginx (1.30.4-alpine) containers
+- `deploy/oj-frontend/nginx.conf` — nginx config with `gzip_static on`, immutable cache headers for hashed assets, `/api/` proxy to backend (`my-oj-backend:8101` upstream), and SPA `try_files` fallback
+- `deploy/oj-frontend/dist/` — production build output (`vue.config.js` `outputDir`, gitignored), mounted into the nginx container

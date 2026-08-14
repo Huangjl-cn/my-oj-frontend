@@ -390,7 +390,12 @@
                   </div>
                   <div class="submission-detail-block">
                     <h3>提交代码</h3>
-                    <pre>{{ activeSubmissionDetailTab.detail.code || "" }}</pre>
+                    <CodeBlock
+                      :code="activeSubmissionDetailTab.detail.code || ''"
+                      :language="
+                        activeSubmissionDetailTab.detail.language ?? ''
+                      "
+                    />
                   </div>
                   <div
                     v-if="mySubmissionDetailPresentation.message"
@@ -398,7 +403,9 @@
                   >
                     <h3>判题信息</h3>
                     <div class="submission-diagnostic">
-                      <strong>{{ mySubmissionMessageParts.title }}</strong>
+                      <strong :class="mySubmissionDetailPresentation.tone">
+                        {{ mySubmissionMessageParts.title }}
+                      </strong>
                       <pre v-if="mySubmissionMessageParts.details">{{
                         mySubmissionMessageParts.details
                       }}</pre>
@@ -427,6 +434,16 @@
                 </option>
               </select>
               <div class="editor-actions">
+                <button
+                  class="btn-format-code"
+                  type="button"
+                  :class="{ confirmed: formatFeedbackVisible }"
+                  :disabled="formatFeedbackVisible"
+                  title="格式化代码 (Ctrl+Alt+L)"
+                  @click="codeEditorRef?.format()"
+                >
+                  {{ formatFeedbackVisible ? "已格式化" : "格式化代码" }}
+                </button>
                 <button
                   class="btn-reset-code"
                   type="button"
@@ -465,9 +482,11 @@
             </div>
             <div class="editor-body">
               <CodeEditor
+                ref="codeEditorRef"
                 :value="form.code as string"
                 :language="form.language"
                 :handle-change="changeCode"
+                :on-format="onFormat"
               />
             </div>
           </div>
@@ -706,6 +725,12 @@ const CodeEditor = defineAsyncComponent(
 const MdViewer = defineAsyncComponent(
   () => import("@/components/editor/MdViewer.vue")
 );
+const CodeBlock = defineAsyncComponent(
+  () => import("@/components/editor/CodeBlock.vue")
+);
+
+type CodeEditorInstance = { format: () => void };
+const codeEditorRef = ref<CodeEditorInstance | null>(null);
 
 type PageChange = number | { current?: number };
 type QuestionTab =
@@ -870,6 +895,7 @@ const activeTemplate = ref("");
 const loadedLanguage = ref("");
 const showResetDialog = ref(false);
 const resetFeedbackVisible = ref(false);
+const formatFeedbackVisible = ref(false);
 const isSubmitting = ref(false);
 const mySubmissions = ref<QuestionSubmitSummaryVO[]>([]);
 const mySubmissionsCurrent = ref(1);
@@ -886,6 +912,7 @@ let questionGeneration = 0;
 let templateGeneration = 0;
 let draftTimer: ReturnType<typeof setTimeout> | undefined;
 let resetFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+let formatFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 
 const currentLanguageText = computed(() =>
   getLanguageText(loadedLanguage.value, languageOptions.value, "")
@@ -1302,6 +1329,15 @@ const resetStarterCode = () => {
   }, 900);
 };
 
+const onFormat = () => {
+  formatFeedbackVisible.value = true;
+  if (formatFeedbackTimer) clearTimeout(formatFeedbackTimer);
+  formatFeedbackTimer = setTimeout(() => {
+    formatFeedbackVisible.value = false;
+    formatFeedbackTimer = undefined;
+  }, 900);
+};
+
 const requestResetStarterCode = () => {
   if (form.value.code === activeTemplate.value) {
     resetStarterCode();
@@ -1321,6 +1357,7 @@ onBeforeUnmount(() => {
   templateGeneration += 1;
   stopPolling();
   if (resetFeedbackTimer) clearTimeout(resetFeedbackTimer);
+  if (formatFeedbackTimer) clearTimeout(formatFeedbackTimer);
   clearMySubmissionDetailTabs();
 });
 </script>
@@ -2221,6 +2258,18 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.submission-diagnostic strong.passed {
+  color: var(--success);
+}
+
+.submission-diagnostic strong.failed {
+  color: var(--error);
+}
+
+.submission-diagnostic strong.pending {
+  color: var(--accent-amber);
+}
+
 .submission-diagnostic pre {
   margin: 8px 0 0;
   color: var(--on-dark-soft);
@@ -2282,7 +2331,8 @@ onBeforeUnmount(() => {
 }
 
 .btn-submit,
-.btn-reset-code {
+.btn-reset-code,
+.btn-format-code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2305,8 +2355,9 @@ onBeforeUnmount(() => {
   border: 1px solid var(--primary);
 }
 
-.btn-reset-code {
-  min-width: 88px;
+.btn-reset-code,
+.btn-format-code {
+  min-width: 72px;
   color: var(--on-dark-soft);
   background: transparent;
   border: 1px solid #3d3d3d;
@@ -2316,14 +2367,16 @@ onBeforeUnmount(() => {
   background: var(--primary-active);
 }
 
-.btn-reset-code:hover {
+.btn-reset-code:hover,
+.btn-format-code:hover {
   color: var(--on-dark);
   border-color: #666;
   background: var(--surface-dark-elevated);
 }
 
 .btn-submit:disabled,
-.btn-reset-code:disabled {
+.btn-reset-code:disabled,
+.btn-format-code:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -2409,7 +2462,8 @@ onBeforeUnmount(() => {
   animation: pacman-chomp 320ms steps(2, end) infinite;
 }
 
-.btn-reset-code.confirmed:disabled {
+.btn-reset-code.confirmed:disabled,
+.btn-format-code.confirmed:disabled {
   color: var(--success);
   border-color: var(--success);
   opacity: 1;
@@ -2476,7 +2530,8 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .submit-dots i,
   .pacman,
-  .btn-reset-code.confirmed:disabled {
+  .btn-reset-code.confirmed:disabled,
+  .btn-format-code.confirmed:disabled {
     animation: none;
   }
 
@@ -2948,11 +3003,12 @@ onBeforeUnmount(() => {
 
   .editor-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
   .btn-submit,
-  .btn-reset-code {
+  .btn-reset-code,
+  .btn-format-code {
     width: 100%;
   }
 
