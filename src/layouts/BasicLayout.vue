@@ -23,6 +23,16 @@
               </span>
             </div>
           </Transition>
+          <div class="footer-beian">
+            <a
+              href="http://beian.miit.gov.cn/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="beian-link"
+            >
+              渝ICP备2026019190号
+            </a>
+          </div>
         </div>
       </a-layout-footer>
     </a-layout>
@@ -150,6 +160,25 @@ onBeforeUnmount(() => {
 .quote-fade-enter-from,
 .quote-fade-leave-to {
   opacity: 0;
+}
+
+.footer-beian {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.beian-link {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--on-dark-soft);
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  transition: color var(--motion-standard) ease;
+}
+
+.beian-link:hover {
+  color: var(--primary);
 }
 
 @media (max-width: 768px) {

@@ -194,6 +194,12 @@
                       </div>
                     </div>
                   </div>
+                  <code
+                    class="problem-id"
+                    :title="`题目 ID：${currentQuestion.id ?? '--'}`"
+                  >
+                    #{{ currentQuestion.id ?? "--" }}
+                  </code>
                   <div class="problem-header">
                     <span
                       class="tag"
@@ -1793,7 +1799,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .problem-title {
@@ -1845,6 +1851,16 @@ onBeforeUnmount(() => {
   font-family: var(--font-code);
   font-size: 11px;
   font-weight: 500;
+}
+
+.problem-id {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--primary);
+  font-family: var(--font-code);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
 .problem-author-copy time {
