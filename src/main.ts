@@ -34,6 +34,7 @@ import { createApp } from "vue";
 
 import App from "./App.vue";
 import { setUnauthorizedHandler } from "@/plugins/axios";
+import { sweepExpiredQuestionDrafts } from "@/services/questionDraft";
 import "@/access";
 import "@/styles/global.css";
 import router from "./router";
@@ -67,6 +68,8 @@ window.addEventListener("error", (e) => {
     e.stopPropagation();
   }
 });
+
+sweepExpiredQuestionDrafts();
 
 const app = createApp(App);
 

@@ -51,9 +51,8 @@ const userModule: Module<UserState, RootState> = {
       state.loginUser = payload;
     },
     resetUser(state) {
-      if (state.loginUser.id != null) {
-        clearQuestionDraftsForUser(state.loginUser.id);
-      }
+      // 退出/401/session 过期不清草稿：同用户重登仍可回填。
+      // 跨账号残留由 updateUser 的换人逻辑清理（仅清除旧用户数据）。
       state.loginUser = createGuestUser();
     },
     setInitialized(state, initialized: boolean) {

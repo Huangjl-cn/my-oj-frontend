@@ -4,10 +4,28 @@ import {
   getQuestionDraft,
   removeQuestionDraft,
   saveQuestionDraft,
+  sweepExpiredQuestionDrafts,
 } from "@/services/questionDraft";
 
-describe("question draft session cache", () => {
-  beforeEach(() => sessionStorage.clear());
+const DRAFT_PREFIX = "myoj:question-draft";
+const createStorageKey = (key: {
+  userId: string;
+  questionId: string;
+  language: string;
+}) =>
+  `${DRAFT_PREFIX}:${[key.userId, key.questionId, key.language]
+    .map((part) => encodeURIComponent(part))
+    .join(":")}`;
+
+describe("question draft local cache", () => {
+  beforeEach(() => {
+    jest.useRealTimers();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
 
   it("separates drafts by user, question and language", () => {
     const javaKey = { userId: "7", questionId: "42", language: "java" };
@@ -50,5 +68,55 @@ describe("question draft session cache", () => {
     expect(getQuestionDraft(firstLanguage)).toBeUndefined();
     expect(getQuestionDraft(secondLanguage)).toBeUndefined();
     expect(getQuestionDraft(otherQuestion)).toBe("other");
+  });
+
+  it("expires drafts older than 7 days", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const key = { userId: "7", questionId: "42", language: "java" };
+    saveQuestionDraft(key, "stale draft");
+
+    jest.setSystemTime(new Date("2026-01-08T00:00:01.000Z"));
+
+    // 纯读：getter 不再顺手删除，过期清理由 sweepExpiredQuestionDrafts 负责
+    expect(getQuestionDraft(key)).toBeUndefined();
+    expect(localStorage.getItem(createStorageKey(key))).not.toBeNull();
+
+    sweepExpiredQuestionDrafts();
+    expect(localStorage.getItem(createStorageKey(key))).toBeNull();
+  });
+
+  it("sweepExpiredQuestionDrafts removes expired drafts and keeps fresh ones", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const staleKey = { userId: "7", questionId: "42", language: "java" };
+    const freshKey = { userId: "7", questionId: "43", language: "java" };
+    saveQuestionDraft(staleKey, "stale");
+    saveQuestionDraft(freshKey, "fresh");
+
+    jest.setSystemTime(new Date("2026-01-05T00:00:00.000Z"));
+    saveQuestionDraft(freshKey, "fresh");
+
+    jest.setSystemTime(new Date("2026-01-08T00:00:01.000Z"));
+    sweepExpiredQuestionDrafts();
+
+    expect(getQuestionDraft(staleKey)).toBeUndefined();
+    expect(getQuestionDraft(freshKey)).toBe("fresh");
+  });
+
+  it("ignores legacy sessionStorage entries — localStorage is the single source", () => {
+    const key = { userId: "7", questionId: "42", language: "java" };
+    const storageKey = createStorageKey(key);
+    sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({ code: "legacy draft", updatedAt: Date.now() })
+    );
+
+    sweepExpiredQuestionDrafts();
+
+    expect(localStorage.getItem(storageKey)).toBeNull();
+    expect(getQuestionDraft(key)).toBeUndefined();
   });
 });

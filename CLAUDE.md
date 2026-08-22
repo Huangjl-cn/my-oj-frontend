@@ -80,7 +80,7 @@ src/
 │   └── routes.ts         # Route definitions with access meta
 ├── services/
 │   ├── apiId.ts                   # ApiId type (string|number), route param parsing, generated ID casting
-│   ├── questionDraft.ts           # sessionStorage-based code drafts (per user+question+language)
+│   ├── questionDraft.ts           # localStorage-based code drafts (per user+question+language, 7-day TTL)
 │   ├── questionJudgeCase.ts       # Judge case config types, normalization, validation, build for submission
 │   ├── questionJudgeConfig.ts     # normalizeJudgeConfig — handles JudgeConfig | string | null input
 │   ├── questionProgress.ts        # Per-user question progress cache (unattempted/judging/passed/failed); formatAcceptanceRate
@@ -164,9 +164,11 @@ ManageQuestionView and QuestionSubmitView use a card wrapper around tables:
 }
 ```
 
-### Footer Cycling Quotes
+### Footer Cycling Quotes & ICP 备案号
 
 BasicLayout.vue has a footer that cycles through 50 inspirational quotes every 60 seconds. Uses Vue `<Transition>` for fade effect. Quote in Cormorant Garamond italic, author in Inter 10px uppercase. Layout is flex row with quote text wrapping freely.
+
+Below the quotes, the footer must always display the ICP 备案号 **渝ICP备2026019190号**, centered, linked to `http://beian.miit.gov.cn/` (`.footer-beian` / `.beian-link` in BasicLayout.vue). Since BasicLayout is shared, it appears on all main pages.
 
 ### Vue Scoped CSS Limitation
 
@@ -225,14 +227,21 @@ Programming languages are fetched dynamically from the backend (`getSupportedLan
 - **Starter code templates** — fetched per-question, validated against supported languages, normalized into `StarterCodeMap` (language → code)
 - Errors are thrown as `StarterCodeServiceError` (includes backend `code` for error display)
 
-### Code Drafts (sessionStorage)
+### Code Drafts (localStorage)
 
-`src/services/questionDraft.ts` manages per-user+question+language code drafts in `sessionStorage`:
-- **Key format:** `myoj:question-draft:<userId>:<questionId>:<language>`
-- **Storage:** `sessionStorage` (cleared when tab closes, does not survive across sessions)
-- **`clearQuestionDraftsForUser(userId)`** clears all drafts for a user (called by Vuex on logout/account switch)
+`src/services/questionDraft.ts` manages per-user+question+language code drafts in `localStorage` (single source of truth — `sessionStorage` is NOT used; legacy sessionStorage entries are ignored):
+- **Key format:** `myoj:question-draft:<userId>:<questionId>:<language>` (each part URL-encoded)
+- **Storage:** `localStorage` with a **7-day TTL** (`DRAFT_TTL_MS`); expired/corrupted entries return `undefined` from `getQuestionDraft`
+- **`sweepExpiredQuestionDrafts()`** — removes all expired/corrupted drafts; called once at startup in `main.ts`
+- **`getQuestionDraft` is a pure read** — it never writes/removes; cleanup is the sweep's job
+- **`clearQuestionDraftsForUser(userId)`** clears all drafts for a user (called by Vuex's `updateUser` ONLY when the logged-in user id changes — i.e. account switch without logout; `resetUser` on logout/401/session-expiry deliberately does NOT clear drafts so the same user's drafts refill after re-login)
 - **`clearQuestionDraftsForQuestion(questionId)`** clears all drafts for a specific question (called after question update/deletion)
 - Draft functions silently catch storage errors (unavailable/full) — editing must never break due to draft failures
+
+Save behavior in `QuestionsView.vue` (do not re-implement elsewhere):
+- Editing triggers a **300ms debounce** (`scheduleDraftSave` → `persistCurrentDraft`) — NOT a periodic timer; drafts are written only after the user stops typing for 300ms
+- `persistCurrentDraft` deletes the draft when the code equals the starter template (template state = no draft), otherwise saves it
+- Component unmount also calls `persistCurrentDraft()` synchronously as a safety net
 
 ### Code Highlighting
 
@@ -324,6 +333,9 @@ Named chunks: `page-auth` (login/register), `page-questions`, `page-question-edi
 ### Docker & Nginx Configuration
 
 Deployment files live in `deploy/`:
-- `deploy/docker-compose.yml` — orchestrates MySQL (8.4), Java backend, and nginx (1.30.4-alpine) containers
+- `deploy/docker-compose.yml` — orchestrates three services on a `my-oj-network` bridge:
+  - `my-oj-db` (mysql:8.4) — utf8mb4, tuned for small hosts (64M buffer pool, 50 connections), DB port exposed on `127.0.0.1:3307`, initialized from `oj-backend/init.sql`, healthcheck via `mysqladmin ping`
+  - `my-oj-backend` (built from `oj-backend/Dockerfile`, image `my-oj-backend:2.0.1`) — Spring profile `prod`, sandbox auth keys injected from `.env` (`CODESANDBOX_AUTH_KEY_ID` / `CODESANDBOX_AUTH_PRIVATE_KEY`), remote sandbox via `--codesandbox.url`, waits for db healthcheck
+  - `my-oj-frontend` (nginx:1.30.4-alpine) — ports 80/443 (HTTPS via `oj-frontend/certs`, ACME challenge dir `oj-frontend/acme-challenge`), healthcheck on `/healthz`
 - `deploy/oj-frontend/nginx.conf` — nginx config with `gzip_static on`, immutable cache headers for hashed assets, `/api/` proxy to backend (`my-oj-backend:8101` upstream), and SPA `try_files` fallback
-- `deploy/oj-frontend/dist/` — production build output (`vue.config.js` `outputDir`, gitignored), mounted into the nginx container
+- `deploy/oj-frontend/dist/` — production build output (`vue.config.js` `outputDir`, gitignored), mounted read-only into the nginx container
