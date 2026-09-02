@@ -8,6 +8,7 @@ import type { BaseResponseListSupportedJudgeTypeVO } from '../models/BaseRespons
 import type { BaseResponseListSupportedLanguageVO } from '../models/BaseResponseListSupportedLanguageVO';
 import type { BaseResponseLong } from '../models/BaseResponseLong';
 import type { BaseResponsePageQuestion } from '../models/BaseResponsePageQuestion';
+import type { BaseResponsePageQuestionSubmitGroupVO } from '../models/BaseResponsePageQuestionSubmitGroupVO';
 import type { BaseResponsePageQuestionSubmitSummaryVO } from '../models/BaseResponsePageQuestionSubmitSummaryVO';
 import type { BaseResponsePageQuestionSubmitVO } from '../models/BaseResponsePageQuestionSubmitVO';
 import type { BaseResponsePageQuestionVO } from '../models/BaseResponsePageQuestionVO';
@@ -15,6 +16,7 @@ import type { BaseResponseQuestionManageVO } from '../models/BaseResponseQuestio
 import type { BaseResponseQuestionSolutionVO } from '../models/BaseResponseQuestionSolutionVO';
 import type { BaseResponseQuestionStarterCodeVO } from '../models/BaseResponseQuestionStarterCodeVO';
 import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
+import type { BaseResponseQuestionSubmitRankVO } from '../models/BaseResponseQuestionSubmitRankVO';
 import type { BaseResponseQuestionSubmitVO } from '../models/BaseResponseQuestionSubmitVO';
 import type { BaseResponseQuestionVO } from '../models/BaseResponseQuestionVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
@@ -22,6 +24,8 @@ import type { QuestionAddRequest } from '../models/QuestionAddRequest';
 import type { QuestionEditRequest } from '../models/QuestionEditRequest';
 import type { QuestionQueryRequest } from '../models/QuestionQueryRequest';
 import type { QuestionSubmitAddRequest } from '../models/QuestionSubmitAddRequest';
+import type { QuestionSubmitArchiveQueryRequest } from '../models/QuestionSubmitArchiveQueryRequest';
+import type { QuestionSubmitGroupQueryRequest } from '../models/QuestionSubmitGroupQueryRequest';
 import type { QuestionSubmitQueryRequest } from '../models/QuestionSubmitQueryRequest';
 import type { QuestionUpdateRequest } from '../models/QuestionUpdateRequest';
 
@@ -69,11 +73,27 @@ requestBody: QuestionSubmitQueryRequest,
      * @throws ApiError
      */
     public static listQuestionSubmitByPage(
-requestBody: QuestionSubmitQueryRequest,
+requestBody: QuestionSubmitArchiveQueryRequest,
 ): CancelablePromise<BaseResponsePageQuestionSubmitVO> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/question/question_submit/list/page',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @param requestBody 
+     * @returns BaseResponsePageQuestionSubmitGroupVO OK
+     * @throws ApiError
+     */
+    public static listQuestionSubmitGroupByPage(
+requestBody: QuestionSubmitGroupQueryRequest,
+): CancelablePromise<BaseResponsePageQuestionSubmitGroupVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/question/question_submit/group/page',
             body: requestBody,
             mediaType: 'application/json',
         });
@@ -263,6 +283,23 @@ questionId: number,
             url: '/question/solution',
             query: {
                 'questionId': questionId,
+            },
+        });
+    }
+
+    /**
+     * @param id 
+     * @returns BaseResponseQuestionSubmitRankVO OK
+     * @throws ApiError
+     */
+    public static getQuestionSubmitRank(
+id: number,
+): CancelablePromise<BaseResponseQuestionSubmitRankVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/question_submit/rank',
+            query: {
+                'id': id,
             },
         });
     }

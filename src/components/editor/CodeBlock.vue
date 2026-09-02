@@ -2,6 +2,22 @@
   <div class="code-block">
     <div class="code-block-header">
       <span class="code-block-lang">{{ displayLang }}</span>
+      <button
+        :class="[
+          'code-copy-button',
+          copyState,
+          { confirmed: copyState === 'copied' },
+        ]"
+        type="button"
+        :disabled="!code || copyState === 'copied'"
+        :aria-label="copyLabel"
+        :title="copyLabel"
+        @click="copyCode"
+      >
+        <IconCheck v-if="copyState === 'copied'" />
+        <IconCopy v-else />
+        <span>{{ copyLabel }}</span>
+      </button>
     </div>
     <pre
       class="code-block-pre"
@@ -12,7 +28,10 @@
 
 <script setup lang="ts">
 import hljs from "highlight.js/lib/core";
-import { computed, defineProps, withDefaults } from "vue";
+import { IconCheck, IconCopy } from "@arco-design/web-vue/es/icon";
+import { computed, defineProps, onBeforeUnmount, ref, withDefaults } from "vue";
+
+import { copyText } from "@/utils/copyText";
 
 // Register only the languages the app supports (matches Monaco config)
 import cpp from "highlight.js/lib/languages/cpp";
@@ -69,6 +88,25 @@ const displayLang = computed(
   () => LANG_LABELS[normalizedLang.value] ?? props.language ?? "Code"
 );
 
+const copyState = ref<"idle" | "copied" | "failed">("idle");
+let copyStateTimer: ReturnType<typeof setTimeout> | undefined;
+
+const copyLabel = computed(() => {
+  if (copyState.value === "copied") return "已复制";
+  if (copyState.value === "failed") return "复制失败";
+  return "复制";
+});
+
+const copyCode = async () => {
+  const success = await copyText(props.code);
+  copyState.value = success ? "copied" : "failed";
+  if (copyStateTimer) clearTimeout(copyStateTimer);
+  copyStateTimer = setTimeout(() => {
+    copyState.value = "idle";
+    copyStateTimer = undefined;
+  }, 1600);
+};
+
 const highlighted = computed(() => {
   const code = props.code;
   if (!code) return "";
@@ -85,6 +123,10 @@ const highlighted = computed(() => {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
   }
+});
+
+onBeforeUnmount(() => {
+  if (copyStateTimer) clearTimeout(copyStateTimer);
 });
 </script>
 
@@ -112,6 +154,71 @@ const highlighted = computed(() => {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   user-select: none;
+}
+
+.code-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 8px;
+  color: #a09d96;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
+}
+
+.code-copy-button :deep(svg) {
+  width: 13px;
+  height: 13px;
+}
+
+.code-copy-button:hover:not(:disabled) {
+  color: var(--on-dark);
+  background: var(--surface-dark);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.code-copy-button.copied {
+  color: var(--success);
+  background: rgba(93, 184, 114, 0.12);
+  border-color: rgba(93, 184, 114, 0.28);
+  animation: code-copy-confirmed 420ms ease-out;
+}
+
+.code-copy-button.failed {
+  color: var(--error);
+  background: rgba(198, 69, 69, 0.12);
+  border-color: rgba(198, 69, 69, 0.28);
+}
+
+.code-copy-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@keyframes code-copy-confirmed {
+  0% {
+    transform: scale(0.96);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-copy-button.copied {
+    animation: none;
+  }
 }
 
 .code-block-pre {

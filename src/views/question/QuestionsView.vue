@@ -139,6 +139,13 @@
                 我的提交
               </button>
               <button
+                class="tab-btn"
+                type="button"
+                @click="openPublicSubmissions"
+              >
+                公开提交
+              </button>
+              <button
                 v-for="detailTab in mySubmissionDetailTabs"
                 :key="detailTab.key"
                 :class="[
@@ -394,6 +401,13 @@
                       </strong>
                     </div>
                   </div>
+                  <SubmissionRankRings
+                    v-if="mySubmissionDetailPresentation.tone === 'passed'"
+                    :rank="activeSubmissionDetailTab?.rank"
+                    :loading="activeSubmissionDetailTab?.rankLoading"
+                    :error="activeSubmissionDetailTab?.rankError"
+                    comparison-label="超过同语言提交"
+                  />
                   <div class="submission-detail-block">
                     <h3>提交代码</h3>
                     <CodeBlock
@@ -590,12 +604,24 @@
                             : "--"
                         }}
                       </strong>
+                      <small
+                        v-if="resultTimeRankPercent != null"
+                        class="result-stat-rank"
+                      >
+                        超过 {{ Math.round(resultTimeRankPercent) }}%
+                      </small>
                     </div>
                     <div class="result-stat">
                       <span class="result-stat-label">内存消耗</span>
                       <strong class="result-stat-value">
                         {{ formatJudgeMemory(submitResult?.judgeInfo?.memory) }}
                       </strong>
+                      <small
+                        v-if="resultMemoryRankPercent != null"
+                        class="result-stat-rank"
+                      >
+                        超过 {{ Math.round(resultMemoryRankPercent) }}%
+                      </small>
                     </div>
                   </div>
                   <button
@@ -677,11 +703,13 @@ import {
   ref,
   watch,
 } from "vue";
+import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import SubmissionRankRings from "@/components/question/SubmissionRankRings.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import { ApiId, toGeneratedApiId } from "@/services/apiId";
 import {
@@ -710,6 +738,8 @@ import {
 import {
   formatJudgeMemory,
   getJudgeResultPresentation,
+  getQuestionSubmitRank,
+  getSubmissionRankPercent,
   listMyQuestionSubmissions,
   requestMyQuestionSubmit,
   splitJudgeMessage,
@@ -721,6 +751,7 @@ import {
   QuestionQueryRequest,
   QuestionSubmitAddRequest,
   QuestionSubmitSummaryVO,
+  QuestionSubmitRankVO,
   QuestionSubmitVO,
   QuestionVO,
 } from "../../../generated";
@@ -752,9 +783,13 @@ type SubmissionDetailTab = {
   detail: QuestionSubmitVO | null;
   loading: boolean;
   error: string;
+  rank?: QuestionSubmitRankVO;
+  rankLoading: boolean;
+  rankError: string;
 };
 
 const store = useStore();
+const router = useRouter();
 
 // ===== Sidebar =====
 const isSidebarCollapsed = ref(false);
@@ -891,6 +926,9 @@ const currentQuestion = ref<QuestionVO | null>(null);
 const activeTab = ref<QuestionTab>("question");
 const questionSolution = ref("");
 const submitResult = ref<QuestionSubmitVO | null>(null);
+const submitRank = ref<QuestionSubmitRankVO>();
+const submitRankLoading = ref(false);
+const submitRankError = ref("");
 const showResult = ref(false);
 const isResultDetailsCollapsed = ref(false);
 const languageOptions = ref<LanguageOption[]>([]);
@@ -919,6 +957,7 @@ let templateGeneration = 0;
 let draftTimer: ReturnType<typeof setTimeout> | undefined;
 let resetFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 let formatFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+let submitRankRequestId = 0;
 
 const currentLanguageText = computed(() =>
   getLanguageText(loadedLanguage.value, languageOptions.value, "")
@@ -926,12 +965,34 @@ const currentLanguageText = computed(() =>
 
 const canViewSolution = computed(() => progressUserId.value != null);
 
+const openPublicSubmissions = () => {
+  const questionId = currentQuestion.value?.id;
+  if (questionId == null) return;
+  const target = router.resolve({
+    path: "/question_submit",
+    query: { questionId: String(questionId), mode: "group" },
+  });
+  window.open(target.href, "_blank", "noopener,noreferrer");
+};
+
 const resultPresentation = computed(() =>
   getJudgeResultPresentation(submitResult.value || undefined)
 );
 const resultStatusClass = computed(() => resultPresentation.value.tone);
 const resultMessageParts = computed(() =>
   splitJudgeMessage(resultPresentation.value.message)
+);
+const resultTimeRankPercent = computed(() =>
+  getSubmissionRankPercent(
+    submitRank.value?.timeBeaten,
+    submitRank.value?.timeTotal
+  )
+);
+const resultMemoryRankPercent = computed(() =>
+  getSubmissionRankPercent(
+    submitRank.value?.memoryBeaten,
+    submitRank.value?.memoryTotal
+  )
 );
 const activeSubmissionDetailTab = computed(() =>
   mySubmissionDetailTabs.value.find(({ key }) => key === activeTab.value)
@@ -944,6 +1005,48 @@ const mySubmissionDetailPresentation = computed(() =>
 const mySubmissionMessageParts = computed(() =>
   splitJudgeMessage(mySubmissionDetailPresentation.value.message)
 );
+
+const loadSubmitRank = async (
+  submitId: ApiId,
+  target: {
+    rank: QuestionSubmitRankVO | undefined;
+    rankLoading: boolean;
+    rankError: string;
+  }
+) => {
+  target.rankLoading = true;
+  target.rankError = "";
+  try {
+    const rank = await getQuestionSubmitRank(submitId);
+    target.rank = rank;
+  } catch (error) {
+    target.rankError = error instanceof Error ? error.message : "排名暂不可用";
+  } finally {
+    target.rankLoading = false;
+  }
+};
+
+const loadResultRank = async (submitId?: ApiId) => {
+  const requestId = ++submitRankRequestId;
+  submitRank.value = undefined;
+  submitRankError.value = "";
+  if (submitId == null || resultPresentation.value.tone !== "passed") {
+    submitRankLoading.value = false;
+    return;
+  }
+  submitRankLoading.value = true;
+  try {
+    const rank = await getQuestionSubmitRank(submitId);
+    if (requestId !== submitRankRequestId) return;
+    submitRank.value = rank;
+  } catch (error) {
+    if (requestId !== submitRankRequestId) return;
+    submitRankError.value =
+      error instanceof Error ? error.message : "排名暂不可用";
+  } finally {
+    if (requestId === submitRankRequestId) submitRankLoading.value = false;
+  }
+};
 
 const submissionTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   month: "2-digit",
@@ -1017,6 +1120,12 @@ const onMySubmissionsPageChange = (page: PageChange) => {
 const polling = createQuestionSubmitPoller({
   onUpdate: (submission) => {
     submitResult.value = submission;
+    if (
+      submission.status === 2 &&
+      getJudgeResultPresentation(submission).tone === "passed"
+    ) {
+      void loadResultRank(submission.id);
+    }
     updateCurrentProblemProgress(submission);
     if (submission.status === 2 || submission.status === 3) {
       isSubmitting.value = false;
@@ -1055,6 +1164,17 @@ const createSubmissionDetailPoller = (key: string) =>
         loading: false,
         error: "",
       });
+      if (
+        submission.status === 2 &&
+        getJudgeResultPresentation(submission).tone === "passed"
+      ) {
+        const tab = mySubmissionDetailTabs.value.find(
+          (item) => item.key === key
+        );
+        if (tab && !tab.rank && !tab.rankLoading) {
+          void loadSubmitRank(submission.id, tab);
+        }
+      }
       if (submission.status === 2 || submission.status === 3) {
         void loadMySubmissions();
       }
@@ -1092,6 +1212,9 @@ const openMySubmissionDetail = (submission: QuestionSubmitSummaryVO) => {
     detail: null,
     loading: true,
     error: "",
+    rank: undefined,
+    rankLoading: false,
+    rankError: "",
   });
   activeTab.value = key;
 
@@ -1229,6 +1352,10 @@ const onSelectQuestion = async (item: QuestionVO) => {
   stopPolling();
   showResult.value = false;
   submitResult.value = null;
+  submitRankRequestId += 1;
+  submitRank.value = undefined;
+  submitRankLoading.value = false;
+  submitRankError.value = "";
   isResultDetailsCollapsed.value = false;
   activeTab.value = "question";
   clearMySubmissionDetailTabs();
@@ -1287,6 +1414,10 @@ const doSubmit = async () => {
     return;
   persistCurrentDraft();
   stopPolling();
+  submitRankRequestId += 1;
+  submitRank.value = undefined;
+  submitRankLoading.value = false;
+  submitRankError.value = "";
   isSubmitting.value = true;
   try {
     const res = await QuestionControllerService.doQuestionSubmit({
@@ -2064,11 +2195,28 @@ onBeforeUnmount(() => {
   padding-left: 8px;
 }
 
+.detail-tab::after {
+  display: none;
+}
+
 .detail-tab-label {
+  position: relative;
+  display: inline-block;
   min-width: 0;
   overflow: hidden;
+  padding-bottom: 3px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background-image: linear-gradient(var(--primary), var(--primary));
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  background-size: 0 2px;
+  transition: background-size 180ms var(--ease-out);
+}
+
+.detail-tab:hover .detail-tab-label,
+.detail-tab.active .detail-tab-label {
+  background-size: 100% 2px;
 }
 
 .detail-tab-close {
@@ -2674,6 +2822,14 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.result-stat-rank {
+  color: var(--success);
+  font-family: var(--font-code);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .result-toggle {

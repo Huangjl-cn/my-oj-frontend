@@ -1,7 +1,10 @@
 import {
   JudgeInfo,
   QuestionControllerService,
+  QuestionSubmitArchiveQueryRequest,
+  QuestionSubmitGroupQueryRequest,
   QuestionSubmitQueryRequest,
+  QuestionSubmitRankVO,
   QuestionSubmitSummaryVO,
   QuestionSubmitVO,
 } from "../../generated";
@@ -53,7 +56,7 @@ export function normalizeQuestionSubmit(
 }
 
 export const listQuestionSubmissions = async (
-  query: QuestionSubmitQueryRequest
+  query: QuestionSubmitArchiveQueryRequest
 ) => {
   const response = await QuestionControllerService.listQuestionSubmitByPage(
     query
@@ -68,6 +71,37 @@ export const listQuestionSubmissions = async (
     };
   }
   return response;
+};
+
+export const listQuestionSubmitGroups = async (
+  query: QuestionSubmitGroupQueryRequest
+) => {
+  return QuestionControllerService.listQuestionSubmitGroupByPage(query);
+};
+
+export const getQuestionSubmitRank = async (
+  submitId: ApiId
+): Promise<QuestionSubmitRankVO | undefined> => {
+  const response = await QuestionControllerService.getQuestionSubmitRank(
+    toGeneratedApiId(submitId)
+  );
+  if (response.code !== 0) {
+    throw new Error(response.message || "加载提交排名失败");
+  }
+  return response.data;
+};
+
+export const getSubmissionRankPercent = (beaten?: number, total?: number) => {
+  const normalizedBeaten = Number(beaten);
+  const normalizedTotal = Number(total);
+  if (
+    !Number.isFinite(normalizedBeaten) ||
+    !Number.isFinite(normalizedTotal) ||
+    normalizedTotal <= 0
+  ) {
+    return null;
+  }
+  return Math.min(100, Math.max(0, (normalizedBeaten / normalizedTotal) * 100));
 };
 
 export const listMyQuestionSubmissions = async (
