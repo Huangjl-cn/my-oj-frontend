@@ -582,6 +582,19 @@
                     />
                   </svg>
                   {{ resultPresentation.label }}
+                  <small v-if="isSubmitting" class="queue-status-copy">
+                    <template v-if="queueStatus?.status === 0">
+                      前方还有 {{ queueAheadCount }} 人 · 排在第
+                      {{ queuePosition }} 位
+                    </template>
+                    <template v-else-if="queueStatus?.status === 1">
+                      正在判题，请稍候
+                    </template>
+                    <template v-else-if="queueStatus">
+                      正在整理判题结果…
+                    </template>
+                    <template v-else>正在进入判题队列…</template>
+                  </small>
                 </div>
                 <div
                   v-if="resultPresentation.tone === 'pending'"
@@ -742,6 +755,8 @@ import {
   getSubmissionRankPercent,
   listMyQuestionSubmissions,
   requestMyQuestionSubmit,
+  requestQuestionSubmitQueueStatus,
+  QuestionSubmitQueueStatus,
   splitJudgeMessage,
 } from "@/services/questionSubmit";
 import { createQuestionSubmitPoller } from "@/services/questionSubmitPolling";
@@ -941,6 +956,7 @@ const showResetDialog = ref(false);
 const resetFeedbackVisible = ref(false);
 const formatFeedbackVisible = ref(false);
 const isSubmitting = ref(false);
+const queueStatus = ref<QuestionSubmitQueueStatus | null>(null);
 const mySubmissions = ref<QuestionSubmitSummaryVO[]>([]);
 const mySubmissionsCurrent = ref(1);
 const mySubmissionsPageSize = 10;
@@ -975,9 +991,26 @@ const openPublicSubmissions = () => {
   window.open(target.href, "_blank", "noopener,noreferrer");
 };
 
-const resultPresentation = computed(() =>
-  getJudgeResultPresentation(submitResult.value || undefined)
-);
+const resultPresentation = computed(() => {
+  const presentation = getJudgeResultPresentation(
+    submitResult.value || undefined
+  );
+  if (presentation.tone !== "pending" || !isSubmitting.value) {
+    return presentation;
+  }
+  if (queueStatus.value?.status === 0) {
+    return { ...presentation, label: "排队中" };
+  }
+  if (queueStatus.value?.status === 1) {
+    return { ...presentation, label: "判题中" };
+  }
+  return presentation;
+});
+const queueAheadCount = computed(() => {
+  const count = Number(queueStatus.value?.aheadCount);
+  return Number.isFinite(count) && count >= 0 ? count : 0;
+});
+const queuePosition = computed(() => queueAheadCount.value + 1);
 const resultStatusClass = computed(() => resultPresentation.value.tone);
 const resultMessageParts = computed(() =>
   splitJudgeMessage(resultPresentation.value.message)
@@ -1118,6 +1151,10 @@ const onMySubmissionsPageChange = (page: PageChange) => {
 };
 
 const polling = createQuestionSubmitPoller({
+  queueRequest: requestQuestionSubmitQueueStatus,
+  onQueueUpdate: (status) => {
+    queueStatus.value = status;
+  },
   onUpdate: (submission) => {
     submitResult.value = submission;
     if (
@@ -1419,6 +1456,7 @@ const doSubmit = async () => {
   submitRankLoading.value = false;
   submitRankError.value = "";
   isSubmitting.value = true;
+  queueStatus.value = null;
   try {
     const res = await QuestionControllerService.doQuestionSubmit({
       ...form.value,
@@ -1446,6 +1484,7 @@ const startPolling = (submitId: ApiId) => polling.start(submitId);
 const stopPolling = () => {
   polling.stop();
   isSubmitting.value = false;
+  queueStatus.value = null;
 };
 
 const changeCode = (value: string) => {
@@ -2776,6 +2815,13 @@ onBeforeUnmount(() => {
   font-size: 15px;
   font-weight: 600;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.queue-status-copy {
+  color: var(--muted-soft);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .results-status.pending {

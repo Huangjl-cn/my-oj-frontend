@@ -27,6 +27,7 @@ export type { BaseResponseQuestionManageVO } from './models/BaseResponseQuestion
 export type { BaseResponseQuestionSolutionVO } from './models/BaseResponseQuestionSolutionVO';
 export type { BaseResponseQuestionStarterCodeVO } from './models/BaseResponseQuestionStarterCodeVO';
 export type { BaseResponseQuestionSubmit } from './models/BaseResponseQuestionSubmit';
+export type { BaseResponseQuestionSubmitQueueStatusVO } from './models/BaseResponseQuestionSubmitQueueStatusVO';
 export type { BaseResponseQuestionSubmitRankVO } from './models/BaseResponseQuestionSubmitRankVO';
 export type { BaseResponseQuestionSubmitVO } from './models/BaseResponseQuestionSubmitVO';
 export type { BaseResponseQuestionVO } from './models/BaseResponseQuestionVO';
@@ -62,6 +63,7 @@ export type { QuestionSubmitArchiveQueryRequest } from './models/QuestionSubmitA
 export type { QuestionSubmitGroupQueryRequest } from './models/QuestionSubmitGroupQueryRequest';
 export type { QuestionSubmitGroupVO } from './models/QuestionSubmitGroupVO';
 export type { QuestionSubmitQueryRequest } from './models/QuestionSubmitQueryRequest';
+export type { QuestionSubmitQueueStatusVO } from './models/QuestionSubmitQueueStatusVO';
 export type { QuestionSubmitRankVO } from './models/QuestionSubmitRankVO';
 export type { QuestionSubmitSummaryVO } from './models/QuestionSubmitSummaryVO';
 export type { QuestionSubmitVO } from './models/QuestionSubmitVO';

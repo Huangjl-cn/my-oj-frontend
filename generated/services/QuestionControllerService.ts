@@ -16,6 +16,7 @@ import type { BaseResponseQuestionManageVO } from '../models/BaseResponseQuestio
 import type { BaseResponseQuestionSolutionVO } from '../models/BaseResponseQuestionSolutionVO';
 import type { BaseResponseQuestionStarterCodeVO } from '../models/BaseResponseQuestionStarterCodeVO';
 import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
+import type { BaseResponseQuestionSubmitQueueStatusVO } from '../models/BaseResponseQuestionSubmitQueueStatusVO';
 import type { BaseResponseQuestionSubmitRankVO } from '../models/BaseResponseQuestionSubmitRankVO';
 import type { BaseResponseQuestionSubmitVO } from '../models/BaseResponseQuestionSubmitVO';
 import type { BaseResponseQuestionVO } from '../models/BaseResponseQuestionVO';
@@ -298,6 +299,23 @@ id: number,
         return __request(OpenAPI, {
             method: 'GET',
             url: '/question/question_submit/rank',
+            query: {
+                'id': id,
+            },
+        });
+    }
+
+    /**
+     * @param id 
+     * @returns BaseResponseQuestionSubmitQueueStatusVO OK
+     * @throws ApiError
+     */
+    public static getQuestionSubmitQueueStatus(
+id: number,
+): CancelablePromise<BaseResponseQuestionSubmitQueueStatusVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/question_submit/queue/status',
             query: {
                 'id': id,
             },

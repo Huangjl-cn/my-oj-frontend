@@ -3,6 +3,8 @@ import {
   isJudging,
   QuestionSubmitRequest,
   requestQuestionSubmit,
+  QuestionSubmitQueueStatus,
+  QuestionSubmitQueueStatusRequest,
 } from "@/services/questionSubmit";
 import { ApiId } from "@/services/apiId";
 
@@ -14,6 +16,8 @@ type PollerOptions = {
   onTimeout?: () => void;
   onError?: (error: unknown) => void;
   request?: (submitId: ApiId) => QuestionSubmitRequest;
+  queueRequest?: (submitId: ApiId) => QuestionSubmitQueueStatusRequest;
+  onQueueUpdate?: (queueStatus: QuestionSubmitQueueStatus) => void;
   interval?: number;
   timeout?: number;
 };
@@ -21,6 +25,7 @@ type PollerOptions = {
 export const createQuestionSubmitPoller = (options: PollerOptions) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeRequest: QuestionSubmitRequest | undefined;
+  let activeQueueRequest: QuestionSubmitQueueStatusRequest | undefined;
   let generation = 0;
 
   const stop = () => {
@@ -29,6 +34,8 @@ export const createQuestionSubmitPoller = (options: PollerOptions) => {
     timer = undefined;
     activeRequest?.cancel();
     activeRequest = undefined;
+    activeQueueRequest?.cancel();
+    activeQueueRequest = undefined;
   };
 
   const start = (submitId: ApiId) => {
@@ -38,6 +45,8 @@ export const createQuestionSubmitPoller = (options: PollerOptions) => {
     const interval = options.interval ?? QUESTION_SUBMIT_POLL_INTERVAL;
     const timeout = options.timeout ?? QUESTION_SUBMIT_POLL_TIMEOUT;
     const makeRequest = options.request ?? requestQuestionSubmit;
+    const makeQueueRequest = options.queueRequest;
+    let queuePollingActive = Boolean(makeQueueRequest);
 
     const poll = async () => {
       if (currentGeneration !== generation) return;
@@ -45,6 +54,29 @@ export const createQuestionSubmitPoller = (options: PollerOptions) => {
         stop();
         options.onTimeout?.();
         return;
+      }
+
+      if (queuePollingActive && makeQueueRequest) {
+        activeQueueRequest = makeQueueRequest(submitId);
+        try {
+          const queueStatus = await activeQueueRequest.promise;
+          if (currentGeneration !== generation) return;
+          activeQueueRequest = undefined;
+
+          if (queueStatus) {
+            options.onQueueUpdate?.(queueStatus);
+            if (isJudging(queueStatus.status)) {
+              timer = setTimeout(poll, interval);
+              return;
+            }
+            queuePollingActive = false;
+          }
+        } catch {
+          if (currentGeneration !== generation) return;
+          activeQueueRequest = undefined;
+          // Fall back to the existing detail request so transient queue API
+          // failures do not interrupt the result flow.
+        }
       }
 
       activeRequest = makeRequest(submitId);

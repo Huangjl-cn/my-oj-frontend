@@ -5,6 +5,7 @@ import {
   QuestionSubmitGroupQueryRequest,
   QuestionSubmitQueryRequest,
   QuestionSubmitRankVO,
+  QuestionSubmitQueueStatusVO,
   QuestionSubmitSummaryVO,
   QuestionSubmitVO,
 } from "../../generated";
@@ -17,6 +18,18 @@ type CompatibleQuestionSubmit = Omit<QuestionSubmitVO, "judgeInfo"> & {
 
 export type QuestionSubmitRequest = {
   promise: Promise<QuestionSubmitVO | undefined>;
+  cancel: () => void;
+};
+
+export type QuestionSubmitQueueStatus = {
+  submissionId?: ApiId;
+  status?: number;
+  aheadCount?: number;
+  queueLength?: number;
+};
+
+export type QuestionSubmitQueueStatusRequest = {
+  promise: Promise<QuestionSubmitQueueStatus | undefined>;
   cancel: () => void;
 };
 
@@ -128,6 +141,27 @@ type CompatibleQuestionSubmitResponse = {
   message?: string;
 };
 
+type CompatibleQuestionSubmitQueueStatusResponse = {
+  code?: number;
+  data?: QuestionSubmitQueueStatusVO;
+  message?: string;
+};
+
+const normalizeQuestionSubmitQueueStatus = (
+  status?: QuestionSubmitQueueStatusVO
+): QuestionSubmitQueueStatus | undefined => {
+  if (!status) return undefined;
+  return {
+    submissionId:
+      status.submissionId == null ? undefined : String(status.submissionId),
+    status: status.status == null ? undefined : Number(status.status),
+    aheadCount:
+      status.aheadCount == null ? undefined : Number(status.aheadCount),
+    queueLength:
+      status.queueLength == null ? undefined : Number(status.queueLength),
+  };
+};
+
 const createQuestionSubmitRequest = (
   request: CancelablePromise<CompatibleQuestionSubmitResponse>,
   timeout: number
@@ -190,6 +224,59 @@ export const requestMyQuestionSubmit = (
   );
   return createQuestionSubmitRequest(
     request as CancelablePromise<CompatibleQuestionSubmitResponse>,
+    timeout
+  );
+};
+
+const createQuestionSubmitQueueStatusRequest = (
+  request: CancelablePromise<CompatibleQuestionSubmitQueueStatusResponse>,
+  timeout: number
+): QuestionSubmitQueueStatusRequest => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+
+  const promise = new Promise<QuestionSubmitQueueStatus | undefined>(
+    (resolve, reject) => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        request.cancel();
+      }, timeout);
+
+      request
+        .then((response) => {
+          if (response.code !== 0) {
+            reject(new Error(response.message || "查询判题队列失败"));
+            return;
+          }
+          resolve(normalizeQuestionSubmitQueueStatus(response.data));
+        })
+        .catch((error) => {
+          reject(timedOut ? new Error("查询判题队列超时") : error);
+        })
+        .finally(() => {
+          if (timeoutId) clearTimeout(timeoutId);
+        });
+    }
+  );
+
+  return {
+    promise,
+    cancel: () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      request.cancel();
+    },
+  };
+};
+
+export const requestQuestionSubmitQueueStatus = (
+  submitId: ApiId,
+  timeout = QUESTION_SUBMIT_REQUEST_TIMEOUT
+): QuestionSubmitQueueStatusRequest => {
+  const request = QuestionControllerService.getQuestionSubmitQueueStatus(
+    toGeneratedApiId(submitId)
+  );
+  return createQuestionSubmitQueueStatusRequest(
+    request as CancelablePromise<CompatibleQuestionSubmitQueueStatusResponse>,
     timeout
   );
 };
