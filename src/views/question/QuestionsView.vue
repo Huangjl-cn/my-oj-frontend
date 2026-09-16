@@ -1099,7 +1099,26 @@ const formatSubmissionTime = (value?: string) => {
 const getSubmissionPresentation = (submission: QuestionSubmitSummaryVO) =>
   getJudgeResultPresentation(submission);
 
-const loadMySubmissions = async () => {
+const resumePendingSubmission = (
+  submissions: QuestionSubmitSummaryVO[],
+  questionId: ApiId
+) => {
+  if (currentQuestion.value?.id !== questionId) return;
+  const pendingSubmission = submissions.find(
+    (submission) => submission.status === 0 || submission.status === 1
+  );
+  if (pendingSubmission?.id == null) return;
+
+  showResult.value = true;
+  submitResult.value = pendingSubmission;
+  isSubmitting.value = true;
+  queueStatus.value = null;
+  isResultDetailsCollapsed.value = false;
+  updateCurrentProblemProgress(pendingSubmission);
+  startPolling(pendingSubmission.id);
+};
+
+const loadMySubmissions = async (resumePending = false) => {
   const questionId = currentQuestion.value?.id;
   if (questionId == null) return;
   mySubmissionsLoading.value = true;
@@ -1114,8 +1133,12 @@ const loadMySubmissions = async () => {
     if (response.code !== 0) {
       throw new Error(response.message || "加载提交记录失败");
     }
-    mySubmissions.value = response.data?.records ?? [];
+    const submissions = response.data?.records ?? [];
+    mySubmissions.value = submissions;
     mySubmissionsTotal.value = Number(response.data?.total ?? 0);
+    if (resumePending) {
+      resumePendingSubmission(submissions, questionId);
+    }
   } catch (error) {
     if (currentQuestion.value?.id !== questionId) return;
     mySubmissions.value = [];
@@ -1152,6 +1175,8 @@ const onMySubmissionsPageChange = (page: PageChange) => {
 
 const polling = createQuestionSubmitPoller({
   queueRequest: requestQuestionSubmitQueueStatus,
+  // 队列中的提交可能等待较久，交由队列接口的终态结束轮询。
+  timeout: null,
   onQueueUpdate: (status) => {
     queueStatus.value = status;
   },
@@ -1410,7 +1435,7 @@ const onSelectQuestion = async (item: QuestionVO) => {
   if (generation !== questionGeneration) return;
   if (res.code === 0) {
     currentQuestion.value = res.data;
-    void loadMySubmissions();
+    void loadMySubmissions(true);
     await activateLanguage(form.value.language);
   } else {
     currentQuestion.value = null;

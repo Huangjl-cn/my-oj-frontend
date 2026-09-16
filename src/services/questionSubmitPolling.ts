@@ -19,7 +19,8 @@ type PollerOptions = {
   queueRequest?: (submitId: ApiId) => QuestionSubmitQueueStatusRequest;
   onQueueUpdate?: (queueStatus: QuestionSubmitQueueStatus) => void;
   interval?: number;
-  timeout?: number;
+  /** Set to null for queue-backed submissions that should wait until a terminal status. */
+  timeout?: number | null;
 };
 
 export const createQuestionSubmitPoller = (options: PollerOptions) => {
@@ -43,14 +44,17 @@ export const createQuestionSubmitPoller = (options: PollerOptions) => {
     const currentGeneration = generation;
     const startedAt = Date.now();
     const interval = options.interval ?? QUESTION_SUBMIT_POLL_INTERVAL;
-    const timeout = options.timeout ?? QUESTION_SUBMIT_POLL_TIMEOUT;
+    const timeout =
+      options.timeout === undefined
+        ? QUESTION_SUBMIT_POLL_TIMEOUT
+        : options.timeout;
     const makeRequest = options.request ?? requestQuestionSubmit;
     const makeQueueRequest = options.queueRequest;
     let queuePollingActive = Boolean(makeQueueRequest);
 
     const poll = async () => {
       if (currentGeneration !== generation) return;
-      if (Date.now() - startedAt >= timeout) {
+      if (timeout != null && Date.now() - startedAt >= timeout) {
         stop();
         options.onTimeout?.();
         return;
