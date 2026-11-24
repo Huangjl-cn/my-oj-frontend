@@ -221,7 +221,7 @@
 <script setup lang="ts">
 import { IconClose, IconSettings } from "@arco-design/web-vue/es/icon";
 import message from "@arco-design/web-vue/es/message";
-import { computed, defineProps, nextTick, ref, watch } from "vue";
+import { computed, defineProps, nextTick, PropType, ref, watch } from "vue";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import AiSettingDialog from "@/components/companion/AiSettingDialog.vue";
@@ -234,7 +234,10 @@ const SOLUTION_LEVEL = MAX_HINT_LEVEL + 1;
 /** 离底部不到这么多像素时，新内容到来自动滚到底 */
 const STICK_TO_BOTTOM_PX = 80;
 
-const props = defineProps<{ companion: CompanionState }>();
+// 用运行时声明：CompanionState 是从 vue 泛型推导出的复杂类型，避免 SFC 编译器去解析它
+const props = defineProps({
+  companion: { type: Object as PropType<CompanionState>, required: true },
+});
 
 const draft = ref("");
 const solutionConfirmVisible = ref(false);
