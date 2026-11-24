@@ -1,9 +1,16 @@
 <template>
   <div class="code-editor-shell">
     <div
+      v-show="previewCode == null"
       id="code-editor"
       ref="codeEditorRef"
       style="min-height: 400px; height: 60vh"
+    />
+    <div
+      v-if="previewCode != null"
+      ref="diffEditorRef"
+      class="diff-editor"
+      aria-label="代码修改预览"
     />
     <Transition name="format-hint">
       <div v-if="formatHint" class="format-hint">{{ formatHint }}</div>
@@ -15,6 +22,7 @@
 import {
   defineExpose,
   defineProps,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -28,20 +36,80 @@ interface Props {
   language?: string;
   handleChange: (v: string) => void;
   onFormat?: () => void;
+  /** 不为 null 时进入对比预览：左边（或上方）是当前代码，右边是这份代码，只读 */
+  previewCode?: string | null;
 }
+
+type EditorCursorInfo = {
+  cursorLine?: number;
+  selectionStartLine?: number;
+  selectionEndLine?: number;
+};
 
 const props = withDefaults(defineProps<Props>(), {
   value: () => "",
   language: () => "java",
   handleChange: () => undefined,
   onFormat: () => undefined,
+  previewCode: null,
 });
 
 const codeEditorRef = ref<HTMLElement | null>(null);
+const diffEditorRef = ref<HTMLElement | null>(null);
 const codeEditor =
   shallowRef<import("monaco-editor").editor.IStandaloneCodeEditor>();
 let monaco: typeof import("monaco-editor") | undefined;
 let syncingValue = false;
+let diffEditor: import("monaco-editor").editor.IStandaloneDiffEditor | undefined;
+let diffModels: import("monaco-editor").editor.ITextModel[] = [];
+
+/** 宽度够时左右对比，否则上下（内联）对比 */
+const SIDE_BY_SIDE_MIN_WIDTH = 900;
+
+const disposeDiffEditor = () => {
+  diffEditor?.dispose();
+  diffEditor = undefined;
+  diffModels.forEach((model) => model.dispose());
+  diffModels = [];
+};
+
+const openDiffEditor = async (modifiedCode: string) => {
+  await nextTick();
+  const container = diffEditorRef.value;
+  if (!monaco || !container) return;
+  disposeDiffEditor();
+  const language = codeEditor.value?.getModel()?.getLanguageId() ?? props.language;
+  const original = monaco.editor.createModel(
+    codeEditor.value?.getValue() ?? props.value,
+    language
+  );
+  const modified = monaco.editor.createModel(modifiedCode, language);
+  diffModels = [original, modified];
+  diffEditor = monaco.editor.createDiffEditor(container, {
+    automaticLayout: true,
+    readOnly: true,
+    originalEditable: false,
+    renderSideBySide: container.clientWidth >= SIDE_BY_SIDE_MIN_WIDTH,
+    enableSplitViewResizing: false,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    theme: "vs-dark",
+  });
+  diffEditor.setModel({ original, modified });
+};
+
+watch(
+  () => props.previewCode,
+  (code) => {
+    if (code == null) {
+      disposeDiffEditor();
+      // 预览期间代码编辑器是隐藏的，回来后重新聚焦
+      void nextTick(() => codeEditor.value?.focus());
+    } else {
+      void openDiffEditor(code);
+    }
+  }
+);
 
 watch(
   () => props.language,
@@ -125,12 +193,39 @@ onMounted(async () => {
   );
 });
 
+/** 光标所在行和选中的行范围（没有选中内容时不返回选区），行号从 1 开始 */
+const getCursorInfo = (): EditorCursorInfo => {
+  const editor = codeEditor.value;
+  if (!editor) return {};
+  const selection = editor.getSelection();
+  const hasSelection = selection != null && !selection.isEmpty();
+  return {
+    cursorLine: editor.getPosition()?.lineNumber,
+    selectionStartLine: hasSelection ? selection.startLineNumber : undefined,
+    selectionEndLine: hasSelection ? selection.endLineNumber : undefined,
+  };
+};
+
+/** 整体替换代码，作为一次编辑进入撤销栈（Ctrl+Z 可以撤回） */
+const replaceAll = (code: string) => {
+  const editor = codeEditor.value;
+  const model = editor?.getModel();
+  if (!editor || !model) return false;
+  editor.pushUndoStop();
+  editor.executeEdits("companion", [
+    { range: model.getFullModelRange(), text: code, forceMoveMarkers: true },
+  ]);
+  editor.pushUndoStop();
+  return true;
+};
+
 onBeforeUnmount(() => {
   if (formatHintTimer) clearTimeout(formatHintTimer);
+  disposeDiffEditor();
   codeEditor.value?.dispose();
 });
 
-defineExpose({ format });
+defineExpose({ format, getCursorInfo, replaceAll });
 </script>
 
 <style scoped>
@@ -138,6 +233,11 @@ defineExpose({ format });
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.diff-editor {
+  position: absolute;
+  inset: 0;
 }
 
 .format-hint {

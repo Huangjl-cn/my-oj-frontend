@@ -500,6 +500,13 @@
                 </button>
               </div>
             </div>
+            <CodeEditPreviewBar
+              v-if="companion.preview"
+              :preview="companion.preview"
+              :name="companionName"
+              @apply="applyCompanionPreview"
+              @cancel="companion.closePreview()"
+            />
             <div class="editor-body">
               <CodeEditor
                 ref="codeEditorRef"
@@ -507,8 +514,20 @@
                 :language="form.language"
                 :handle-change="changeCode"
                 :on-format="onFormat"
+                :preview-code="companion.preview?.resolution.code ?? null"
               />
             </div>
+            <CompanionPet
+              v-if="companionEnabled && !companion.panelOpen && !companion.preview"
+              class="companion-pet-anchor"
+              :mood="companion.pet.mood"
+              :intensity="companion.pet.intensity"
+              :beat="companion.pet.beat"
+              :bubble="companion.pet.bubble"
+              :name="companionName"
+              @open="companion.openPanel()"
+              @dismiss="companion.dismissBubble()"
+            />
           </div>
 
           <!-- Results -->
@@ -693,6 +712,11 @@
           <p>选择一个题目开始做题</p>
         </div>
       </main>
+
+      <CompanionPanel
+        v-if="companionEnabled && currentQuestion && companion.panelOpen"
+        :companion="companion"
+      />
     </div>
 
     <ConfirmDialog
@@ -713,6 +737,7 @@ import {
   defineAsyncComponent,
   onBeforeUnmount,
   onMounted,
+  reactive,
   ref,
   watch,
 } from "vue";
@@ -722,6 +747,10 @@ import { useStore } from "vuex";
 import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import CodeEditPreviewBar from "@/components/companion/CodeEditPreviewBar.vue";
+import CompanionPanel from "@/components/companion/CompanionPanel.vue";
+import CompanionPet from "@/components/companion/CompanionPet.vue";
+import { useCompanion } from "@/composables/useCompanion";
 import SubmissionRankRings from "@/components/question/SubmissionRankRings.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import { ApiId, toGeneratedApiId } from "@/services/apiId";
@@ -781,7 +810,15 @@ const CodeBlock = defineAsyncComponent(
   () => import("@/components/editor/CodeBlock.vue")
 );
 
-type CodeEditorInstance = { format: () => void };
+type CodeEditorInstance = {
+  format: () => void;
+  getCursorInfo: () => {
+    cursorLine?: number;
+    selectionStartLine?: number;
+    selectionEndLine?: number;
+  };
+  replaceAll: (code: string) => boolean;
+};
 const codeEditorRef = ref<CodeEditorInstance | null>(null);
 
 type PageChange = number | { current?: number };
@@ -1194,6 +1231,13 @@ const polling = createQuestionSubmitPoller({
       isResultDetailsCollapsed.value = false;
       void loadMySubmissions();
       void loadData();
+      if (submission.id != null) {
+        void companion.onJudged({
+          id: submission.id,
+          status: submission.status,
+          tone: getJudgeResultPresentation(submission).tone,
+        });
+      }
     }
   },
   onTimeout: () => {
@@ -1304,6 +1348,30 @@ const form = ref<QuestionSubmitAddRequest>({
   language: "",
   code: "",
 });
+
+// ===== AI 陪练 =====
+const companionEnabled = computed(() => progressUserId.value != null);
+const companion = reactive(
+  useCompanion({
+    questionId: computed(() => currentQuestion.value?.id ?? null),
+    enabled: companionEnabled,
+    getSnapshot: () => ({
+      code: form.value.code ?? "",
+      language: form.value.language ?? "",
+      ...codeEditorRef.value?.getCursorInfo(),
+    }),
+    applyCode: (code) => codeEditorRef.value?.replaceAll(code) ?? false,
+  })
+);
+const companionName = computed(
+  () => companion.session?.personaName || "栗子"
+);
+
+const applyCompanionPreview = () => {
+  if (companion.applyPreview()) {
+    message.success("已应用修改，Ctrl+Z 可以撤回");
+  }
+};
 
 const loadLanguageOptions = async () => {
   if (languageOptions.value.length) return languageOptions.value;
@@ -1493,6 +1561,7 @@ const doSubmit = async () => {
       isResultDetailsCollapsed.value = false;
       submitResult.value = { id: res.data, status: 0 };
       updateCurrentProblemProgress(submitResult.value);
+      companion.setMood("nervous", 1);
       void loadMySubmissions();
       startPolling(res.data);
     } else {
@@ -2788,6 +2857,13 @@ onBeforeUnmount(() => {
 .editor-body {
   flex: 1;
   min-height: 0;
+}
+
+.companion-pet-anchor {
+  position: absolute;
+  top: 52px;
+  right: 18px;
+  z-index: 6;
 }
 
 .editor-body :deep(#code-editor) {
