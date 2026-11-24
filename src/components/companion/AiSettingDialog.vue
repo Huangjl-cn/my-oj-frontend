@@ -45,7 +45,8 @@
                 "
               />
               <span class="setting-help">
-                费用走你自己的 DeepSeek 账户，Key 加密保存，任何接口都不会返回完整 Key。
+                费用走你自己的 DeepSeek 账户，Key
+                加密保存，任何接口都不会返回完整 Key。
                 <a
                   href="https://platform.deepseek.com/api_keys"
                   target="_blank"
@@ -109,7 +110,11 @@
               >
                 取消
               </button>
-              <button class="dialog-btn primary" type="submit" :disabled="saving">
+              <button
+                class="dialog-btn primary"
+                type="submit"
+                :disabled="saving"
+              >
                 {{ saving ? (apiKey.trim() ? "校验中…" : "保存中…") : "保存" }}
               </button>
             </footer>

@@ -30,11 +30,18 @@ const mockedHint = requestHint as jest.Mock;
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-const steps = ["自己想", "指个方向", "点出关键", "说出解法", "给出步骤", "看答案"].map(
-  (title, level) => ({ level, title, description: title })
-);
+const steps = [
+  "自己想",
+  "指个方向",
+  "点出关键",
+  "说出解法",
+  "给出步骤",
+  "看答案",
+].map((title, level) => ({ level, title, description: title }));
 
-const session = (overrides: Partial<CompanionSession> = {}): CompanionSession => ({
+const session = (
+  overrides: Partial<CompanionSession> = {}
+): CompanionSession => ({
   questionId: "7",
   hintLevel: 0,
   effectiveLevel: 0,
@@ -94,7 +101,12 @@ describe("useCompanion", () => {
     const proposal = {
       baseHash: "h",
       edits: [
-        { kind: "replace", oldText: "int a = 1", newText: "int a = 1;", startLine: 1 },
+        {
+          kind: "replace",
+          oldText: "int a = 1",
+          newText: "int a = 1;",
+          startLine: 1,
+        },
       ],
       resultCode: "int a = 1;\n",
     };

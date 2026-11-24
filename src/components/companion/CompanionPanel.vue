@@ -150,8 +150,13 @@
         >
           {{ companion.loadingMore ? "加载中…" : "加载更早的消息" }}
         </button>
-        <p v-if="!companion.messages.length && !companion.streaming" class="empty">
-          嗨，我是{{ name }}。卡住了就点「再给点提示」，也可以直接问我；提交之后我也会说两句。
+        <p
+          v-if="!companion.messages.length && !companion.streaming"
+          class="empty"
+        >
+          嗨，我是{{
+            name
+          }}。卡住了就点「再给点提示」，也可以直接问我；提交之后我也会说两句。
         </p>
         <CompanionMessageItem
           v-for="item in companion.messages"
@@ -253,7 +258,9 @@ const canSend = computed(() => canAsk.value && !!draft.value.trim());
 const trackLabel = computed(() =>
   props.companion.track === "bug" ? "找 bug" : "找思路"
 );
-const currentStep = computed(() => props.companion.steps[props.companion.level]);
+const currentStep = computed(
+  () => props.companion.steps[props.companion.level]
+);
 const solutionTitle = computed(
   () => props.companion.steps[SOLUTION_LEVEL]?.title || "看答案"
 );

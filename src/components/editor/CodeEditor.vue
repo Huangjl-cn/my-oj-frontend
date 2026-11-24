@@ -60,7 +60,9 @@ const codeEditor =
   shallowRef<import("monaco-editor").editor.IStandaloneCodeEditor>();
 let monaco: typeof import("monaco-editor") | undefined;
 let syncingValue = false;
-let diffEditor: import("monaco-editor").editor.IStandaloneDiffEditor | undefined;
+let diffEditor:
+  | import("monaco-editor").editor.IStandaloneDiffEditor
+  | undefined;
 let diffModels: import("monaco-editor").editor.ITextModel[] = [];
 
 /** 宽度够时左右对比，否则上下（内联）对比 */
@@ -78,7 +80,8 @@ const openDiffEditor = async (modifiedCode: string) => {
   const container = diffEditorRef.value;
   if (!monaco || !container) return;
   disposeDiffEditor();
-  const language = codeEditor.value?.getModel()?.getLanguageId() ?? props.language;
+  const language =
+    codeEditor.value?.getModel()?.getLanguageId() ?? props.language;
   const original = monaco.editor.createModel(
     codeEditor.value?.getValue() ?? props.value,
     language

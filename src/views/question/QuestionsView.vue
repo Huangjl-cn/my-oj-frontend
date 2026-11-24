@@ -518,7 +518,9 @@
               />
             </div>
             <CompanionPet
-              v-if="companionEnabled && !companion.panelOpen && !companion.preview"
+              v-if="
+                companionEnabled && !companion.panelOpen && !companion.preview
+              "
               class="companion-pet-anchor"
               :mood="companion.pet.mood"
               :intensity="companion.pet.intensity"
@@ -1363,9 +1365,7 @@ const companion = reactive(
     applyCode: (code) => codeEditorRef.value?.replaceAll(code) ?? false,
   })
 );
-const companionName = computed(
-  () => companion.session?.personaName || "栗子"
-);
+const companionName = computed(() => companion.session?.personaName || "栗子");
 
 const applyCompanionPreview = () => {
   if (companion.applyPreview()) {

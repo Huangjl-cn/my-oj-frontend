@@ -58,9 +58,9 @@ describe("SSE parser", () => {
   });
 
   it("handles events and CRLF line endings split across chunks", () => {
-    expect(collect(["event: del", "ta\r", "\ndata: a\r\n", "data: b\r\n\r\n"])).toEqual([
-      { event: "delta", data: "a\nb" },
-    ]);
+    expect(
+      collect(["event: del", "ta\r", "\ndata: a\r\n", "data: b\r\n\r\n"])
+    ).toEqual([{ event: "delta", data: "a\nb" }]);
   });
 
   it("ignores comments and uses the default event name", () => {
@@ -83,15 +83,17 @@ describe("streamCompanion", () => {
   });
 
   it("dispatches thinking, delta and edits, then resolves with done", async () => {
-    globals.fetch = jest.fn().mockResolvedValue(
-      streamResponse([
-        'event:thinking\ndata:{"text":"想一想"}\n\n',
-        'event:delta\ndata:{"text":"先看"}\n\nevent:delta\ndata:{"te',
-        'xt":"第 3 行"}\n\n',
-        'event:edits\ndata:{"baseHash":"h","edits":[],"resultCode":"x"}\n\n',
-        'event:done\ndata:{"messageId":"9","hintLevel":1,"hintTrack":"bug","compacted":false}\n\n',
-      ])
-    );
+    globals.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        streamResponse([
+          'event:thinking\ndata:{"text":"想一想"}\n\n',
+          'event:delta\ndata:{"text":"先看"}\n\nevent:delta\ndata:{"te',
+          'xt":"第 3 行"}\n\n',
+          'event:edits\ndata:{"baseHash":"h","edits":[],"resultCode":"x"}\n\n',
+          'event:done\ndata:{"messageId":"9","hintLevel":1,"hintTrack":"bug","compacted":false}\n\n',
+        ])
+      );
     const thinking: string[] = [];
     const deltas: string[] = [];
     const edits = jest.fn();
@@ -143,7 +145,9 @@ describe("streamCompanion", () => {
   it("treats a stream that ends without done as interrupted", async () => {
     globals.fetch = jest
       .fn()
-      .mockResolvedValue(streamResponse(['event:delta\ndata:{"text":"a"}\n\n']));
+      .mockResolvedValue(
+        streamResponse(['event:delta\ndata:{"text":"a"}\n\n'])
+      );
 
     await expect(
       streamCompanion("/companion/chat", body, {})

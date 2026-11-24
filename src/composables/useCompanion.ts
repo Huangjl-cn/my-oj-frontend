@@ -154,7 +154,8 @@ export const useCompanion = (options: UseCompanionOptions) => {
       messages.value = result.messages ?? [];
       hasMore.value = !!result.hasMoreMessages;
     } catch (error) {
-      if (current === generation) loadError.value = describeCompanionError(error);
+      if (current === generation)
+        loadError.value = describeCompanionError(error);
     } finally {
       if (current === generation) loading.value = false;
     }

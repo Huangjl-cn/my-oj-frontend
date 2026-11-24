@@ -9,7 +9,11 @@
       <p v-if="warning" class="preview-warning">{{ warning }}</p>
     </div>
     <div class="preview-actions">
-      <button class="preview-btn secondary" type="button" @click="emit('cancel')">
+      <button
+        class="preview-btn secondary"
+        type="button"
+        @click="emit('cancel')"
+      >
         不用了
       </button>
       <button
