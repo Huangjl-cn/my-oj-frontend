@@ -13,7 +13,7 @@ npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plu
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (progress state), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (progress state), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.
@@ -47,9 +47,16 @@ src/
 ├── components/
 │   ├── common/
 │   │   └── ConfirmDialog.vue    # Reusable confirmation modal
+│   ├── companion/               # AI 陪练（see "AI Companion" below）
+│   │   ├── CompanionAvatar.vue      # Chestnut SVG face, one expression per mood
+│   │   ├── CompanionPet.vue         # Floating pet over the editor + speech bubble + mood animations
+│   │   ├── CompanionPanel.vue       # Right-side panel: hint ladder, conversation, composer, context usage
+│   │   ├── CompanionMessageItem.vue # One message (markdown, badges, thinking, "查看代码修改")
+│   │   ├── CodeEditPreviewBar.vue   # Apply / reject bar shown above the editor while previewing edits
+│   │   └── AiSettingDialog.vue      # BYOK DeepSeek key, model, hint mode
 │   ├── editor/
 │   │   ├── CodeBlock.vue        # Read-only syntax-highlighted code display (highlight.js, 6 registered languages)
-│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (format() via defineExpose, onFormat callback, Ctrl+Alt+L)
+│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (format/getCursorInfo/replaceAll via defineExpose, onFormat callback, Ctrl+Alt+L, previewCode → read-only diff editor)
 │   │   ├── MdEditor.vue         # ByteMD editor (for question content/answer editing)
 │   │   └── MdViewer.vue         # ByteMD viewer (read-only markdown rendering, imports atom-one-dark hljs theme, lazy-loaded in QuestionsView)
 │   ├── layout/
@@ -66,8 +73,10 @@ src/
 │       ├── UserFormDialog.vue   # Create/edit user dialog
 │       └── UserIdentity.vue     # Role badge display
 ├── composables/
+│   ├── useCompanion.ts   # Per-question AI companion state (session, messages, streaming, edit preview, pet mood)
 │   └── useTheme.ts       # Dark/light theme toggle (data-theme on <html>, arco-theme on <body>, localStorage "myoj-theme")
 ├── constants/
+│   ├── companionMoods.ts # Mood labels + instant mood shown before the reaction API returns
 │   ├── quotes.ts         # Footer cycling quotes
 │   └── userAvatars.ts    # DiceBear avatar URL generators (by seed)
 ├── layouts/
@@ -80,6 +89,9 @@ src/
 │   └── routes.ts         # Route definitions with access meta
 ├── services/
 │   ├── apiId.ts                   # ApiId type (string|number), route param parsing, generated ID casting
+│   ├── codeEditProposal.ts        # Resolve AI code-edit proposals against the current code (hash check, per-edit fallback)
+│   ├── companion.ts               # AI companion + AI setting types and JSON APIs (axios, not generated)
+│   ├── companionStream.ts         # SSE parser + fetch-based streaming for chat / solution
 │   ├── questionDraft.ts           # localStorage-based code drafts (per user+question+language, 7-day TTL)
 │   ├── questionJudgeCase.ts       # Judge case config types, normalization, validation, build for submission
 │   ├── questionJudgeConfig.ts     # normalizeJudgeConfig — handles JudgeConfig | string | null input
@@ -300,6 +312,18 @@ Components: `JudgeValueEditor.vue` renders the full config editor (parameters + 
 - `openapi-typescript-codegen` generates static service classes (e.g., `QuestionControllerService.listQuestionByPageUsingPost`)
 - All methods are static, return `{ code, data, message }` — check `res.code === 0` for success
 - Do NOT edit generated files
+
+### AI Companion（AI 陪练）
+
+Backend contract: `docs/frontend/ai-companion.md` in the backend repo. These endpoints are not in `generated/`; they are called through `src/services/companion.ts` (axios) and `companionStream.ts` (fetch).
+
+- **State:** `useCompanion()` owns everything for the current question; QuestionsView wraps it in `reactive()` and passes it to `CompanionPanel` as the `companion` prop (children call its methods instead of mutating it). Switching question or logging out resets it and aborts an in-flight stream.
+- **Streaming:** chat / solution are `POST` + `text/event-stream`, so `EventSource` can't be used. Errors before the stream starts come back as plain JSON (check `Content-Type`); errors mid-stream arrive as an `error` event. Events: `thinking`, `delta`, `edits`, `done`, `error`.
+- **Reactions:** when polling reaches a terminal status, QuestionsView calls `companion.onJudged()`: an instant mood plays first, then `POST /companion/react` replaces it with the model-chosen mood and a bubble (idempotent per submission).
+- **Hint ladder:** users see step titles from `hintSteps`, never level numbers. Levels 1–4 are hints, level 5 is「看答案」(confirmed first). `direct` hint mode hides the ladder.
+- **Code edits:** proposals are previewed in Monaco's diff editor (`CodeEditor` `previewCode` prop) with `CodeEditPreviewBar`; applying uses `replaceAll()` → `executeEdits`, so Ctrl+Z undoes it. If the code changed since the request, `resolveProposal` re-applies each edit by unique `oldText`; rewrites ask to overwrite.
+- **Error codes:** 40020/40021 open the settings dialog; 42900 = another AI request in flight; see `describeCompanionError`.
+- **nginx:** `/api/companion/` has its own location with `proxy_buffering off` and a 300s read timeout — without it SSE replies arrive all at once.
 
 ### Route Access Control
 
