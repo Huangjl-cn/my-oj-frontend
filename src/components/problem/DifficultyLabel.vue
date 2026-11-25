@@ -2,6 +2,7 @@
   <span v-if="difficulty" :class="['difficulty', difficulty]">
     {{ DIFFICULTY_LABELS[difficulty] }}
   </span>
+  <span v-else class="difficulty-none" aria-hidden="true" />
 </template>
 
 <script setup lang="ts">

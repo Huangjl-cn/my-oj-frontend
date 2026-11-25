@@ -2,7 +2,10 @@
   <article class="statement">
     <h1>{{ question.title }}</h1>
     <div class="facts">
-      <DifficultyLabel :difficulty="getDifficulty(question.tags)" />
+      <DifficultyLabel
+        v-if="getDifficulty(question.tags)"
+        :difficulty="getDifficulty(question.tags)"
+      />
       <span
         class="fact tip-down"
         :data-tip="`通过 ${question.acceptedNum ?? 0} / 提交 ${

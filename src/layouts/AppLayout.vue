@@ -69,6 +69,11 @@ const viewKey = (viewRoute: RouteLocationNormalizedLoaded) =>
   min-height: 0;
 }
 
+/* 普通页面：内容比屏幕高时整页滚动，备案号排在内容后面 */
+.app-main:not(.full-height) .app-page {
+  flex: 1 0 auto;
+}
+
 .app-foot {
   flex: none;
   padding: 10px 0 12px;

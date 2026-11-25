@@ -31,68 +31,80 @@ withDefaults(defineProps<Props>(), {
 
 <style>
 .bytemd {
-  border: 1px solid var(--hairline) !important;
-  border-radius: var(--radius-md) !important;
   height: 400px !important;
   min-height: 300px;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--panel) !important;
+  color: var(--ink) !important;
 }
 
 .bytemd .bytemd-toolbar {
-  background: var(--surface-soft) !important;
-  border-bottom: 1px solid var(--hairline) !important;
+  background: var(--fill) !important;
+  border-bottom: 1px solid var(--line) !important;
   border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
 }
 
 .bytemd .bytemd-toolbar-icon {
   color: var(--muted) !important;
+  border-radius: var(--radius-sm) !important;
 }
 
 .bytemd .bytemd-toolbar-icon:hover {
   color: var(--ink) !important;
-  background: var(--surface-card) !important;
+  background: var(--fill-strong) !important;
 }
 
-.bytemd .bytemd-body {
-  background: var(--canvas) !important;
+.bytemd .bytemd-toolbar-icon.bytemd-toolbar-icon-active {
+  color: var(--ink) !important;
 }
 
-.bytemd .bytemd-editor {
-  background: var(--canvas) !important;
+.bytemd .bytemd-body,
+.bytemd .bytemd-editor,
+.bytemd .bytemd-preview,
+.bytemd .bytemd-sidebar {
+  background: var(--panel) !important;
+}
+
+.bytemd-split .bytemd-preview,
+.bytemd .bytemd-sidebar {
+  border-left: 1px solid var(--line) !important;
 }
 
 .bytemd .bytemd-editor .CodeMirror {
-  background: var(--canvas) !important;
+  background: var(--panel) !important;
   color: var(--ink) !important;
-  font-family: var(--font-code) !important;
-  font-size: 14px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13.5px !important;
 }
 
 .bytemd .CodeMirror-gutters,
 .bytemd .CodeMirror-gutter-filler,
 .bytemd .CodeMirror-scrollbar-filler {
-  background: var(--canvas) !important;
-  border-color: var(--hairline) !important;
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
 }
 
 .bytemd .CodeMirror-cursor {
   border-left-color: var(--ink) !important;
 }
 
-.bytemd .bytemd-preview {
-  background: var(--canvas) !important;
+.bytemd .CodeMirror-selected,
+.bytemd .CodeMirror-focused .CodeMirror-selected {
+  background: var(--fill-strong) !important;
 }
 
 .bytemd .bytemd-preview .markdown-body {
-  font-family: var(--font-body) !important;
+  font-family: var(--font-sans) !important;
   color: var(--body) !important;
 }
 
 .bytemd .bytemd-status {
-  background: var(--surface-soft) !important;
-  border-top: 1px solid var(--hairline) !important;
+  background: var(--fill) !important;
+  border-top: 1px solid var(--line) !important;
   border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
   color: var(--muted) !important;
-  font-family: var(--font-body) !important;
+  font-family: var(--font-sans) !important;
   font-size: 12px !important;
 }
 
