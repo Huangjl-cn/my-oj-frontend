@@ -44,6 +44,7 @@
           <svg viewBox="0 0 36 36">
             <circle class="ring-track" cx="18" cy="18" r="15.5" />
             <circle
+              v-if="ringLength > 0"
               class="ring-value"
               cx="18"
               cy="18"
@@ -568,6 +569,7 @@ onMounted(() => {
 <style scoped>
 .problems-page {
   display: grid;
+  align-content: start;
   gap: 14px;
   padding: 16px 20px 0 4px;
   animation: page-enter var(--motion-standard) var(--ease-out);

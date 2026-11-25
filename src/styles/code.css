@@ -1,0 +1,102 @@
+/* ========================================
+   代码配色：跟着主题走（浅色 = 白底，深色 = 深底），编辑器、题面代码块、提交代码共用。
+   编辑器（Monaco）用不了 CSS 变量，同一套颜色写在 components/editor/monacoThemes.ts。
+   ======================================== */
+
+:root {
+  --code-surface: var(--fill);
+  --code-ink: #1f2328;
+  --code-gutter: #b4b4bb;
+  --sx-keyword: #8250df;
+  --sx-type: #953800;
+  --sx-string: #0a3069;
+  --sx-number: #0550ae;
+  --sx-comment: #8c959f;
+  --sx-function: #6639ba;
+  --sx-tag: #116329;
+  --sx-deletion: #82071e;
+}
+
+:root[data-theme="dark"] {
+  --code-surface: var(--fill);
+  --code-ink: #e6edf3;
+  --code-gutter: #4a4a52;
+  --sx-keyword: #ff7b72;
+  --sx-type: #ffa657;
+  --sx-string: #a5d6ff;
+  --sx-number: #79c0ff;
+  --sx-comment: #6e7681;
+  --sx-function: #d2a8ff;
+  --sx-tag: #7ee787;
+  --sx-deletion: #ffa198;
+}
+
+/* highlight.js 只在 DOM 上加 token 的 class，不带颜色 */
+.hljs {
+  color: var(--code-ink);
+  background: transparent;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--sx-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-doctag,
+.hljs-formula,
+.hljs-meta .hljs-keyword {
+  color: var(--sx-keyword);
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-class .hljs-title,
+.hljs-params {
+  color: var(--sx-type);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-meta .hljs-string,
+.hljs-char.escape_ {
+  color: var(--sx-string);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable.constant_,
+.hljs-attr,
+.hljs-attribute,
+.hljs-symbol {
+  color: var(--sx-number);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-meta {
+  color: var(--sx-function);
+}
+
+.hljs-name,
+.hljs-selector-tag,
+.hljs-addition,
+.hljs-bullet {
+  color: var(--sx-tag);
+}
+
+.hljs-deletion,
+.hljs-subst {
+  color: var(--sx-deletion);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}

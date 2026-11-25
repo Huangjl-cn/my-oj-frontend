@@ -32,6 +32,11 @@ import {
   withDefaults,
 } from "vue";
 
+import {
+  defineMonacoThemes,
+  MONACO_THEMES,
+} from "@/components/editor/monacoThemes";
+import { useTheme } from "@/composables/useTheme";
 import { EditorSelection, selectedLineRange } from "@/utils/editorSelection";
 
 interface Props {
@@ -78,6 +83,13 @@ let diffEditor:
   | undefined;
 let diffModels: import("monaco-editor").editor.ITextModel[] = [];
 
+const { isDark } = useTheme();
+const editorTheme = () =>
+  isDark.value ? MONACO_THEMES.dark : MONACO_THEMES.light;
+
+// 主题是 Monaco 全局的，切换后所有编辑器（包括对比视图）一起变
+watch(isDark, () => monaco?.editor.setTheme(editorTheme()));
+
 /** 宽度够时左右对比，否则上下（内联）对比 */
 const SIDE_BY_SIDE_MIN_WIDTH = 900;
 
@@ -109,7 +121,7 @@ const openDiffEditor = async (modifiedCode: string) => {
     enableSplitViewResizing: false,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
-    theme: "vs-dark",
+    theme: editorTheme(),
   });
   diffEditor.setModel({ original, modified });
 };
@@ -218,17 +230,28 @@ onMounted(async () => {
     return;
   }
   monaco = await import("monaco-editor");
+  defineMonacoThemes(monaco);
   codeEditor.value = monaco.editor.create(codeEditorRef.value, {
     value: props.value,
     language: props.language,
     automaticLayout: true,
     colorDecorators: true,
     minimap: {
-      enabled: true,
+      enabled: false,
     },
+    fontFamily: '"Geist Mono Variable", "JetBrains Mono", Consolas, monospace',
+    fontSize: 13.5,
+    lineHeight: 23,
+    padding: { top: 14, bottom: 14 },
+    renderLineHighlight: "line",
+    scrollBeyondLastLine: false,
+    overviewRulerBorder: false,
     readOnly: false,
-    theme: "vs-dark",
+    theme: editorTheme(),
   });
+
+  // 等宽字体是网页字体，加载完再让 Monaco 重新量一次字宽，不然光标会错位
+  void document.fonts?.ready.then(() => monaco?.editor.remeasureFonts());
 
   codeEditor.value.onDidChangeModelContent(() => {
     if (codeEditor.value && !syncingValue) {
@@ -316,9 +339,9 @@ defineExpose({ format, getCursorInfo, collapseSelection, replaceAll });
   transform: translateX(-50%);
   z-index: 5;
   padding: 5px 14px;
-  color: var(--on-dark-soft);
-  background: var(--surface-dark-elevated);
-  border: 1px solid var(--hairline);
+  color: var(--on-primary);
+  background: var(--primary);
+  border: none;
   border-radius: var(--radius-pill);
   font-size: 12px;
   white-space: nowrap;

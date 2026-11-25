@@ -80,16 +80,16 @@
     >
       <AppIcon name="log-in" :size="20" />
     </router-link>
-  </nav>
 
-  <ConfirmDialog
-    v-model:visible="showLogoutDialog"
-    title="退出登录"
-    message="确定退出当前账号并返回登录页面吗？"
-    confirm-text="退出登录"
-    tone="danger"
-    @confirm="confirmLogout"
-  />
+    <ConfirmDialog
+      v-model:visible="showLogoutDialog"
+      title="退出登录"
+      message="确定退出当前账号并返回登录页面吗？"
+      confirm-text="退出登录"
+      tone="danger"
+      @confirm="confirmLogout"
+    />
+  </nav>
 </template>
 
 <script setup lang="ts">

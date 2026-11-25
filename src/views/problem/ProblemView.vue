@@ -985,6 +985,20 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (max-width: 720px) {
+  .lang select {
+    max-width: 128px;
+  }
+
+  .saved {
+    display: none;
+  }
+
+  .tabs button {
+    padding: 0 10px;
+  }
+}
+
 @media (max-width: 1024px) {
   .ide,
   .ide.with-companion {

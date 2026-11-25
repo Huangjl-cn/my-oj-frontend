@@ -133,26 +133,23 @@ onBeforeUnmount(() => {
 <style scoped>
 .code-block {
   overflow: hidden;
-  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  font-family: var(--font-code);
+  background: var(--code-surface);
+  font-family: var(--font-mono);
 }
 
 .code-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 14px;
-  background: var(--surface-dark-elevated);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 6px 8px 0 14px;
 }
 
 .code-block-lang {
-  color: #a09d96;
-  font-size: 11px;
+  color: var(--faint);
+  font-family: var(--font-sans);
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   user-select: none;
 }
 
@@ -160,18 +157,17 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 24px;
-  padding: 3px 8px;
-  color: #a09d96;
+  min-height: 26px;
+  padding: 3px 10px;
+  color: var(--muted);
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 11px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 12px;
   cursor: pointer;
   transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease;
+    background-color var(--motion-fast) ease;
 }
 
 .code-copy-button :deep(svg) {
@@ -180,27 +176,21 @@ onBeforeUnmount(() => {
 }
 
 .code-copy-button:hover:not(:disabled) {
-  color: var(--on-dark);
-  background: var(--surface-dark);
-  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+  background: var(--panel);
 }
 
 .code-copy-button.copied {
   color: var(--success);
-  background: rgba(93, 184, 114, 0.12);
-  border-color: rgba(93, 184, 114, 0.28);
   animation: code-copy-confirmed 420ms ease-out;
 }
 
 .code-copy-button.failed {
-  color: var(--error);
-  background: rgba(198, 69, 69, 0.12);
-  border-color: rgba(198, 69, 69, 0.28);
+  color: var(--danger);
 }
 
 .code-copy-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+  cursor: default;
 }
 
 @keyframes code-copy-confirmed {
@@ -221,96 +211,25 @@ onBeforeUnmount(() => {
   }
 }
 
+/* token 颜色在 styles/code.css，跟着主题走 */
 .code-block-pre {
   max-height: 400px;
   margin: 0;
-  padding: 14px 16px;
+  padding: 8px 16px 14px;
   overflow: auto;
-  background: var(--surface-dark);
-  font: 12px/1.65 var(--font-code);
+  color: var(--code-ink);
+  font: 12.5px/1.65 var(--font-mono);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
 .code-block-pre code {
   display: block;
-  background: transparent;
   padding: 0;
+  background: transparent;
+  color: inherit;
   font: inherit;
   white-space: inherit;
   overflow-wrap: inherit;
-}
-
-/* ── atom-one-dark token colors ─────────────────────────── */
-.code-block-pre :deep(.hljs-comment),
-.code-block-pre :deep(.hljs-quote) {
-  color: #5c6370;
-  font-style: italic;
-}
-
-.code-block-pre :deep(.hljs-doctag),
-.code-block-pre :deep(.hljs-keyword),
-.code-block-pre :deep(.hljs-formula) {
-  color: #c678dd;
-}
-
-.code-block-pre :deep(.hljs-section),
-.code-block-pre :deep(.hljs-name),
-.code-block-pre :deep(.hljs-selector-tag),
-.code-block-pre :deep(.hljs-deletion),
-.code-block-pre :deep(.hljs-subst) {
-  color: #e06c75;
-}
-
-.code-block-pre :deep(.hljs-literal) {
-  color: #56b6c2;
-}
-
-.code-block-pre :deep(.hljs-string),
-.code-block-pre :deep(.hljs-regexp),
-.code-block-pre :deep(.hljs-addition),
-.code-block-pre :deep(.hljs-attribute),
-.code-block-pre :deep(.hljs-meta .hljs-string) {
-  color: #98c379;
-}
-
-.code-block-pre :deep(.hljs-attr),
-.code-block-pre :deep(.hljs-variable),
-.code-block-pre :deep(.hljs-template-variable),
-.code-block-pre :deep(.hljs-type),
-.code-block-pre :deep(.hljs-selector-class),
-.code-block-pre :deep(.hljs-selector-attr),
-.code-block-pre :deep(.hljs-selector-pseudo),
-.code-block-pre :deep(.hljs-number) {
-  color: #d19a66;
-}
-
-.code-block-pre :deep(.hljs-symbol),
-.code-block-pre :deep(.hljs-bullet),
-.code-block-pre :deep(.hljs-link),
-.code-block-pre :deep(.hljs-meta),
-.code-block-pre :deep(.hljs-selector-id),
-.code-block-pre :deep(.hljs-title) {
-  color: #61aeee;
-}
-
-.code-block-pre :deep(.hljs-built_in),
-.code-block-pre :deep(.hljs-title.class_),
-.code-block-pre :deep(.hljs-class .hljs-title) {
-  color: #e6c07b;
-}
-
-.code-block-pre :deep(.hljs-emphasis) {
-  font-style: italic;
-}
-
-.code-block-pre :deep(.hljs-strong) {
-  font-weight: bold;
-}
-
-/* Default text color */
-.code-block-pre,
-.code-block-pre code {
-  color: #abb2bf;
 }
 </style>

@@ -74,66 +74,67 @@ const warning = computed(() => {
 </script>
 
 <style scoped>
+/* 编辑器上方的预览条：浅灰底，和判题结果条一个样子 */
 .preview-bar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 16px;
-  color: var(--on-dark);
-  background: var(--surface-dark-elevated);
-  border-top: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line-strong);
   flex-shrink: 0;
+  margin: 10px 10px 0;
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  background: var(--fill);
+  color: var(--body);
 }
 
 .preview-copy {
   min-width: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 .preview-copy strong {
   margin-right: 8px;
-  color: var(--primary);
+  color: var(--ink);
   font-weight: 600;
 }
 
 .preview-summary {
-  color: var(--on-dark-soft);
+  color: var(--muted);
 }
 
 .preview-reasons {
   margin: 4px 0 0;
   padding-left: 16px;
-  color: var(--on-dark-soft);
+  color: var(--muted);
 }
 
 .preview-warning {
   margin: 4px 0 0;
-  color: var(--accent-amber);
+  color: var(--warning);
 }
 
 .preview-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .preview-btn {
-  height: 28px;
-  padding: 0 12px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 12px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }
 
 .preview-btn.secondary {
-  color: var(--on-dark-soft);
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
 }
 
 .preview-btn.primary {
@@ -143,7 +144,7 @@ const warning = computed(() => {
 }
 
 .preview-btn:disabled {
-  cursor: not-allowed;
+  cursor: default;
   opacity: 0.45;
 }
 </style>
