@@ -4,6 +4,7 @@
 /* eslint-disable */
 import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
 import type { BaseResponseListQuestionStarterCodeVO } from '../models/BaseResponseListQuestionStarterCodeVO';
+import type { BaseResponseListQuestionTagVO } from '../models/BaseResponseListQuestionTagVO';
 import type { BaseResponseListSupportedJudgeTypeVO } from '../models/BaseResponseListSupportedJudgeTypeVO';
 import type { BaseResponseListSupportedLanguageVO } from '../models/BaseResponseListSupportedLanguageVO';
 import type { BaseResponseLong } from '../models/BaseResponseLong';
@@ -13,6 +14,7 @@ import type { BaseResponsePageQuestionSubmitSummaryVO } from '../models/BaseResp
 import type { BaseResponsePageQuestionSubmitVO } from '../models/BaseResponsePageQuestionSubmitVO';
 import type { BaseResponsePageQuestionVO } from '../models/BaseResponsePageQuestionVO';
 import type { BaseResponseQuestionManageVO } from '../models/BaseResponseQuestionManageVO';
+import type { BaseResponseQuestionProgressVO } from '../models/BaseResponseQuestionProgressVO';
 import type { BaseResponseQuestionSolutionVO } from '../models/BaseResponseQuestionSolutionVO';
 import type { BaseResponseQuestionStarterCodeVO } from '../models/BaseResponseQuestionStarterCodeVO';
 import type { BaseResponseQuestionSubmit } from '../models/BaseResponseQuestionSubmit';
@@ -213,6 +215,17 @@ requestBody: QuestionAddRequest,
     }
 
     /**
+     * @returns BaseResponseListQuestionTagVO OK
+     * @throws ApiError
+     */
+    public static listQuestionTags(): CancelablePromise<BaseResponseListQuestionTagVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/tags',
+        });
+    }
+
+    /**
      * @returns BaseResponseListSupportedLanguageVO OK
      * @throws ApiError
      */
@@ -353,6 +366,17 @@ id: number,
             query: {
                 'id': id,
             },
+        });
+    }
+
+    /**
+     * @returns BaseResponseQuestionProgressVO OK
+     * @throws ApiError
+     */
+    public static getMyQuestionProgress(): CancelablePromise<BaseResponseQuestionProgressVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/progress/my',
         });
     }
 

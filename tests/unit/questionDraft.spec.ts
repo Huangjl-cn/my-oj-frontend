@@ -1,6 +1,7 @@
 import {
   clearQuestionDraftsForQuestion,
   clearQuestionDraftsForUser,
+  getLatestQuestionDraft,
   getQuestionDraft,
   removeQuestionDraft,
   saveQuestionDraft,
@@ -118,5 +119,21 @@ describe("question draft local cache", () => {
 
     expect(localStorage.getItem(storageKey)).toBeNull();
     expect(getQuestionDraft(key)).toBeUndefined();
+  });
+
+  it("finds the user's most recently saved draft", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-11-25T10:00:00Z"));
+    saveQuestionDraft({ userId: "1", questionId: "100", language: "java" }, "a");
+    jest.setSystemTime(new Date("2026-11-25T10:05:00Z"));
+    saveQuestionDraft({ userId: "1", questionId: "200", language: "cpp" }, "b");
+    jest.setSystemTime(new Date("2026-11-25T10:09:00Z"));
+    saveQuestionDraft({ userId: "2", questionId: "300", language: "go" }, "c");
+
+    expect(getLatestQuestionDraft("1")).toEqual({
+      questionId: "200",
+      language: "cpp",
+      updatedAt: new Date("2026-11-25T10:05:00Z").getTime(),
+    });
+    expect(getLatestQuestionDraft("3")).toBeUndefined();
   });
 });

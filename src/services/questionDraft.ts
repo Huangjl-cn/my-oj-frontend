@@ -104,3 +104,34 @@ export const clearQuestionDraftsForQuestion = (questionId: ApiId) => {
     // Ignore unavailable browser storage.
   }
 };
+
+export type LatestDraft = {
+  questionId: string;
+  language: string;
+  updatedAt: number;
+};
+
+/** 这个用户最近保存的一份草稿（题库页的「继续上次」用），没有时返回 undefined */
+export const getLatestQuestionDraft = (
+  userId: ApiId
+): LatestDraft | undefined => {
+  try {
+    const prefix = `${DRAFT_PREFIX}:${encodeURIComponent(String(userId))}:`;
+    let latest: LatestDraft | undefined;
+    for (const key of listDraftStorageKeys(localStorage)) {
+      if (!key.startsWith(prefix)) continue;
+      const draft = parseStoredDraft(localStorage.getItem(key));
+      if (!draft || (latest && latest.updatedAt >= draft.updatedAt)) continue;
+      const [questionId, language] = key.slice(prefix.length).split(":");
+      if (!questionId || !language) continue;
+      latest = {
+        questionId: decodeURIComponent(questionId),
+        language: decodeURIComponent(language),
+        updatedAt: draft.updatedAt,
+      };
+    }
+    return latest;
+  } catch {
+    return undefined;
+  }
+};

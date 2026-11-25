@@ -23,6 +23,10 @@ const QuestionsView = () =>
   import(
     /* webpackChunkName: "page-questions" */ "@/views/question/QuestionsView.vue"
   );
+const ProblemsView = () =>
+  import(
+    /* webpackChunkName: "page-problems" */ "@/views/problem/ProblemsView.vue"
+  );
 const QuestionSubmitView = () =>
   import(
     /* webpackChunkName: "page-submissions" */ "@/views/question/QuestionSubmitView.vue"
@@ -60,14 +64,23 @@ export const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
     name: "题库",
-    component: QuestionsView,
+    component: ProblemsView,
     meta: {
-      fullHeight: true,
+      queryState: true,
     },
   },
   {
     path: "/questions",
     name: "浏览题目",
+    component: ProblemsView,
+    meta: {
+      hideInMenu: true,
+      queryState: true,
+    },
+  },
+  {
+    path: "/problem/:id",
+    name: "做题",
     component: QuestionsView,
     meta: {
       hideInMenu: true,

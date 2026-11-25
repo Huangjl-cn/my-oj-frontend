@@ -755,7 +755,7 @@ import {
   ref,
   watch,
 } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 import ACCESS_ENUM from "@/access/accessEnum";
@@ -768,7 +768,11 @@ import SelectionAskBox from "@/components/companion/SelectionAskBox.vue";
 import { useCompanion } from "@/composables/useCompanion";
 import SubmissionRankRings from "@/components/question/SubmissionRankRings.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
-import { ApiId, toGeneratedApiId } from "@/services/apiId";
+import {
+  ApiId,
+  parseRouteApiId,
+  toGeneratedApiId,
+} from "@/services/apiId";
 import {
   getQuestionDraft,
   removeQuestionDraft,
@@ -859,6 +863,7 @@ type SubmissionDetailTab = {
 
 const store = useStore();
 const router = useRouter();
+const route = useRoute();
 
 // ===== Sidebar =====
 const isSidebarCollapsed = ref(false);
@@ -958,7 +963,17 @@ watch(progressUserId, () => {
 });
 onMounted(async () => {
   await Promise.all([loadData(), loadLanguageOptions()]);
+  openRouteQuestion();
 });
+
+/** 从题库页点进来（/problem/:id）时直接打开那道题，题目列表先收起 */
+const openRouteQuestion = () => {
+  const id = parseRouteApiId(route.params.id);
+  if (id == null || String(id) === String(selectedId.value)) return;
+  isSidebarCollapsed.value = true;
+  void onSelectQuestion({ id: toGeneratedApiId(id) });
+};
+watch(() => route.params.id, openRouteQuestion);
 
 const onFilterChange = (filter: string) => {
   activeFilter.value = filter;

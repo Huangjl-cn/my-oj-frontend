@@ -13,5 +13,7 @@ export type QuestionQueryRequest = {
     title?: string;
     content?: string;
     tags?: Array<string>;
+    difficulty?: string;
+    unsolvedOnly?: boolean;
     answer?: string;
 };

@@ -4,7 +4,7 @@
     <div :class="['app-main', { 'full-height': fullHeight }]">
       <div class="app-page">
         <router-view v-slot="{ Component, route: viewRoute }">
-          <component :is="Component" :key="viewRoute.fullPath" />
+          <component :is="Component" :key="viewKey(viewRoute)" />
         </router-view>
       </div>
       <footer class="app-foot">
@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { RouteLocationNormalizedLoaded, useRoute } from "vue-router";
 
 import AppRail from "@/components/layout/AppRail.vue";
 
@@ -30,6 +30,10 @@ const route = useRoute();
 
 /** 做题页这类占满一屏、内部自己滚动的页面 */
 const fullHeight = computed(() => route.meta.fullHeight === true);
+
+/** 换地址就重建页面；筛选条件放在地址栏里的页面（queryState）改查询参数时不重建 */
+const viewKey = (viewRoute: RouteLocationNormalizedLoaded) =>
+  viewRoute.meta.queryState === true ? viewRoute.path : viewRoute.fullPath;
 </script>
 
 <style scoped>
