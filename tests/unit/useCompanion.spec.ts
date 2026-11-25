@@ -7,6 +7,9 @@ import {
   getCompanionSession,
   reactToSubmission,
   requestHint,
+  setHintLevel,
+  startCompanionConversation,
+  switchCompanionConversation,
 } from "@/services/companion";
 import { streamCompanion } from "@/services/companionStream";
 import { ApiId } from "@/services/apiId";
@@ -17,6 +20,9 @@ jest.mock("@/services/companion", () => ({
   ...jest.requireActual("@/services/companion"),
   getCompanionSession: jest.fn(),
   listCompanionMessages: jest.fn(),
+  listCompanionConversations: jest.fn(),
+  startCompanionConversation: jest.fn(),
+  switchCompanionConversation: jest.fn(),
   reactToSubmission: jest.fn(),
   requestHint: jest.fn(),
   setHintLevel: jest.fn(),
@@ -27,27 +33,25 @@ const mockedSession = getCompanionSession as jest.Mock;
 const mockedStream = streamCompanion as jest.Mock;
 const mockedReact = reactToSubmission as jest.Mock;
 const mockedHint = requestHint as jest.Mock;
+const mockedSetLevel = setHintLevel as jest.Mock;
+const mockedStart = startCompanionConversation as jest.Mock;
+const mockedSwitch = switchCompanionConversation as jest.Mock;
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-const steps = [
-  "自己想",
-  "指个方向",
-  "点出关键",
-  "说出解法",
-  "给出步骤",
-  "看答案",
-].map((title, level) => ({ level, title, description: title }));
+const steps = ["只陪伴", "指方向", "点关键", "说方法", "给步骤", "看答案"].map(
+  (title, level) => ({ level, title, description: title })
+);
 
 const session = (
   overrides: Partial<CompanionSession> = {}
 ): CompanionSession => ({
   questionId: "7",
+  conversationId: "50",
   hintLevel: 0,
   effectiveLevel: 0,
-  hintTrack: "idea",
   hintMode: "guided",
-  hintSteps: { idea: steps, bug: steps },
+  hintSteps: steps,
   canCallModel: true,
   mockMode: false,
   personaName: "栗子",
@@ -89,15 +93,15 @@ describe("useCompanion", () => {
     await flush();
 
     expect(mockedSession).toHaveBeenCalledWith("7");
-    expect(companion.session.value?.personaName).toBe("栗子");
-    expect(companion.nextStep.value?.title).toBe("指个方向");
+    expect(companion.conversationId.value).toBe("50");
+    expect(companion.currentStep.value?.title).toBe("只陪伴");
 
     enabled.value = false;
     await flush();
     expect(companion.session.value).toBeNull();
   });
 
-  it("streams a chat reply and opens the proposed code edit for preview", async () => {
+  it("streams a chat reply in the current conversation and previews the code edit", async () => {
     const proposal = {
       baseHash: "h",
       edits: [
@@ -117,7 +121,6 @@ describe("useCompanion", () => {
       return {
         messageId: "21",
         hintLevel: 0,
-        hintTrack: "bug",
         contextUsage: session().contextUsage,
         compacted: false,
       };
@@ -129,7 +132,7 @@ describe("useCompanion", () => {
     await flush();
 
     expect(mockedStream.mock.calls[0][1]).toMatchObject({
-      questionId: "7",
+      conversationId: "50",
       message: "帮我看看",
       snapshot: { code, language: "java", cursorLine: 1 },
     });
@@ -137,13 +140,35 @@ describe("useCompanion", () => {
       "帮我看看",
       "补上分号了",
     ]);
-    expect(companion.session.value?.hintTrack).toBe("bug");
     expect(companion.busy.value).toBeNull();
     expect(companion.preview.value?.resolution.code).toBe("int a = 1;\n");
 
     expect(companion.applyPreview()).toBe(true);
     expect(applyCode).toHaveBeenCalledWith("int a = 1;\n");
     expect(companion.preview.value).toBeNull();
+  });
+
+  it("sends the quoted code with the question and keeps it on the message", async () => {
+    mockedStream.mockResolvedValue({
+      messageId: "22",
+      hintLevel: 0,
+      contextUsage: session().contextUsage,
+      compacted: false,
+    });
+    const { companion } = setup();
+    await flush();
+    const quote = { startLine: 1, endLine: 1, code: "int a = 1" };
+
+    await companion.send("这里少了什么？", quote);
+
+    expect(mockedStream.mock.calls[0][1]).toMatchObject({
+      message: "这里少了什么？",
+      quote,
+    });
+    expect(companion.messages.value[0]).toMatchObject({
+      role: "user",
+      quote,
+    });
   });
 
   it("drops the unsent message and opens settings when the key is missing", async () => {
@@ -158,12 +183,12 @@ describe("useCompanion", () => {
     expect(companion.lastError.value).toContain("API Key");
   });
 
-  it("records hints and moves the ladder forward", async () => {
+  it("asks a hint at the current level without moving it", async () => {
+    mockedSession.mockResolvedValue(session({ hintLevel: 2 }));
     mockedHint.mockResolvedValue({
       messageId: "30",
-      hintLevel: 1,
-      hintTrack: "idea",
-      stepTitle: "指个方向",
+      hintLevel: 2,
+      stepTitle: "点关键",
       message: "看看数据范围",
       codeEdits: null,
       contextUsage: session().contextUsage,
@@ -174,16 +199,73 @@ describe("useCompanion", () => {
     await companion.askHint();
 
     expect(mockedHint).toHaveBeenCalledWith(
-      "7",
-      expect.objectContaining({ code }),
-      undefined
+      "50",
+      expect.objectContaining({ code })
     );
-    expect(companion.level.value).toBe(1);
-    expect(companion.nextStep.value?.title).toBe("点出关键");
+    expect(companion.level.value).toBe(2);
     expect(companion.messages.value[0]).toMatchObject({
       type: "hint",
+      hintLevel: 2,
       content: "看看数据范围",
     });
+  });
+
+  it("changes the level only through the level API", async () => {
+    mockedSetLevel.mockResolvedValue({
+      questionId: "7",
+      hintLevel: 3,
+      effectiveLevel: 3,
+    });
+    const { companion } = setup();
+    await flush();
+
+    await companion.changeLevel(3);
+
+    expect(mockedSetLevel).toHaveBeenCalledWith("7", 3);
+    expect(companion.currentStep.value?.title).toBe("说方法");
+    expect(mockedHint).not.toHaveBeenCalled();
+  });
+
+  it("starts a new conversation only when the current one has messages", async () => {
+    const { companion } = setup();
+    await flush();
+
+    await expect(companion.startConversation()).resolves.toBe(false);
+    expect(mockedStart).not.toHaveBeenCalled();
+
+    mockedStream.mockResolvedValue({
+      messageId: "23",
+      hintLevel: 0,
+      contextUsage: session().contextUsage,
+      compacted: false,
+    });
+    await companion.send("先聊一句");
+    mockedStart.mockResolvedValue(session({ conversationId: "51" }));
+
+    await expect(companion.startConversation()).resolves.toBe(true);
+
+    expect(mockedStart).toHaveBeenCalledWith("7");
+    expect(companion.conversationId.value).toBe("51");
+    expect(companion.messages.value).toEqual([]);
+  });
+
+  it("switches to an earlier conversation and shows its messages", async () => {
+    mockedSwitch.mockResolvedValue(
+      session({
+        conversationId: "49",
+        messages: [
+          { id: "1", role: "user", type: "chat", content: "上次的问题" },
+        ],
+      })
+    );
+    const { companion } = setup();
+    await flush();
+
+    await companion.switchConversation("49");
+
+    expect(mockedSwitch).toHaveBeenCalledWith("49");
+    expect(companion.conversationId.value).toBe("49");
+    expect(companion.messages.value[0].content).toBe("上次的问题");
   });
 
   it("reacts to a judged submission once and speaks through the bubble", async () => {
@@ -192,7 +274,7 @@ describe("useCompanion", () => {
       submissionId: "100",
       mood: "encouraging",
       moodIntensity: 2,
-      hintTrack: "bug",
+      conversationId: "50",
       message: "编译过了，进步！",
       fallback: false,
     });
@@ -208,6 +290,25 @@ describe("useCompanion", () => {
     expect(
       companion.messages.value.filter((item) => item.type === "reaction")
     ).toHaveLength(1);
+  });
+
+  it("does not insert a reaction recorded in another conversation", async () => {
+    mockedReact.mockResolvedValue({
+      messageId: "41",
+      submissionId: "101",
+      mood: "proud",
+      moodIntensity: 1,
+      conversationId: "49",
+      message: "过了！",
+      fallback: false,
+    });
+    const { companion } = setup();
+    await flush();
+
+    await companion.onJudged({ id: "101", status: 2, tone: "passed" });
+
+    expect(companion.pet.bubble).toBe("过了！");
+    expect(companion.messages.value).toEqual([]);
   });
 
   it("resets when switching to another question", async () => {

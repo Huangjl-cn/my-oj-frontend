@@ -13,7 +13,7 @@ npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plu
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (progress state), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (progress state), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.
@@ -49,14 +49,18 @@ src/
 │   │   └── ConfirmDialog.vue    # Reusable confirmation modal
 │   ├── companion/               # AI 陪练（see "AI Companion" below）
 │   │   ├── CompanionAvatar.vue      # Chestnut SVG face, one expression per mood
-│   │   ├── CompanionPet.vue         # Floating pet over the editor + speech bubble + mood animations
-│   │   ├── CompanionPanel.vue       # Right-side panel: hint ladder, conversation, composer, context usage
-│   │   ├── CompanionMessageItem.vue # One message (markdown, badges, thinking, "查看代码修改")
+│   │   ├── CompanionPet.vue         # Draggable / resizable pet (teleported to body) + speech bubble + mood animations
+│   │   ├── CompanionPanel.vue       # Right-side panel: header (new / earlier conversations), messages, composer + toolbar
+│   │   ├── ContextUsageRing.vue     # Composer toolbar: context usage ring, popover with "现在整理"
+│   │   ├── HintLevelPicker.vue      # Composer toolbar: hint level L0–L4 (hover shows what each level reveals) + 看答案
+│   │   ├── ConversationMenu.vue     # Header dropdown listing this question's conversations
+│   │   ├── SelectionAskBox.vue      # "问栗子" pill + inline input that follows the editor selection
+│   │   ├── CompanionMessageItem.vue # One message (markdown, badges, quoted code, thinking, "查看代码修改")
 │   │   ├── CodeEditPreviewBar.vue   # Apply / reject bar shown above the editor while previewing edits
 │   │   └── AiSettingDialog.vue      # BYOK DeepSeek key, model, hint mode
 │   ├── editor/
 │   │   ├── CodeBlock.vue        # Read-only syntax-highlighted code display (highlight.js, 6 registered languages)
-│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (format/getCursorInfo/replaceAll via defineExpose, onFormat callback, Ctrl+Alt+L, previewCode → read-only diff editor)
+│   │   ├── CodeEditor.vue       # Monaco Editor wrapper (format/getCursorInfo/collapseSelection/replaceAll via defineExpose, onFormat callback, Ctrl+Alt+L, previewCode → read-only diff editor, emits selection-change / ask-selection (Ctrl+I))
 │   │   ├── MdEditor.vue         # ByteMD editor (for question content/answer editing)
 │   │   └── MdViewer.vue         # ByteMD viewer (read-only markdown rendering, imports atom-one-dark hljs theme, lazy-loaded in QuestionsView)
 │   ├── layout/
@@ -73,7 +77,9 @@ src/
 │       ├── UserFormDialog.vue   # Create/edit user dialog
 │       └── UserIdentity.vue     # Role badge display
 ├── composables/
-│   ├── useCompanion.ts   # Per-question AI companion state (session, messages, streaming, edit preview, pet mood)
+│   ├── useCompanion.ts   # Per-question AI companion state (session, conversations, messages, streaming, edit preview, pet mood)
+│   ├── usePetPlacement.ts # Pet position + size shared across remounts, persisted in localStorage["myoj:companion-pet"]
+│   ├── useDismissable.ts # Close a popover on outside pointerdown / Esc
 │   └── useTheme.ts       # Dark/light theme toggle (data-theme on <html>, arco-theme on <body>, localStorage "myoj-theme")
 ├── constants/
 │   ├── companionMoods.ts # Mood labels + instant mood shown before the reaction API returns
@@ -102,6 +108,7 @@ src/
 │   └── userSummary.ts             # Cached user info fetches (getUserSummary, clear cache)
 ├── utils/
 │   ├── dateTime.ts                # formatDateTime helper
+│   ├── editorSelection.ts         # EditorSelection type (lines, text, position in the editor) + selectedLineRange
 │   └── userRole.ts                # formatUserRole (role string → display label)
 ├── store/
 │   ├── index.ts          # Vuex store
@@ -320,7 +327,10 @@ Backend contract: `docs/frontend/ai-companion.md` in the backend repo. These end
 - **State:** `useCompanion()` owns everything for the current question; QuestionsView wraps it in `reactive()` and passes it to `CompanionPanel` as the `companion` prop (children call its methods instead of mutating it). Switching question or logging out resets it and aborts an in-flight stream.
 - **Streaming:** chat / solution are `POST` + `text/event-stream`, so `EventSource` can't be used. Errors before the stream starts come back as plain JSON (check `Content-Type`); errors mid-stream arrive as an `error` event. Events: `thinking`, `delta`, `edits`, `done`, `error`.
 - **Reactions:** when polling reaches a terminal status, QuestionsView calls `companion.onJudged()`: an instant mood plays first, then `POST /companion/react` replaces it with the model-chosen mood and a bubble (idempotent per submission).
-- **Hint ladder:** users see step titles from `hintSteps`, never level numbers. Levels 1–4 are hints, level 5 is「看答案」(confirmed first). `direct` hint mode hides the ladder.
+- **Conversations:** one question can have several conversations (each with its own memory and context usage); the session carries the current `conversationId`, and chat / hint / solution / compact send it. 「新对话」 is disabled while the current one is still empty; the header dropdown switches back to an earlier one. The hint level belongs to the question, not the conversation.
+- **Hint level:** one concept for users — how much the companion may reveal. `hintSteps` is a single list (index = level) of track-neutral titles and descriptions; whether the user lacks an idea or has a bug is the model's call and is never shown. The composer toolbar has `HintLevelPicker` (L0–L4 via `PUT /level`, hover shows each level's description; 「看答案」 at the bottom, confirmed first) and 「给点提示」, which asks one hint at the current level without changing it. `direct` mode shows 「不设限」.
+- **Ask about a selection:** `CodeEditor` emits `selection-change` (lines, text, position); QuestionsView renders `SelectionAskBox` next to the selection. Its input (or Ctrl+I) sends a chat message with `quote: {startLine, endLine, code}`, opens the panel and clears the selection; quoted code shows above the user's message.
+- **Pet:** drag to move (under 4px of movement counts as a click), drag the corner handle to resize (40–120px, double-click resets). It is teleported to `body` and positioned `fixed`; until moved it sits on the anchor span at the editor's top-right.
 - **Code edits:** proposals are previewed in Monaco's diff editor (`CodeEditor` `previewCode` prop) with `CodeEditPreviewBar`; applying uses `replaceAll()` → `executeEdits`, so Ctrl+Z undoes it. If the code changed since the request, `resolveProposal` re-applies each edit by unique `oldText`; rewrites ask to overwrite.
 - **Error codes:** 40020/40021 open the settings dialog; 42900 = another AI request in flight; see `describeCompanionError`.
 - **nginx:** `/api/companion/` has its own location with `proxy_buffering off` and a 300s read timeout — without it SSE replies arrive all at once.

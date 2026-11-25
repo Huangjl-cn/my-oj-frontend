@@ -16,8 +16,10 @@ import {
 } from "@/services/codeEditProposal";
 import {
   CodeEditProposal,
+  CodeQuote,
   CodeSnapshot,
   CompanionCompaction,
+  CompanionConversation,
   CompanionMessage,
   CompanionSession,
   compactCompanionMemory,
@@ -26,18 +28,28 @@ import {
   getCompanionSession,
   HintStep,
   isKeyProblem,
+  listCompanionConversations,
   listCompanionMessages,
   reactToSubmission,
   requestHint,
   setHintLevel,
+  startCompanionConversation,
+  switchCompanionConversation,
 } from "@/services/companion";
 import { streamCompanion } from "@/services/companionStream";
 import { instantMoodForJudge, PetMood } from "@/constants/companionMoods";
 
-/** 提示阶梯里普通提示的最高一级，第 5 级是「看答案」，走单独的入口 */
+/** 用户能直接调到的最高档位，第 5 档是「看答案」，走单独的入口 */
 export const MAX_HINT_LEVEL = 4;
+export const SOLUTION_LEVEL = 5;
 
-export type CompanionBusy = "chat" | "hint" | "solution" | "compact" | null;
+export type CompanionBusy =
+  | "chat"
+  | "hint"
+  | "solution"
+  | "compact"
+  | "conversation"
+  | null;
 
 export interface StreamingReply {
   type: "chat" | "solution";
@@ -68,8 +80,11 @@ export interface UseCompanionOptions {
 
 const isPersistedId = (id: ApiId) => /^\d+$/.test(String(id));
 
+const sameId = (a?: ApiId | null, b?: ApiId | null) =>
+  a != null && b != null && String(a) === String(b);
+
 /**
- * 一道题上的陪练状态：会话、消息、流式回答、代码修改预览和桌宠的心情。
+ * 一道题上的陪练状态：会话（档位、当前对话）、消息、流式回答、代码修改预览和桌宠的心情。
  * 切题时整体重置；进行中的流式请求会被取消（后端照常写完并保存这条回答）。
  */
 export const useCompanion = (options: UseCompanionOptions) => {
@@ -85,6 +100,8 @@ export const useCompanion = (options: UseCompanionOptions) => {
   const preview = shallowRef<CodePreview | null>(null);
   const panelOpen = ref(false);
   const settingsOpen = ref(false);
+  const conversations = ref<CompanionConversation[]>([]);
+  const conversationsLoading = ref(false);
   const pet = reactive({
     mood: "idle" as PetMood,
     intensity: 1,
@@ -93,23 +110,24 @@ export const useCompanion = (options: UseCompanionOptions) => {
     beat: 0,
   });
 
+  /** 切题、切对话时加一，用来丢弃过期的异步结果 */
   let generation = 0;
   let localSeq = 0;
   let abortController: AbortController | undefined;
   /** 每条修改建议对应的请求原文，用来判断代码在这期间有没有变 */
   const sentCodes = new WeakMap<CodeEditProposal, string>();
 
-  const track = computed(() => session.value?.hintTrack ?? "idea");
-  const steps = computed<HintStep[]>(
-    () => session.value?.hintSteps?.[track.value] ?? []
-  );
+  const conversationId = computed(() => session.value?.conversationId);
+  const steps = computed<HintStep[]>(() => session.value?.hintSteps ?? []);
   const level = computed(() => session.value?.hintLevel ?? 0);
+  const currentStep = computed(() => steps.value[level.value]);
   const isDirectMode = computed(() => session.value?.hintMode === "direct");
-  const nextStep = computed(() =>
-    level.value < MAX_HINT_LEVEL ? steps.value[level.value + 1] : undefined
-  );
   const contextUsage = computed<ContextUsage | undefined>(
     () => session.value?.contextUsage
+  );
+  /** 当前对话还什么都没说过：这时「新对话」没有意义 */
+  const isFreshConversation = computed(
+    () => !messages.value.length && !hasMore.value && !streaming.value
   );
 
   const setMood = (mood: PetMood, intensity = 1) => {
@@ -127,6 +145,12 @@ export const useCompanion = (options: UseCompanionOptions) => {
     abortController = undefined;
   };
 
+  const applySession = (result: CompanionSession) => {
+    session.value = result;
+    messages.value = result.messages ?? [];
+    hasMore.value = !!result.hasMoreMessages;
+  };
+
   const reset = () => {
     abortStream();
     session.value = null;
@@ -137,6 +161,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
     lastError.value = "";
     loadError.value = "";
     preview.value = null;
+    conversations.value = [];
     pet.bubble = "";
     setMood("idle");
   };
@@ -149,10 +174,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
     loading.value = true;
     try {
       const result = await getCompanionSession(questionId);
-      if (current !== generation) return;
-      session.value = result;
-      messages.value = result.messages ?? [];
-      hasMore.value = !!result.hasMoreMessages;
+      if (current === generation) applySession(result);
     } catch (error) {
       if (current === generation)
         loadError.value = describeCompanionError(error);
@@ -168,10 +190,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
     if (questionId == null) return;
     try {
       const result = await getCompanionSession(questionId);
-      if (current !== generation) return;
-      session.value = result;
-      messages.value = result.messages ?? [];
-      hasMore.value = !!result.hasMoreMessages;
+      if (current === generation) applySession(result);
     } catch {
       // 刷新失败不影响已有内容
     }
@@ -182,13 +201,13 @@ export const useCompanion = (options: UseCompanionOptions) => {
   });
 
   const loadMore = async () => {
-    const questionId = options.questionId.value;
+    const id = conversationId.value;
     const oldest = messages.value.find((message) => isPersistedId(message.id));
-    if (questionId == null || !oldest || loadingMore.value) return;
+    if (id == null || !oldest || loadingMore.value) return;
     const current = generation;
     loadingMore.value = true;
     try {
-      const older = await listCompanionMessages(questionId, oldest.id);
+      const older = await listCompanionMessages(id, oldest.id);
       if (current !== generation) return;
       messages.value = [...older, ...messages.value];
       hasMore.value = older.length > 0;
@@ -215,6 +234,64 @@ export const useCompanion = (options: UseCompanionOptions) => {
   const updateSession = (patch: Partial<CompanionSession>) => {
     if (session.value) session.value = { ...session.value, ...patch };
   };
+
+  // region 对话
+
+  const loadConversations = async () => {
+    const questionId = options.questionId.value;
+    if (questionId == null) return;
+    const current = generation;
+    conversationsLoading.value = true;
+    try {
+      const list = await listCompanionConversations(questionId);
+      if (current === generation) conversations.value = list;
+    } catch (error) {
+      if (current === generation)
+        lastError.value = describeCompanionError(error);
+    } finally {
+      if (current === generation) conversationsLoading.value = false;
+    }
+  };
+
+  /** 换成另一段对话：丢弃旧对话上未完成的结果，失败时保持原样 */
+  const changeConversation = async (
+    request: () => Promise<CompanionSession>
+  ) => {
+    if (busy.value || !session.value) return false;
+    const current = ++generation;
+    busy.value = "conversation";
+    lastError.value = "";
+    conversationsLoading.value = false;
+    try {
+      const result = await request();
+      if (current !== generation) return false;
+      applySession(result);
+      conversations.value = [];
+      return true;
+    } catch (error) {
+      if (current === generation) handleFailure(error);
+      return false;
+    } finally {
+      if (current === generation) busy.value = null;
+    }
+  };
+
+  const startConversation = async () => {
+    const questionId = options.questionId.value;
+    if (questionId == null || isFreshConversation.value) return false;
+    const ok = await changeConversation(() =>
+      startCompanionConversation(questionId)
+    );
+    if (ok) setMood("playful", 1);
+    return ok;
+  };
+
+  const switchConversation = async (id: ApiId) => {
+    if (sameId(id, conversationId.value)) return true;
+    return changeConversation(() => switchCompanionConversation(id));
+  };
+
+  // endregion
 
   // region 代码修改预览
 
@@ -254,11 +331,11 @@ export const useCompanion = (options: UseCompanionOptions) => {
 
   const runStream = async (
     type: StreamingReply["type"],
-    body: { message?: string },
+    body: { message?: string; quote?: CodeQuote },
     snapshot: CodeSnapshot
   ) => {
-    const questionId = options.questionId.value;
-    if (questionId == null) return false;
+    const id = conversationId.value;
+    if (id == null) return false;
     const current = generation;
     abortStream();
     const controller = new AbortController();
@@ -271,7 +348,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
     try {
       const done = await streamCompanion(
         type === "chat" ? "/companion/chat" : "/companion/solution",
-        { questionId, snapshot, ...body },
+        { conversationId: id, snapshot, ...body },
         {
           onThinking: (text) => {
             if (streaming.value) streaming.value.thinking += text;
@@ -291,13 +368,11 @@ export const useCompanion = (options: UseCompanionOptions) => {
         id: done.messageId,
         role: "assistant",
         type,
-        hintLevel: type === "solution" ? done.hintLevel : null,
-        hintTrack: done.hintTrack,
+        hintLevel: type === "solution" ? SOLUTION_LEVEL : null,
         content: reply?.text ?? "",
         codeEdits: proposal ?? null,
       });
       updateSession({
-        hintTrack: done.hintTrack,
         hintLevel: done.hintLevel,
         contextUsage: done.contextUsage,
       });
@@ -318,8 +393,10 @@ export const useCompanion = (options: UseCompanionOptions) => {
     }
   };
 
-  /** 发一条消息；失败时返回 false，调用方可以把输入框内容还原 */
-  const send = async (text: string) => {
+  /**
+   * 发一条消息，quote 是选中代码提问时引用的那一段；失败时返回 false，调用方可以把输入框内容还原
+   */
+  const send = async (text: string, quote?: CodeQuote) => {
     const content = text.trim();
     if (!content || busy.value) return false;
     const snapshot = options.getSnapshot();
@@ -328,9 +405,10 @@ export const useCompanion = (options: UseCompanionOptions) => {
       role: "user",
       type: "chat",
       content,
+      quote: quote ?? null,
     };
     pushMessage(local);
-    const ok = await runStream("chat", { message: content }, snapshot);
+    const ok = await runStream("chat", { message: content, quote }, snapshot);
     if (!ok) {
       messages.value = messages.value.filter((item) => item.id !== local.id);
     }
@@ -342,35 +420,27 @@ export const useCompanion = (options: UseCompanionOptions) => {
     return runStream("solution", {}, options.getSnapshot());
   };
 
-  const askHint = async (targetLevel?: number) => {
-    const questionId = options.questionId.value;
-    if (questionId == null || busy.value) return false;
+  /** 按当前档位要一条提示，不改变档位 */
+  const askHint = async () => {
+    const id = conversationId.value;
+    if (id == null || busy.value) return false;
     const current = generation;
     const snapshot = options.getSnapshot();
     busy.value = "hint";
     lastError.value = "";
     setMood("thinking");
     try {
-      const hint = await requestHint(questionId, snapshot, targetLevel);
+      const hint = await requestHint(id, snapshot);
       if (current !== generation) return true;
       pushMessage({
         id: hint.messageId,
         role: "assistant",
         type: "hint",
         hintLevel: hint.hintLevel,
-        hintTrack: hint.hintTrack,
         content: hint.message,
         codeEdits: hint.codeEdits ?? null,
       });
-      updateSession({
-        hintLevel: hint.hintLevel,
-        effectiveLevel: Math.max(
-          hint.hintLevel,
-          session.value?.effectiveLevel ?? 0
-        ),
-        hintTrack: hint.hintTrack,
-        contextUsage: hint.contextUsage,
-      });
+      updateSession({ contextUsage: hint.contextUsage });
       setMood("encouraging", 1);
       if (hint.codeEdits) receiveProposal(hint.codeEdits, snapshot.code);
       return true;
@@ -382,10 +452,10 @@ export const useCompanion = (options: UseCompanionOptions) => {
     }
   };
 
-  /** 把提示进度调回某一级（0 表示从头自己做），不会生成新的提示 */
+  /** 调档位（0-4），只改档位，不生成内容 */
   const changeLevel = async (target: number) => {
     const questionId = options.questionId.value;
-    if (questionId == null || busy.value) return;
+    if (questionId == null || busy.value || target === level.value) return;
     const current = generation;
     try {
       const state = await setHintLevel(questionId, target);
@@ -393,22 +463,21 @@ export const useCompanion = (options: UseCompanionOptions) => {
       updateSession({
         hintLevel: state.hintLevel,
         effectiveLevel: state.effectiveLevel,
-        hintTrack: state.hintTrack,
       });
-      setMood(target === 0 ? "playful" : "thoughtful", 1);
+      setMood(target < level.value ? "playful" : "thoughtful", 1);
     } catch (error) {
       if (current === generation) handleFailure(error);
     }
   };
 
   const compact = async (): Promise<CompanionCompaction | undefined> => {
-    const questionId = options.questionId.value;
-    if (questionId == null || busy.value) return undefined;
+    const id = conversationId.value;
+    if (id == null || busy.value) return undefined;
     const current = generation;
     busy.value = "compact";
     lastError.value = "";
     try {
-      const result = await compactCompanionMemory(questionId);
+      const result = await compactCompanionMemory(id);
       if (current !== generation) return undefined;
       updateSession({ contextUsage: result.contextUsage });
       if (result.compacted) await refresh();
@@ -435,17 +504,17 @@ export const useCompanion = (options: UseCompanionOptions) => {
       if (current !== generation) return;
       setMood(reaction.mood, reaction.moodIntensity);
       say(reaction.message);
+      // 反应记在后端的当前对话里；不是正在看的这段（比如另一个标签页切过对话）就不插进列表
+      if (!sameId(reaction.conversationId, conversationId.value)) return;
       pushMessage({
         id: reaction.messageId,
         role: "assistant",
         type: "reaction",
         mood: reaction.mood,
         moodIntensity: reaction.moodIntensity,
-        hintTrack: reaction.hintTrack,
         submissionId: reaction.submissionId,
         content: reaction.message,
       });
-      updateSession({ hintTrack: reaction.hintTrack });
     } catch {
       if (current === generation) setMood("idle");
     }
@@ -483,15 +552,21 @@ export const useCompanion = (options: UseCompanionOptions) => {
     preview,
     panelOpen,
     settingsOpen,
+    conversations,
+    conversationsLoading,
     pet,
-    track,
+    conversationId,
     steps,
     level,
+    currentStep,
     isDirectMode,
-    nextStep,
     contextUsage,
+    isFreshConversation,
     load,
     loadMore,
+    loadConversations,
+    startConversation,
+    switchConversation,
     send,
     askHint,
     showSolution,

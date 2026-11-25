@@ -8,7 +8,6 @@ import { ApiId } from "@/services/apiId";
  * 后端的 Long 序列化成字符串，ID 一律用 ApiId。
  */
 
-export type HintTrack = "idea" | "bug";
 export type HintMode = "guided" | "direct";
 export type CompanionRole = "user" | "assistant";
 export type CompanionMessageType =
@@ -50,6 +49,13 @@ export interface CodeEdit {
   reason?: string | null;
 }
 
+/** 用户选中代码后提问时引用的那一段，行号从 1 开始 */
+export interface CodeQuote {
+  startLine: number;
+  endLine: number;
+  code: string;
+}
+
 export interface CodeEditProposal {
   baseHash: string;
   edits: CodeEdit[];
@@ -61,22 +67,25 @@ export interface CompanionMessage {
   role: CompanionRole;
   type: CompanionMessageType;
   hintLevel?: number | null;
-  hintTrack?: HintTrack | null;
   mood?: CompanionMood | null;
   moodIntensity?: number | null;
   submissionId?: ApiId | null;
   content: string;
+  quote?: CodeQuote | null;
   codeEdits?: CodeEditProposal | null;
   createTime?: string;
 }
 
 export interface CompanionSession {
   questionId: ApiId;
+  /** 当前对话，聊天、提示、看答案、整理记忆都带上它 */
+  conversationId: ApiId;
+  /** 提示档位 0-5，5 表示看过答案 */
   hintLevel: number;
   effectiveLevel: number;
-  hintTrack: HintTrack;
   hintMode: HintMode;
-  hintSteps: Record<HintTrack, HintStep[]>;
+  /** 6 档的名字和说明，下标即档位 */
+  hintSteps: HintStep[];
   canCallModel: boolean;
   mockMode: boolean;
   personaName: string;
@@ -90,7 +99,8 @@ export interface CompanionReaction {
   submissionId: ApiId;
   mood: CompanionMood;
   moodIntensity: number;
-  hintTrack: HintTrack;
+  /** 反应记在哪段对话里 */
+  conversationId: ApiId;
   message: string;
   fallback: boolean;
 }
@@ -98,7 +108,6 @@ export interface CompanionReaction {
 export interface CompanionHint {
   messageId: ApiId;
   hintLevel: number;
-  hintTrack: HintTrack;
   stepTitle: string;
   message: string;
   codeEdits?: CodeEditProposal | null;
@@ -109,7 +118,16 @@ export interface CompanionHintState {
   questionId: ApiId;
   hintLevel: number;
   effectiveLevel: number;
-  hintTrack: HintTrack;
+}
+
+export interface CompanionConversation {
+  id: ApiId;
+  /** 第一次提问的开头，还没提问时为空 */
+  title?: string | null;
+  messageCount: number;
+  active: boolean;
+  createTime?: string;
+  updateTime?: string;
 }
 
 export interface CompanionCompaction {
@@ -124,7 +142,6 @@ export interface CompanionCompaction {
 export interface CompanionStreamDone {
   messageId: ApiId;
   hintLevel: number;
-  hintTrack: HintTrack;
   contextUsage: ContextUsage;
   compacted: boolean;
 }
@@ -233,11 +250,27 @@ export const getCompanionSession = (questionId: ApiId) =>
     axios.get(apiUrl("/companion/session"), { params: { questionId } })
   );
 
-export const listCompanionMessages = (questionId: ApiId, beforeId: ApiId) =>
+export const listCompanionMessages = (conversationId: ApiId, beforeId: ApiId) =>
   unwrap<CompanionMessage[]>(
     axios.get(apiUrl("/companion/messages"), {
-      params: { questionId, beforeId },
+      params: { conversationId, beforeId },
     })
+  );
+
+export const listCompanionConversations = (questionId: ApiId) =>
+  unwrap<CompanionConversation[]>(
+    axios.get(apiUrl("/companion/conversations"), { params: { questionId } })
+  );
+
+/** 开一段新对话（当前对话还没有消息时沿用它），返回切换后的会话 */
+export const startCompanionConversation = (questionId: ApiId) =>
+  unwrap<CompanionSession>(
+    axios.post(apiUrl("/companion/conversation"), { questionId })
+  );
+
+export const switchCompanionConversation = (conversationId: ApiId) =>
+  unwrap<CompanionSession>(
+    axios.put(apiUrl("/companion/conversation/active"), { conversationId })
   );
 
 export const reactToSubmission = (submissionId: ApiId) =>
@@ -245,17 +278,10 @@ export const reactToSubmission = (submissionId: ApiId) =>
     axios.post(apiUrl("/companion/react"), { submissionId })
   );
 
-export const requestHint = (
-  questionId: ApiId,
-  snapshot: CodeSnapshot,
-  targetLevel?: number
-) =>
+/** 按当前档位要一条提示，不改变档位 */
+export const requestHint = (conversationId: ApiId, snapshot: CodeSnapshot) =>
   unwrap<CompanionHint>(
-    axios.post(apiUrl("/companion/hint"), {
-      questionId,
-      targetLevel,
-      snapshot,
-    })
+    axios.post(apiUrl("/companion/hint"), { conversationId, snapshot })
   );
 
 export const setHintLevel = (questionId: ApiId, level: number) =>
@@ -263,9 +289,9 @@ export const setHintLevel = (questionId: ApiId, level: number) =>
     axios.put(apiUrl("/companion/level"), { questionId, level })
   );
 
-export const compactCompanionMemory = (questionId: ApiId) =>
+export const compactCompanionMemory = (conversationId: ApiId) =>
   unwrap<CompanionCompaction>(
-    axios.post(apiUrl("/companion/compact"), { questionId })
+    axios.post(apiUrl("/companion/compact"), { conversationId })
   );
 
 export const getAiSetting = () =>

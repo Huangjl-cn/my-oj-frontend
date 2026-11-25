@@ -515,6 +515,18 @@
                 :handle-change="changeCode"
                 :on-format="onFormat"
                 :preview-code="companion.preview?.resolution.code ?? null"
+                @selection-change="editorSelection = $event"
+                @ask-selection="selectionAskRef?.expand()"
+              />
+              <SelectionAskBox
+                v-if="companionEnabled && editorSelection && !companion.preview"
+                ref="selectionAskRef"
+                :selection="editorSelection"
+                :name="companionName"
+                :busy="!!companion.busy"
+                :needs-key="companion.session?.canCallModel === false"
+                @ask="askAboutSelection"
+                @need-key="openCompanionSettings"
               />
             </div>
             <CompanionPet
@@ -752,6 +764,7 @@ import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import CodeEditPreviewBar from "@/components/companion/CodeEditPreviewBar.vue";
 import CompanionPanel from "@/components/companion/CompanionPanel.vue";
 import CompanionPet from "@/components/companion/CompanionPet.vue";
+import SelectionAskBox from "@/components/companion/SelectionAskBox.vue";
 import { useCompanion } from "@/composables/useCompanion";
 import SubmissionRankRings from "@/components/question/SubmissionRankRings.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
@@ -792,6 +805,7 @@ import {
 } from "@/services/questionSubmit";
 import { createQuestionSubmitPoller } from "@/services/questionSubmitPolling";
 import { formatDateTime } from "@/utils/dateTime";
+import { EditorSelection } from "@/utils/editorSelection";
 import {
   QuestionControllerService,
   QuestionQueryRequest,
@@ -819,6 +833,7 @@ type CodeEditorInstance = {
     selectionStartLine?: number;
     selectionEndLine?: number;
   };
+  collapseSelection: () => void;
   replaceAll: (code: string) => boolean;
 };
 const codeEditorRef = ref<CodeEditorInstance | null>(null);
@@ -1366,6 +1381,29 @@ const companion = reactive(
   })
 );
 const companionName = computed(() => companion.session?.personaName || "栗子");
+
+// 在编辑器里选中代码后「问栗子」
+const editorSelection = ref<EditorSelection | null>(null);
+const selectionAskRef = ref<{ expand: () => void } | null>(null);
+
+const askAboutSelection = (question: string) => {
+  const selection = editorSelection.value;
+  if (!selection) return;
+  companion.openPanel();
+  // send 会立刻取代码快照，之后再取消选中
+  void companion.send(question, {
+    startLine: selection.startLine,
+    endLine: selection.endLine,
+    code: selection.text,
+  });
+  codeEditorRef.value?.collapseSelection();
+  editorSelection.value = null;
+};
+
+const openCompanionSettings = () => {
+  companion.openPanel();
+  companion.setSettingsOpen(true);
+};
 
 const applyCompanionPreview = () => {
   if (companion.applyPreview()) {
@@ -2855,6 +2893,7 @@ onBeforeUnmount(() => {
 }
 
 .editor-body {
+  position: relative;
   flex: 1;
   min-height: 0;
 }

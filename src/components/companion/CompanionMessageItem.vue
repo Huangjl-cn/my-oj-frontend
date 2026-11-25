@@ -1,6 +1,10 @@
 <template>
   <article :class="['message', message.role, `type-${message.type}`]">
     <template v-if="message.role === 'user'">
+      <figure v-if="message.quote" class="user-quote">
+        <figcaption>{{ quoteLines }}</figcaption>
+        <pre>{{ message.quote.code }}</pre>
+      </figure>
       <p class="user-text">{{ message.content }}</p>
     </template>
 
@@ -51,32 +55,31 @@ import {
   withDefaults,
 } from "vue";
 
+import { SOLUTION_LEVEL } from "@/composables/useCompanion";
 import { COMPANION_MOOD_LABELS } from "@/constants/companionMoods";
 import { describeProposal } from "@/services/codeEditProposal";
 import {
   CodeEditProposal,
   CompanionMessage,
   HintStep,
-  HintTrack,
 } from "@/services/companion";
 
 const MdViewer = defineAsyncComponent(
   () => import("@/components/editor/MdViewer.vue")
 );
 
-const SOLUTION_LEVEL = 5;
-
 const props = withDefaults(
   defineProps<{
     message: CompanionMessage;
-    hintSteps?: Partial<Record<HintTrack, HintStep[]>>;
+    /** 各档位的名字，下标即档位 */
+    hintSteps?: HintStep[];
     /** 流式回答中的这一条 */
     streaming?: boolean;
     streamingText?: string;
     thinking?: string;
   }>(),
   {
-    hintSteps: () => ({}),
+    hintSteps: () => [],
     streaming: false,
     streamingText: "",
     thinking: "",
@@ -93,11 +96,16 @@ const text = computed(() =>
   props.streaming ? props.streamingText : props.message.content
 );
 
-const stepTitle = (level?: number | null) => {
-  if (level == null) return "";
-  const track = props.message.hintTrack ?? "idea";
-  return props.hintSteps[track]?.[level]?.title ?? "";
-};
+const stepTitle = (level?: number | null) =>
+  level == null ? "" : props.hintSteps[level]?.title ?? "";
+
+const quoteLines = computed(() => {
+  const quote = props.message.quote;
+  if (!quote) return "";
+  return quote.startLine === quote.endLine
+    ? `第 ${quote.startLine} 行`
+    : `第 ${quote.startLine}–${quote.endLine} 行`;
+});
 
 const badge = computed(() => {
   const { type, mood } = props.message;
@@ -142,6 +150,33 @@ const editsLabel = computed(() =>
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.user-quote {
+  max-width: 88%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+}
+
+.user-quote figcaption {
+  padding: 4px 8px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.user-quote pre {
+  max-height: 120px;
+  margin: 0;
+  padding: 4px 8px 6px;
+  overflow: auto;
+  color: var(--body);
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
 .message.assistant .assistant-text {

@@ -6,26 +6,27 @@
         <strong>{{ name }}</strong>
         <span class="panel-status">{{ statusText }}</span>
       </div>
-      <span
-        v-if="usage"
-        :class="['usage-chip', { warn: usage.near }]"
-        :title="usage.title"
-      >
-        {{ usage.text }}
-      </span>
       <button
         class="icon-btn"
         type="button"
-        title="整理记忆：把较早的对话整理成笔记，腾出上下文"
-        aria-label="整理记忆"
-        :disabled="!canAsk"
-        @click="compactNow"
+        :title="
+          companion.isFreshConversation ? '已经是新对话了' : '开一段新对话'
+        "
+        aria-label="开一段新对话"
+        :disabled="
+          !session || !!companion.busy || companion.isFreshConversation
+        "
+        @click="companion.startConversation()"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 7h16M7 7v11a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7" />
-          <path d="M10 11h4M10 15h4M9 4h6" />
-        </svg>
+        <IconPlus />
       </button>
+      <ConversationMenu
+        :conversations="companion.conversations"
+        :loading="companion.conversationsLoading"
+        :disabled="!session || !!companion.busy"
+        @open="companion.loadConversations()"
+        @select="companion.switchConversation"
+      />
       <button
         class="icon-btn"
         type="button"
@@ -68,78 +69,6 @@
         </button>
       </p>
 
-      <section v-if="!companion.isDirectMode" class="ladder">
-        <div class="ladder-head">
-          <span class="ladder-track">{{ trackLabel }}</span>
-          <span class="ladder-current">
-            已到「{{ currentStep?.title ?? "自己想" }}」
-          </span>
-        </div>
-        <ol class="ladder-steps">
-          <li
-            v-for="step in companion.steps"
-            :key="step.level"
-            :class="{
-              unlocked: step.level <= companion.level,
-              current: step.level === companion.level,
-              solution: step.level === SOLUTION_LEVEL,
-            }"
-          >
-            <button
-              type="button"
-              :title="step.description"
-              :disabled="!canStep(step)"
-              @click="onStepClick(step)"
-            >
-              {{ step.title }}
-            </button>
-          </li>
-        </ol>
-        <div class="ladder-actions">
-          <button
-            class="action-btn primary"
-            type="button"
-            :disabled="!canAsk || !companion.nextStep"
-            :title="companion.nextStep?.description"
-            @click="companion.askHint()"
-          >
-            {{
-              companion.nextStep
-                ? `再给点提示：${companion.nextStep.title}`
-                : "提示已经到最后一步"
-            }}
-          </button>
-          <button
-            class="action-btn secondary"
-            type="button"
-            :disabled="!canAsk"
-            @click="solutionConfirmVisible = true"
-          >
-            {{ solutionTitle }}
-          </button>
-        </div>
-        <button
-          v-if="companion.level > 0"
-          class="link-btn restart"
-          type="button"
-          :disabled="!!companion.busy"
-          @click="companion.changeLevel(0)"
-        >
-          从头自己做
-        </button>
-      </section>
-      <section v-else class="ladder direct">
-        <span>有问必答模式：不分步骤，问什么答什么</span>
-        <button
-          class="link-btn"
-          type="button"
-          :disabled="!canAsk"
-          @click="companion.showSolution()"
-        >
-          看答案
-        </button>
-      </section>
-
       <div ref="listRef" class="message-list" @scroll="onListScroll">
         <button
           v-if="companion.hasMore"
@@ -156,7 +85,9 @@
         >
           嗨，我是{{
             name
-          }}。卡住了就点「再给点提示」，也可以直接问我；提交之后我也会说两句。
+          }}。卡住了就点下面的「给点提示」，想让我多说一点就把档位调高；也可以直接问我，或者在代码里选中一段再「问{{
+            name
+          }}」。
         </p>
         <CompanionMessageItem
           v-for="item in companion.messages"
@@ -202,9 +133,44 @@
             发送
           </button>
         </div>
-        <p class="composer-tip">
-          Enter 发送，Shift+Enter 换行；会带上你当前的代码和选中的行
-        </p>
+        <div class="composer-tools">
+          <ContextUsageRing
+            :usage="companion.contextUsage"
+            :disabled="!canAsk"
+            :compacting="companion.busy === 'compact'"
+            @compact="compactNow"
+          />
+          <HintLevelPicker
+            :steps="companion.steps"
+            :level="companion.level"
+            :direct="companion.isDirectMode"
+            :disabled="!!companion.busy"
+            :name="name"
+            @change="companion.changeLevel"
+            @solution="solutionConfirmVisible = true"
+          />
+          <button
+            class="hint-btn"
+            type="button"
+            :disabled="!canAsk"
+            :title="hintTitle"
+            @click="companion.askHint()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18h6M10 21h4" />
+              <path
+                d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"
+              />
+            </svg>
+            给点提示
+          </button>
+          <span
+            class="composer-tip"
+            title="Shift+Enter 换行；会带上你当前的代码"
+          >
+            Enter 发送
+          </span>
+        </div>
       </footer>
     </template>
 
@@ -224,7 +190,11 @@
 </template>
 
 <script setup lang="ts">
-import { IconClose, IconSettings } from "@arco-design/web-vue/es/icon";
+import {
+  IconClose,
+  IconPlus,
+  IconSettings,
+} from "@arco-design/web-vue/es/icon";
 import message from "@arco-design/web-vue/es/message";
 import { computed, defineProps, nextTick, PropType, ref, watch } from "vue";
 
@@ -232,10 +202,12 @@ import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import AiSettingDialog from "@/components/companion/AiSettingDialog.vue";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import CompanionMessageItem from "@/components/companion/CompanionMessageItem.vue";
-import { CompanionState, MAX_HINT_LEVEL } from "@/composables/useCompanion";
-import { CompanionMessage, HintStep } from "@/services/companion";
+import ContextUsageRing from "@/components/companion/ContextUsageRing.vue";
+import ConversationMenu from "@/components/companion/ConversationMenu.vue";
+import HintLevelPicker from "@/components/companion/HintLevelPicker.vue";
+import { CompanionState, SOLUTION_LEVEL } from "@/composables/useCompanion";
+import { CompanionMessage } from "@/services/companion";
 
-const SOLUTION_LEVEL = MAX_HINT_LEVEL + 1;
 /** 离底部不到这么多像素时，新内容到来自动滚到底 */
 const STICK_TO_BOTTOM_PX = 80;
 
@@ -255,15 +227,14 @@ const canAsk = computed(
   () => !!session.value?.canCallModel && !props.companion.busy
 );
 const canSend = computed(() => canAsk.value && !!draft.value.trim());
-const trackLabel = computed(() =>
-  props.companion.track === "bug" ? "找 bug" : "找思路"
-);
-const currentStep = computed(
-  () => props.companion.steps[props.companion.level]
-);
 const solutionTitle = computed(
   () => props.companion.steps[SOLUTION_LEVEL]?.title || "看答案"
 );
+const hintTitle = computed(() => {
+  const step = props.companion.currentStep;
+  if (props.companion.isDirectMode || !step) return "要一条提示";
+  return `按「${step.title}」这一档给一条提示：${step.description}`;
+});
 
 const statusText = computed(() => {
   switch (props.companion.busy) {
@@ -274,6 +245,8 @@ const statusText = computed(() => {
       return "在写参考答案…";
     case "compact":
       return "在整理笔记…";
+    case "conversation":
+      return "在翻对话…";
     default:
       return session.value?.canCallModel ? "陪你一起做题" : "等你配置 Key";
   }
@@ -285,51 +258,14 @@ const placeholder = computed(() =>
     : "先配置 API Key 才能聊天"
 );
 
-const formatTokens = (count: number) => {
-  if (count >= 1_000_000) {
-    return `${Number((count / 1_000_000).toFixed(1))}M`;
-  }
-  if (count >= 1000) return `${Math.round(count / 1000)}K`;
-  return String(count);
-};
-
-const usage = computed(() => {
-  const value = props.companion.contextUsage;
-  if (!value || !value.limitTokens) return undefined;
-  const percent = (value.ratio * 100).toFixed(1);
-  return {
-    text: `${percent}% · ${formatTokens(value.usedTokens)} / ${formatTokens(
-      value.limitTokens
-    )}`,
-    title: `上下文占用${value.estimated ? "（估算）" : ""}：到 ${Math.round(
-      value.compactRatio * 100
-    )}% 时会自动整理记忆`,
-    near: value.ratio >= value.compactRatio * 0.9,
-  };
-});
-
 const streamingMessage = computed<CompanionMessage>(() => ({
   id: "streaming",
   role: "assistant",
   type: props.companion.streaming?.type ?? "chat",
   hintLevel:
     props.companion.streaming?.type === "solution" ? SOLUTION_LEVEL : null,
-  hintTrack: props.companion.track,
   content: "",
 }));
-
-const canStep = (step: HintStep) =>
-  canAsk.value && step.level !== props.companion.level;
-
-const onStepClick = (step: HintStep) => {
-  if (step.level === SOLUTION_LEVEL) {
-    solutionConfirmVisible.value = true;
-  } else if (step.level > props.companion.level) {
-    void props.companion.askHint(step.level);
-  } else {
-    void props.companion.changeLevel(step.level);
-  }
-};
 
 const confirmSolution = () => {
   solutionConfirmVisible.value = false;
@@ -380,8 +316,9 @@ watch(
   () => void nextTick(scrollToBottom)
 );
 
+// 切题、切对话后回到最新的消息
 watch(
-  () => props.companion.session?.questionId,
+  () => props.companion.conversationId,
   () => {
     stickToBottom = true;
     void nextTick(scrollToBottom);
@@ -426,22 +363,6 @@ watch(
 .panel-status {
   color: var(--muted);
   font-size: 11px;
-}
-
-.usage-chip {
-  padding: 2px 8px;
-  color: var(--muted);
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-pill);
-  font-family: var(--font-code);
-  font-size: 10.5px;
-  white-space: nowrap;
-}
-
-.usage-chip.warn {
-  color: var(--accent-amber);
-  border-color: var(--accent-amber);
 }
 
 .icon-btn {
@@ -513,128 +434,6 @@ watch(
 .link-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.ladder {
-  margin: 10px 12px 0;
-  padding: 10px;
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-}
-
-.ladder.direct {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--body);
-  font-size: 12px;
-}
-
-.ladder-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.ladder-track {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.ladder-current {
-  color: var(--muted);
-}
-
-.ladder-steps {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 3px;
-  margin: 0 0 10px;
-  padding: 0;
-  list-style: none;
-}
-
-.ladder-steps button {
-  width: 100%;
-  min-height: 34px;
-  padding: 4px 2px;
-  color: var(--muted);
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 10.5px;
-  line-height: 1.25;
-  cursor: pointer;
-}
-
-.ladder-steps li.unlocked button {
-  color: var(--primary);
-  border-color: rgba(204, 120, 92, 0.45);
-}
-
-.ladder-steps li.current button {
-  color: var(--on-primary);
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.ladder-steps li.solution button {
-  border-style: dashed;
-}
-
-.ladder-steps button:disabled {
-  cursor: default;
-}
-
-.ladder-steps li:not(.current) button:disabled {
-  opacity: 0.55;
-}
-
-.ladder-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.action-btn {
-  height: 30px;
-  padding: 0 10px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.action-btn.primary {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--on-primary);
-  background: var(--primary);
-  border: 1px solid var(--primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.action-btn.secondary {
-  color: var(--body);
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-}
-
-.action-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.restart {
-  margin-top: 8px;
 }
 
 .message-list {
@@ -723,10 +522,60 @@ watch(
   opacity: 0.5;
 }
 
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hint-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid rgba(204, 120, 92, 0.45);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.hint-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hint-btn:hover:not(:disabled) {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.hint-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.hint-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .composer-tip {
-  margin: 6px 0 0;
+  margin-left: auto;
   color: var(--muted-soft);
   font-size: 11px;
+  white-space: nowrap;
 }
 
 @media (max-width: 1024px) {

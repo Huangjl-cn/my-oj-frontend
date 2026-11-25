@@ -1,6 +1,7 @@
 import {
   apiUrl,
   CodeEditProposal,
+  CodeQuote,
   CodeSnapshot,
   COMPANION_NETWORK_ERROR,
   CompanionApiError,
@@ -87,7 +88,12 @@ const parseJson = <T>(data: string): T | undefined => {
  */
 export const streamCompanion = async (
   path: "/companion/chat" | "/companion/solution",
-  body: { questionId: ApiId; snapshot: CodeSnapshot; message?: string },
+  body: {
+    conversationId: ApiId;
+    snapshot: CodeSnapshot;
+    message?: string;
+    quote?: CodeQuote;
+  },
   handlers: CompanionStreamHandlers,
   signal?: AbortSignal
 ): Promise<CompanionStreamDone> => {

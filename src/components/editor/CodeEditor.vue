@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 import {
+  defineEmits,
   defineExpose,
   defineProps,
   nextTick,
@@ -30,6 +31,8 @@ import {
   watch,
   withDefaults,
 } from "vue";
+
+import { EditorSelection, selectedLineRange } from "@/utils/editorSelection";
 
 interface Props {
   value: string;
@@ -53,6 +56,16 @@ const props = withDefaults(defineProps<Props>(), {
   onFormat: () => undefined,
   previewCode: null,
 });
+
+const emit = defineEmits<{
+  /** 选中的内容或它的位置变了；没有选中（或选区滚出可见区域）时为 null */
+  (event: "selection-change", selection: EditorSelection | null): void;
+  /** 有选区时按了 Ctrl+I */
+  (event: "ask-selection"): void;
+}>();
+
+/** 拖选过程中选区一直在变，停下来一会儿再通知 */
+const SELECTION_SETTLE_MS = 120;
 
 const codeEditorRef = ref<HTMLElement | null>(null);
 const diffEditorRef = ref<HTMLElement | null>(null);
@@ -142,6 +155,40 @@ const FORMATTABLE_LANGUAGES: Record<string, string> = {
   typescript: "TypeScript",
 };
 
+let selectionTimer: ReturnType<typeof setTimeout> | undefined;
+
+const publishSelection = () => {
+  const editor = codeEditor.value;
+  const model = editor?.getModel();
+  const selection = editor?.getSelection();
+  if (!editor || !model || !selection || selection.isEmpty()) {
+    emit("selection-change", null);
+    return;
+  }
+  const text = model.getValueInRange(selection);
+  const end = editor.getScrolledVisiblePosition(selection.getEndPosition());
+  const layout = editor.getLayoutInfo();
+  if (!text.trim() || !end || end.top < 0 || end.top > layout.height) {
+    emit("selection-change", null);
+    return;
+  }
+  emit("selection-change", {
+    ...selectedLineRange(
+      selection.startLineNumber,
+      selection.endLineNumber,
+      selection.endColumn
+    ),
+    text,
+    anchor: { top: end.top, bottom: end.top + end.height, left: end.left },
+    view: { width: layout.width, height: layout.height },
+  });
+};
+
+const scheduleSelection = () => {
+  if (selectionTimer) clearTimeout(selectionTimer);
+  selectionTimer = setTimeout(publishSelection, SELECTION_SETTLE_MS);
+};
+
 const formatHint = ref("");
 let formatHintTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -194,6 +241,15 @@ onMounted(async () => {
     monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyL,
     format
   );
+
+  codeEditor.value.onDidChangeCursorSelection(scheduleSelection);
+  codeEditor.value.onDidScrollChange(scheduleSelection);
+  // Ctrl+I：就选中的代码提问（只在有选区时生效）
+  codeEditor.value.addCommand(
+    monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI,
+    () => emit("ask-selection"),
+    "editorHasSelection"
+  );
 });
 
 /** 光标所在行和选中的行范围（没有选中内容时不返回选区），行号从 1 开始 */
@@ -207,6 +263,15 @@ const getCursorInfo = (): EditorCursorInfo => {
     selectionStartLine: hasSelection ? selection.startLineNumber : undefined,
     selectionEndLine: hasSelection ? selection.endLineNumber : undefined,
   };
+};
+
+/** 取消选中，光标停在选区末尾 */
+const collapseSelection = () => {
+  const editor = codeEditor.value;
+  const selection = editor?.getSelection();
+  if (!editor || !selection || selection.isEmpty()) return;
+  const end = selection.getEndPosition();
+  editor.setPosition(end);
 };
 
 /** 整体替换代码，作为一次编辑进入撤销栈（Ctrl+Z 可以撤回） */
@@ -224,11 +289,12 @@ const replaceAll = (code: string) => {
 
 onBeforeUnmount(() => {
   if (formatHintTimer) clearTimeout(formatHintTimer);
+  if (selectionTimer) clearTimeout(selectionTimer);
   disposeDiffEditor();
   codeEditor.value?.dispose();
 });
 
-defineExpose({ format, getCursorInfo, replaceAll });
+defineExpose({ format, getCursorInfo, collapseSelection, replaceAll });
 </script>
 
 <style scoped>

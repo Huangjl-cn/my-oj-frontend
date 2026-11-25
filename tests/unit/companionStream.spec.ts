@@ -45,7 +45,10 @@ const jsonResponse = (body: unknown) => ({
   text: async () => JSON.stringify(body),
 });
 
-const body = { questionId: "1", snapshot: { code: "", language: "java" } };
+const body = {
+  conversationId: "1",
+  snapshot: { code: "", language: "java" },
+};
 
 describe("SSE parser", () => {
   it("parses Spring style events without a space after the colon", () => {
@@ -91,7 +94,7 @@ describe("streamCompanion", () => {
           'event:delta\ndata:{"text":"先看"}\n\nevent:delta\ndata:{"te',
           'xt":"第 3 行"}\n\n',
           'event:edits\ndata:{"baseHash":"h","edits":[],"resultCode":"x"}\n\n',
-          'event:done\ndata:{"messageId":"9","hintLevel":1,"hintTrack":"bug","compacted":false}\n\n',
+          'event:done\ndata:{"messageId":"9","hintLevel":1,"compacted":false}\n\n',
         ])
       );
     const thinking: string[] = [];
@@ -109,7 +112,7 @@ describe("streamCompanion", () => {
     expect(edits).toHaveBeenCalledWith(
       expect.objectContaining({ resultCode: "x" })
     );
-    expect(done).toMatchObject({ messageId: "9", hintTrack: "bug" });
+    expect(done).toMatchObject({ messageId: "9", hintLevel: 1 });
     expect(globals.fetch).toHaveBeenCalledWith(
       "/api/companion/chat",
       expect.objectContaining({ method: "POST", credentials: "include" })
