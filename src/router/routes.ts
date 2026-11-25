@@ -61,6 +61,9 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/",
     name: "题库",
     component: QuestionsView,
+    meta: {
+      fullHeight: true,
+    },
   },
   {
     path: "/questions",
@@ -68,6 +71,7 @@ export const routes: Array<RouteRecordRaw> = [
     component: QuestionsView,
     meta: {
       hideInMenu: true,
+      fullHeight: true,
     },
   },
   {

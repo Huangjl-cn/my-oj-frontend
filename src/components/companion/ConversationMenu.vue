@@ -192,7 +192,7 @@ const formatTime = (value?: string) => {
 
 .menu-item.active {
   background: var(--primary-light);
-  border-color: rgba(204, 120, 92, 0.35);
+  border-color: var(--line-strong);
   cursor: default;
 }
 

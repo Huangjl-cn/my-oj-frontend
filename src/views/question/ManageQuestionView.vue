@@ -347,7 +347,7 @@ const doUpdate = (question: QuestionListRecord) => {
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
   padding: var(--space-lg) 0;
 }
 
@@ -365,7 +365,7 @@ const doUpdate = (question: QuestionListRecord) => {
 }
 
 .page-title {
-  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-family: var(--font-sans);
   font-size: 32px;
   font-weight: 400;
   color: var(--ink);

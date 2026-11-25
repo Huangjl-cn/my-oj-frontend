@@ -1672,7 +1672,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 #questionsView {
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
   flex: 1;
   display: flex;
   min-height: 0;
@@ -2106,7 +2106,7 @@ onBeforeUnmount(() => {
 
 .problem-title {
   min-width: 0;
-  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-family: var(--font-sans);
   font-size: 32px;
   font-weight: 400;
   color: var(--ink);

@@ -117,7 +117,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   box-shadow: var(--shadow-md);
   cursor: pointer;
-  animation: claude-fade-up var(--motion-fast) var(--ease-out);
+  animation: page-enter var(--motion-fast) var(--ease-out);
   transition: color 160ms ease, background 160ms ease, border-color 160ms ease,
     transform 160ms ease;
 }

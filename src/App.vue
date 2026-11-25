@@ -4,7 +4,7 @@
       <router-view />
     </template>
     <template v-else>
-      <BasicLayout />
+      <AppLayout />
     </template>
   </div>
 </template>
@@ -13,7 +13,7 @@
 import { useRoute } from "vue-router";
 
 import { useTheme } from "@/composables/useTheme";
-import BasicLayout from "@/layouts/BasicLayout.vue";
+import AppLayout from "@/layouts/AppLayout.vue";
 
 const route = useRoute();
 useTheme();

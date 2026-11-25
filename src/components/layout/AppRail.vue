@@ -1,0 +1,269 @@
+<template>
+  <nav class="rail" aria-label="主导航">
+    <router-link to="/" class="rail-logo" aria-label="MyOJ 首页">
+      <CompanionAvatar :size="38" />
+    </router-link>
+
+    <router-link
+      to="/"
+      :class="['rail-btn', { on: section === 'problems' }]"
+      data-tip="题库"
+      aria-label="题库"
+    >
+      <AppIcon name="book" :size="21" />
+    </router-link>
+    <router-link
+      to="/question_submit"
+      :class="['rail-btn', { on: section === 'submissions' }]"
+      data-tip="提交记录"
+      aria-label="提交记录"
+    >
+      <AppIcon name="list-checks" :size="21" />
+    </router-link>
+
+    <template v-if="isLoggedIn">
+      <hr />
+      <RailMenu
+        label="出题"
+        icon="pen-square"
+        :items="authorItems"
+        :active="section === 'authoring'"
+      />
+      <RailMenu
+        v-if="isAdmin"
+        label="管理"
+        icon="sliders"
+        :items="adminItems"
+        :active="section === 'admin'"
+      />
+    </template>
+
+    <span class="gap" />
+
+    <button
+      class="rail-btn"
+      type="button"
+      :data-tip="isDark ? '浅色模式' : '深色模式'"
+      :aria-label="isDark ? '切换为浅色模式' : '切换为深色模式'"
+      @click="toggleTheme"
+    >
+      <AppIcon :name="isDark ? 'sun' : 'moon'" :size="20" />
+    </button>
+
+    <RailMenu
+      v-if="isLoggedIn"
+      :label="loginUser.userName || '我的账号'"
+      :items="accountItems"
+      :active="section === 'profile'"
+    >
+      <template #trigger>
+        <UserAvatar
+          :avatar="loginUser.userAvatar"
+          :name="loginUser.userName"
+          :size="32"
+        />
+      </template>
+      <template #header>
+        <strong class="who">{{ loginUser.userName || "未设置昵称" }}</strong>
+        <span class="who-sub">
+          @{{ loginUser.userAccount || "--" }} ·
+          {{ formatUserRole(loginUser.userRole) }}
+        </span>
+      </template>
+    </RailMenu>
+    <router-link
+      v-else
+      to="/user/login"
+      class="rail-btn"
+      data-tip="登录"
+      aria-label="登录"
+    >
+      <AppIcon name="log-in" :size="20" />
+    </router-link>
+  </nav>
+
+  <ConfirmDialog
+    v-model:visible="showLogoutDialog"
+    title="退出登录"
+    message="确定退出当前账号并返回登录页面吗？"
+    confirm-text="退出登录"
+    tone="danger"
+    @confirm="confirmLogout"
+  />
+</template>
+
+<script setup lang="ts">
+import message from "@arco-design/web-vue/es/message";
+import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useStore } from "vuex";
+
+import ACCESS_ENUM from "@/access/accessEnum";
+import checkAccess from "@/access/checkAccess";
+import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
+import RailMenu from "@/components/layout/RailMenu.vue";
+import { RailMenuItem } from "@/components/layout/railMenu";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UserAvatar from "@/components/user/UserAvatar.vue";
+import { useTheme } from "@/composables/useTheme";
+import { formatUserRole } from "@/utils/userRole";
+import { UserControllerService } from "../../../generated";
+
+const route = useRoute();
+const router = useRouter();
+const store = useStore();
+const { isDark, toggleTheme } = useTheme();
+const showLogoutDialog = ref(false);
+
+const loginUser = computed(() => store.state.user.loginUser ?? {});
+const isLoggedIn = computed(() =>
+  checkAccess(loginUser.value, ACCESS_ENUM.USER)
+);
+const isAdmin = computed(() => checkAccess(loginUser.value, ACCESS_ENUM.ADMIN));
+
+/** 当前页面属于图标栏的哪一项 */
+const section = computed(() => {
+  const path = route.path;
+  if (
+    path === "/" ||
+    path.startsWith("/questions") ||
+    path.startsWith("/problem")
+  ) {
+    return "problems";
+  }
+  if (path.startsWith("/question_submit")) return "submissions";
+  if (["/add/question", "/update/question", "/my/question"].includes(path)) {
+    return "authoring";
+  }
+  if (path.startsWith("/manage")) return "admin";
+  if (path.startsWith("/profile")) return "profile";
+  return "";
+});
+
+const authorItems: RailMenuItem[] = [
+  { label: "创建题目", icon: "plus", to: "/add/question" },
+  { label: "我的题目", icon: "files", to: "/my/question" },
+];
+
+const adminItems: RailMenuItem[] = [
+  { label: "题目管理", icon: "book", to: "/manage/question/" },
+  { label: "用户管理", icon: "users", to: "/manage/user" },
+];
+
+const accountItems: RailMenuItem[] = [
+  { label: "个人中心", icon: "user", to: "/profile" },
+  {
+    label: "退出登录",
+    icon: "log-out",
+    danger: true,
+    action: () => {
+      showLogoutDialog.value = true;
+    },
+  },
+];
+
+const confirmLogout = async () => {
+  const response = await UserControllerService.userLogout();
+  if (response.code !== 0) {
+    message.error(response.message || "退出登录失败");
+    return;
+  }
+  showLogoutDialog.value = false;
+  await store.dispatch("user/getLoginUser");
+  void router.push({ path: "/user/login" });
+};
+</script>
+
+<style scoped>
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 0;
+  height: 100%;
+}
+
+.rail-logo {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  --mascot-fill: var(--bg);
+}
+
+.rail hr {
+  width: 26px;
+  border: none;
+  border-top: 1px solid var(--line-strong);
+  margin: 10px 0;
+}
+
+.gap {
+  flex: 1;
+}
+
+.rail :deep(.rail-btn) {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
+}
+
+.rail :deep(.rail-btn:hover) {
+  color: var(--ink);
+  background: var(--fill-strong);
+}
+
+.rail :deep(.rail-btn.on) {
+  color: var(--ink);
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: var(--shadow-panel);
+}
+
+.who {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.who-sub {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* 窄屏：图标栏移到底部 */
+@media (max-width: 720px) {
+  .rail {
+    flex-direction: row;
+    justify-content: space-around;
+    height: auto;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+  }
+
+  .rail-logo,
+  .rail hr,
+  .gap {
+    display: none;
+  }
+
+  .rail :deep([data-tip]:hover::after) {
+    display: none;
+  }
+}
+</style>

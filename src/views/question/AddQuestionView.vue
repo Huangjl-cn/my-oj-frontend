@@ -330,11 +330,14 @@
     </div>
   </div>
   <ConfirmDialog
-    v-if="!updatePage"
     v-model:visible="showCreateLeaveDialog"
-    title="离开创建页面"
-    message="离开后，当前尚未提交的题目内容将会丢失。"
-    confirm-text="放弃内容"
+    :title="updatePage ? '离开更新页面' : '离开创建页面'"
+    :message="
+      updatePage
+        ? '离开后，当前尚未提交的题目修改将不会保留。'
+        : '离开后，当前尚未提交的题目内容将会丢失。'
+    "
+    :confirm-text="updatePage ? '离开页面' : '放弃内容'"
     tone="danger"
     @confirm="confirmCreateLeave"
   />
@@ -526,8 +529,11 @@ const loadData = async () => {
   }
 };
 
+// 更新页面离开前总是确认；创建页面只在填了内容时确认
 onBeforeRouteLeave((to) => {
-  if (allowCreateLeave || !isCreateFormDirty.value) return true;
+  if (allowCreateLeave || (!updatePage && !isCreateFormDirty.value)) {
+    return true;
+  }
   pendingCreateLeavePath.value = to.fullPath;
   showCreateLeaveDialog.value = true;
   return false;
@@ -609,6 +615,7 @@ const doSubmit = async () => {
         clearQuestionStarterCodeCache(form.value.id);
         clearQuestionDraftsForQuestion(form.value.id);
       }
+      allowCreateLeave = true;
       message.success("更新成功");
       router.push(
         route.query.from === "my" ? "/my/question" : "/manage/question"
@@ -716,7 +723,7 @@ const onAnswerChange = (value: string) => {
   max-width: 1600px;
   margin: 0 auto;
   padding: var(--space-lg) 0;
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
 }
 
 .form-wrapper {
@@ -752,7 +759,7 @@ const onAnswerChange = (value: string) => {
 }
 
 .page-title {
-  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-family: var(--font-sans);
   font-size: 32px;
   font-weight: 400;
   color: var(--ink);

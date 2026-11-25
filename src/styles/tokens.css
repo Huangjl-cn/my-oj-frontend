@@ -1,0 +1,149 @@
+/* ========================================
+   设计变量：灰色底 + 白色面板，黑白灰为主，颜色只表达含义（难度、判题结果）
+   ======================================== */
+
+:root {
+  /* === 面 === */
+  --bg: #f3f3f4;
+  --panel: #ffffff;
+  --fill: #f4f4f5;
+  --fill-strong: #ececee;
+  --overlay: rgba(255, 255, 255, 0.96);
+  --code-bg: #18181b;
+  --code-bg-raised: #27272a;
+
+  /* === 线 === */
+  --line: #e9e9eb;
+  --line-strong: #d6d6da;
+
+  /* === 文字 === */
+  --ink: #18181b;
+  --body: #3f3f46;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --on-dark: #fafafa;
+  --on-dark-muted: #a1a1aa;
+
+  /* === 主操作：黑色 === */
+  --primary: #18181b;
+  --primary-hover: #000000;
+  --primary-soft: rgba(24, 24, 27, 0.06);
+  --primary-disabled: #d4d4d8;
+  --on-primary: #ffffff;
+
+  /* === 语义色 === */
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --info: #2563eb;
+  --easy: #16a34a;
+  --medium: #d97706;
+  --hard: #dc2626;
+
+  /* === 字体：英文和数字用 Geist，中文用系统黑体 === */
+  --font-sans: "Geist Variable", "PingFang SC", "Microsoft YaHei UI",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "JetBrains Mono", "Cascadia Mono",
+    Consolas, "Microsoft YaHei UI", monospace;
+
+  /* === 圆角 === */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-pill: 9999px;
+
+  /* === 阴影：只用来把面板从底色上托起来 === */
+  --shadow-panel: 0 1px 2px rgba(24, 24, 27, 0.04),
+    0 4px 16px -8px rgba(24, 24, 27, 0.08);
+  --shadow-float: 0 18px 40px -16px rgba(24, 24, 27, 0.24),
+    0 0 0 1px rgba(24, 24, 27, 0.04);
+  --focus-ring: 0 0 0 3px rgba(24, 24, 27, 0.12);
+
+  /* === 动效 === */
+  --motion-fast: 150ms;
+  --motion-standard: 220ms;
+  --motion-layout: 320ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #09090b;
+  --panel: #141416;
+  --fill: #1c1c1f;
+  --fill-strong: #232327;
+  --overlay: rgba(20, 20, 22, 0.96);
+  --code-bg: #0f0f11;
+  --code-bg-raised: #1c1c1f;
+
+  --line: #232327;
+  --line-strong: #34343a;
+
+  --ink: #ededef;
+  --body: #d4d4d8;
+  --muted: #a1a1aa;
+  --faint: #6b6b73;
+
+  --primary: #ededef;
+  --primary-hover: #ffffff;
+  --primary-soft: rgba(255, 255, 255, 0.08);
+  --primary-disabled: #3f3f46;
+  --on-primary: #09090b;
+
+  --success: #4ade80;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --easy: #4ade80;
+  --medium: #fbbf24;
+  --hard: #f87171;
+
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 8px 24px -12px rgba(0, 0, 0, 0.7);
+  --shadow-float: 0 20px 44px -16px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.16);
+
+  color-scheme: dark;
+}
+
+/* ========================================
+   旧变量名：还没改版的组件仍在使用，指向新的值，改完一个删一个用法
+   ======================================== */
+:root {
+  --canvas: var(--panel);
+  --surface-soft: var(--fill);
+  --surface-card: var(--fill);
+  --surface-cream-strong: var(--fill-strong);
+  --surface-overlay: var(--overlay);
+  --surface-dark: var(--code-bg);
+  --surface-dark-elevated: var(--code-bg-raised);
+  --surface-dark-soft: var(--code-bg);
+  --header-surface: var(--panel);
+  --body-strong: var(--ink);
+  --muted-soft: var(--faint);
+  --on-dark-soft: var(--on-dark-muted);
+  --hairline: var(--line);
+  --hairline-soft: var(--line);
+  --primary-active: var(--primary-hover);
+  --primary-light: var(--primary-soft);
+  --accent-teal: var(--info);
+  --accent-amber: var(--warning);
+  --error: var(--danger);
+  --font-display: var(--font-sans);
+  --font-body: var(--font-sans);
+  --font-code: var(--font-mono);
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --shadow-sm: var(--shadow-panel);
+  --shadow-md: var(--shadow-panel);
+  --shadow-lg: var(--shadow-float);
+}

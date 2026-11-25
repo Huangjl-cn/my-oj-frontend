@@ -291,7 +291,7 @@ const savePassword = async () => {
   min-width: 0;
   margin: 0 auto;
   padding: var(--space-lg);
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
 }
 
 .page-header {

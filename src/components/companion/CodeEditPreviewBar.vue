@@ -82,8 +82,8 @@ const warning = computed(() => {
   padding: 10px 16px;
   color: var(--on-dark);
   background: var(--surface-dark-elevated);
-  border-top: 1px solid rgba(204, 120, 92, 0.35);
-  border-bottom: 1px solid rgba(204, 120, 92, 0.35);
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
   flex-shrink: 0;
 }
 

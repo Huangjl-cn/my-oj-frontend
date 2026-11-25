@@ -81,7 +81,7 @@ const judgeCaseCount = computed(() => judgeCaseConfig.value.cases?.length ?? 0);
 .details-main h2 {
   margin: 3px 0 6px;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-family: var(--font-sans);
   font-size: 20px;
   font-weight: 500;
 }

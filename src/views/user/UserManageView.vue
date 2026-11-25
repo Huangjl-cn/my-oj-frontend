@@ -402,7 +402,7 @@ const deleteUser = async () => {
   width: 100%;
   min-width: 0;
   padding: var(--space-lg) 0;
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
 }
 
 .page-header {

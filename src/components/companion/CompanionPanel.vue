@@ -537,7 +537,7 @@ watch(
   padding: 0 10px 0 8px;
   color: var(--primary);
   background: transparent;
-  border: 1px solid rgba(204, 120, 92, 0.45);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
   font-size: 12px;

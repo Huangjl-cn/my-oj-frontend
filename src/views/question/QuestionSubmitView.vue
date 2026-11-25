@@ -770,7 +770,7 @@ onMounted(async () => {
   width: min(1280px, calc(100% - 2 * var(--space-xl)));
   margin: 0 auto;
   padding: var(--space-xl) 0 var(--space-2xl);
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
 }
 
 .page-heading {
@@ -789,7 +789,7 @@ onMounted(async () => {
 .page-title {
   margin: 3px 0 7px;
   color: var(--ink);
-  font-family: "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  font-family: var(--font-sans);
   font-size: 42px;
   font-weight: 400;
   line-height: 1;
@@ -1177,7 +1177,7 @@ onMounted(async () => {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  animation: claude-fade-up var(--motion-standard) var(--ease-out);
+  animation: page-enter var(--motion-standard) var(--ease-out);
 }
 
 .submission-detail-header {
