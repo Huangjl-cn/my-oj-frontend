@@ -332,10 +332,7 @@ Named chunks: `page-auth` (login/register), `page-questions`, `page-question-edi
 
 ### Docker & Nginx Configuration
 
-Deployment files live in `deploy/`:
-- `deploy/docker-compose.yml` — orchestrates three services on a `my-oj-network` bridge:
-  - `my-oj-db` (mysql:8.4) — utf8mb4, tuned for small hosts (64M buffer pool, 50 connections), DB port exposed on `127.0.0.1:3307`, initialized from `oj-backend/init.sql`, healthcheck via `mysqladmin ping`
-  - `my-oj-backend` (built from `oj-backend/Dockerfile`, image `my-oj-backend:2.0.1`) — Spring profile `prod`, sandbox auth keys injected from `.env` (`CODESANDBOX_AUTH_KEY_ID` / `CODESANDBOX_AUTH_PRIVATE_KEY`), remote sandbox via `--codesandbox.url`, waits for db healthcheck
-  - `my-oj-frontend` (nginx:1.30.4-alpine) — ports 80/443 (HTTPS via `oj-frontend/certs`, ACME challenge dir `oj-frontend/acme-challenge`), healthcheck on `/healthz`
+This repo only ships `deploy/oj-frontend/`. The compose file that runs MySQL, the backend and this nginx lives in the backend repository (its `deploy/docker-compose.yml`, secrets from its `deploy/.env`). At deploy time this directory is placed under the backend's `deploy/`, and the `my-oj-frontend` nginx container (ports 80/443, healthcheck on `/healthz`) mounts `nginx.conf`, `dist/`, `certs/` and `acme-challenge/` from it. Do not add a compose file or any credentials to this repo.
+
 - `deploy/oj-frontend/nginx.conf` — nginx config with `gzip_static on`, immutable cache headers for hashed assets, `/api/` proxy to backend (`my-oj-backend:8101` upstream), and SPA `try_files` fallback
 - `deploy/oj-frontend/dist/` — production build output (`vue.config.js` `outputDir`, gitignored), mounted read-only into the nginx container
