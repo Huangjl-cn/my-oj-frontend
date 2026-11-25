@@ -139,12 +139,9 @@ const CARD_CLOSE_DELAY = 120;
 const cardOpen = ref(false);
 const menuOpen = ref(false);
 let cardTimer: number | undefined;
-const canHover =
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(hover: hover)").matches !== false;
 
 const showCard = () => {
-  if (!canHover || menuOpen.value) return;
+  if (menuOpen.value) return;
   window.clearTimeout(cardTimer);
   cardTimer = window.setTimeout(() => (cardOpen.value = true), CARD_OPEN_DELAY);
 };
