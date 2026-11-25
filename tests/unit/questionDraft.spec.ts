@@ -123,7 +123,10 @@ describe("question draft local cache", () => {
 
   it("finds the user's most recently saved draft", () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-11-25T10:00:00Z"));
-    saveQuestionDraft({ userId: "1", questionId: "100", language: "java" }, "a");
+    saveQuestionDraft(
+      { userId: "1", questionId: "100", language: "java" },
+      "a"
+    );
     jest.setSystemTime(new Date("2026-11-25T10:05:00Z"));
     saveQuestionDraft({ userId: "1", questionId: "200", language: "cpp" }, "b");
     jest.setSystemTime(new Date("2026-11-25T10:09:00Z"));

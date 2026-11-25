@@ -12,7 +12,9 @@ import {
 
 export type ProblemStatus = "passed" | "failed" | "judging";
 
-const EMPTY_COUNT: DifficultyCountVO = { all: 0, easy: 0, medium: 0, hard: 0 };
+type Counts = Required<DifficultyCountVO>;
+
+const EMPTY_COUNT: Counts = { all: 0, easy: 0, medium: 0, hard: 0 };
 
 /** 题库页和做题页共用一份进度：做题页判完题直接改这里，回到题库页不用重新拉 */
 const progress = ref<QuestionProgressVO | null>(null);
@@ -43,7 +45,8 @@ export const useMyProgress = () => {
     if (pending && !force) return pending;
     pending = (async () => {
       try {
-        const response = await QuestionControllerService.getMyQuestionProgress();
+        const response =
+          await QuestionControllerService.getMyQuestionProgress();
         if (response.code === 0 && userId.value === id) {
           progress.value = response.data ?? null;
           loadedFor.value = id;
@@ -67,14 +70,14 @@ export const useMyProgress = () => {
   const markStatus = (
     questionId: ApiId,
     status: ProblemStatus,
-    difficulty?: keyof Omit<DifficultyCountVO, "all">
+    difficulty?: keyof Omit<Counts, "all">
   ) => {
     const current = progress.value;
     if (!current) return;
     const key = String(questionId);
     const previous = current.statuses?.[key];
     if (previous === "passed") return;
-    const solved = { ...EMPTY_COUNT, ...current.solved };
+    const solved: Counts = { ...EMPTY_COUNT, ...current.solved };
     if (status === "passed") {
       solved.all += 1;
       if (difficulty) solved[difficulty] += 1;
@@ -89,8 +92,14 @@ export const useMyProgress = () => {
   return {
     userId,
     progress,
-    total: computed(() => progress.value?.total ?? EMPTY_COUNT),
-    solved: computed(() => progress.value?.solved ?? EMPTY_COUNT),
+    total: computed<Counts>(() => ({
+      ...EMPTY_COUNT,
+      ...progress.value?.total,
+    })),
+    solved: computed<Counts>(() => ({
+      ...EMPTY_COUNT,
+      ...progress.value?.solved,
+    })),
     load,
     statusOf,
     markStatus,

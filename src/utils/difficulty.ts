@@ -22,7 +22,9 @@ export const difficultyOfTag = (tag: string): Difficulty | undefined =>
   DIFFICULTY_BY_TAG[tag.trim().toLowerCase()];
 
 /** 一组标签里的难度，取第一个能识别的 */
-export const getDifficulty = (tags?: string[] | null): Difficulty | undefined => {
+export const getDifficulty = (
+  tags?: string[] | null
+): Difficulty | undefined => {
   for (const tag of tags ?? []) {
     const difficulty = difficultyOfTag(tag);
     if (difficulty) return difficulty;

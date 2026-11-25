@@ -1,10 +1,6 @@
 import type { QuestionSubmitSummaryVO } from "../../generated";
 
-import { ApiId, toGeneratedApiId } from "@/services/apiId";
-import {
-  getJudgeResultPresentation,
-  listMyQuestionSubmissions,
-} from "@/services/questionSubmit";
+import { getJudgeResultPresentation } from "@/services/questionSubmit";
 
 export type QuestionProgressState =
   | "unattempted"
@@ -12,11 +8,7 @@ export type QuestionProgressState =
   | "passed"
   | "failed";
 
-const progressCache = new Map<string, Promise<QuestionProgressState>>();
-
-const createCacheKey = (userId: ApiId, questionId: ApiId) =>
-  `${userId}:${questionId}`;
-
+/** 一次提交对应的做题状态；整个题库的进度用 useMyProgress 一次取全 */
 export const getQuestionProgressState = (
   submission?: Pick<QuestionSubmitSummaryVO, "status" | "judgeInfo">
 ): QuestionProgressState => {
@@ -24,42 +16,6 @@ export const getQuestionProgressState = (
   const tone = getJudgeResultPresentation(submission).tone;
   if (tone === "pending") return "judging";
   return tone === "passed" ? "passed" : "failed";
-};
-
-export const getMyQuestionProgress = (userId: ApiId, questionId: ApiId) => {
-  const cacheKey = createCacheKey(userId, questionId);
-  const cached = progressCache.get(cacheKey);
-  if (cached) return cached;
-
-  const request = listMyQuestionSubmissions({
-    questionId: toGeneratedApiId(questionId),
-    current: 1,
-    pageSize: 1,
-  })
-    .then((response) => {
-      if (response.code !== 0) {
-        throw new Error(response.message || "加载题目进度失败");
-      }
-      return getQuestionProgressState(response.data?.records?.[0]);
-    })
-    .catch((error) => {
-      progressCache.delete(cacheKey);
-      throw error;
-    });
-
-  progressCache.set(cacheKey, request);
-  return request;
-};
-
-export const setMyQuestionProgress = (
-  userId: ApiId,
-  questionId: ApiId,
-  submission: Pick<QuestionSubmitSummaryVO, "status" | "judgeInfo">
-) => {
-  progressCache.set(
-    createCacheKey(userId, questionId),
-    Promise.resolve(getQuestionProgressState(submission))
-  );
 };
 
 export const formatAcceptanceRate = (accepted?: number, submitted?: number) => {

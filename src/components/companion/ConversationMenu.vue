@@ -1,20 +1,16 @@
 <template>
   <div ref="rootRef" class="conversation-menu">
     <button
-      class="icon-btn"
+      class="icon-btn tip-down"
       type="button"
-      title="之前的对话"
+      :data-tip="open ? undefined : '之前的对话'"
       aria-label="之前的对话"
       aria-haspopup="menu"
       :aria-expanded="open"
       :disabled="disabled"
       @click="toggle"
     >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 12a9 9 0 1 0 3-6.7" />
-        <path d="M3 4v4h4" />
-        <path d="M12 7v5l3 2" />
-      </svg>
+      <AppIcon name="history" :size="18" />
     </button>
 
     <div v-if="open" class="menu-popover" role="menu" aria-label="之前的对话">
@@ -44,6 +40,7 @@
 <script setup lang="ts">
 import { defineEmits, defineProps, PropType, ref } from "vue";
 
+import AppIcon from "@/components/ui/AppIcon.vue";
 import { useDismissable } from "@/composables/useDismissable";
 import { CompanionConversation } from "@/services/companion";
 import { ApiId } from "@/services/apiId";
@@ -96,42 +93,18 @@ const formatTime = (value?: string) => {
 }
 
 .icon-btn {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: var(--muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+  width: 34px;
+  height: 34px;
 }
 
-.icon-btn:hover:not(:disabled),
 .icon-btn[aria-expanded="true"] {
+  background: var(--fill);
   color: var(--ink);
-  background: var(--surface-soft);
-}
-
-.icon-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
 }
 
 .icon-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.icon-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  cursor: default;
+  opacity: 0.35;
 }
 
 .menu-popover {
@@ -143,10 +116,10 @@ const formatTime = (value?: string) => {
   max-height: 320px;
   padding: 8px;
   overflow-y: auto;
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
 }
 
 .menu-title {

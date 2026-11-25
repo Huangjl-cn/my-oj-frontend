@@ -19,9 +19,9 @@ const ManageQuestionView = () =>
   import(
     /* webpackChunkName: "page-question-manage" */ "@/views/question/ManageQuestionView.vue"
   );
-const QuestionsView = () =>
+const ProblemView = () =>
   import(
-    /* webpackChunkName: "page-questions" */ "@/views/question/QuestionsView.vue"
+    /* webpackChunkName: "page-problem" */ "@/views/problem/ProblemView.vue"
   );
 const ProblemsView = () =>
   import(
@@ -81,7 +81,7 @@ export const routes: Array<RouteRecordRaw> = [
   {
     path: "/problem/:id",
     name: "做题",
-    component: QuestionsView,
+    component: ProblemView,
     meta: {
       hideInMenu: true,
       fullHeight: true,

@@ -1,24 +1,22 @@
 <template>
   <aside class="companion-panel" aria-label="AI 陪练">
     <header class="panel-header">
-      <CompanionAvatar :mood="companion.pet.mood" :size="34" />
+      <CompanionAvatar :mood="companion.pet.mood" :size="30" />
       <div class="panel-title">
         <strong>{{ name }}</strong>
-        <span class="panel-status">{{ statusText }}</span>
+        <span v-if="companion.busy" class="panel-status">{{ statusText }}</span>
       </div>
       <button
-        class="icon-btn"
+        class="icon-btn tip-down"
         type="button"
-        :title="
-          companion.isFreshConversation ? '已经是新对话了' : '开一段新对话'
-        "
+        :data-tip="companion.isFreshConversation ? '已经是新对话了' : '新对话'"
         aria-label="开一段新对话"
         :disabled="
           !session || !!companion.busy || companion.isFreshConversation
         "
         @click="companion.startConversation()"
       >
-        <IconPlus />
+        <AppIcon name="plus" :size="18" />
       </button>
       <ConversationMenu
         :conversations="companion.conversations"
@@ -28,22 +26,22 @@
         @select="companion.switchConversation"
       />
       <button
-        class="icon-btn"
+        class="icon-btn tip-down"
         type="button"
-        title="AI 设置"
+        data-tip="AI 设置"
         aria-label="AI 设置"
         @click="companion.setSettingsOpen(true)"
       >
-        <IconSettings />
+        <AppIcon name="settings" :size="18" />
       </button>
       <button
-        class="icon-btn"
+        class="icon-btn tip-down"
         type="button"
-        title="收起"
+        data-tip="收起"
         aria-label="收起陪练面板"
         @click="companion.closePanel()"
       >
-        <IconClose />
+        <AppIcon name="close" :size="18" />
       </button>
     </header>
 
@@ -122,54 +120,46 @@
             rows="2"
             :placeholder="placeholder"
             :disabled="!session.canCallModel"
+            aria-label="发给陪练的消息"
             @keydown="onKeydown"
           />
-          <button
-            class="send-btn"
-            type="button"
-            :disabled="!canSend"
-            @click="submit"
-          >
-            发送
-          </button>
-        </div>
-        <div class="composer-tools">
-          <ContextUsageRing
-            :usage="companion.contextUsage"
-            :disabled="!canAsk"
-            :compacting="companion.busy === 'compact'"
-            @compact="compactNow"
-          />
-          <HintLevelPicker
-            :steps="companion.steps"
-            :level="companion.level"
-            :direct="companion.isDirectMode"
-            :disabled="!!companion.busy"
-            :name="name"
-            @change="companion.changeLevel"
-            @solution="solutionConfirmVisible = true"
-          />
-          <button
-            class="hint-btn"
-            type="button"
-            :disabled="!canAsk"
-            :title="hintTitle"
-            @click="companion.askHint()"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 18h6M10 21h4" />
-              <path
-                d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"
-              />
-            </svg>
-            给点提示
-          </button>
-          <span
-            class="composer-tip"
-            title="Shift+Enter 换行；会带上你当前的代码"
-          >
-            Enter 发送
-          </span>
+          <div class="composer-tools">
+            <ContextUsageRing
+              :usage="companion.contextUsage"
+              :disabled="!canAsk"
+              :compacting="companion.busy === 'compact'"
+              @compact="compactNow"
+            />
+            <HintLevelPicker
+              :steps="companion.steps"
+              :level="companion.level"
+              :direct="companion.isDirectMode"
+              :disabled="!!companion.busy"
+              :name="name"
+              @change="companion.changeLevel"
+              @solution="solutionConfirmVisible = true"
+            />
+            <button
+              class="hint-btn"
+              type="button"
+              :disabled="!canAsk"
+              :title="hintTitle"
+              @click="companion.askHint()"
+            >
+              <AppIcon name="bulb" :size="14" />
+              提示
+            </button>
+            <button
+              class="send-btn tip-up"
+              type="button"
+              data-tip="发送 (Enter)，Shift+Enter 换行"
+              aria-label="发送"
+              :disabled="!canSend"
+              @click="submit"
+            >
+              <AppIcon name="arrow-up" :size="16" :stroke-width="2.2" />
+            </button>
+          </div>
         </div>
       </footer>
     </template>
@@ -190,11 +180,6 @@
 </template>
 
 <script setup lang="ts">
-import {
-  IconClose,
-  IconPlus,
-  IconSettings,
-} from "@arco-design/web-vue/es/icon";
 import message from "@arco-design/web-vue/es/message";
 import { computed, defineProps, nextTick, PropType, ref, watch } from "vue";
 
@@ -205,6 +190,7 @@ import CompanionMessageItem from "@/components/companion/CompanionMessageItem.vu
 import ContextUsageRing from "@/components/companion/ContextUsageRing.vue";
 import ConversationMenu from "@/components/companion/ConversationMenu.vue";
 import HintLevelPicker from "@/components/companion/HintLevelPicker.vue";
+import AppIcon from "@/components/ui/AppIcon.vue";
 import { CompanionState, SOLUTION_LEVEL } from "@/composables/useCompanion";
 import { CompanionMessage } from "@/services/companion";
 
@@ -328,111 +314,103 @@ watch(
 </script>
 
 <style scoped>
+/* 做题页右边的第三块面板 */
 .companion-panel {
-  width: 360px;
-  flex: 0 0 360px;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--canvas);
-  border-left: 1px solid var(--hairline);
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  animation: panel-in var(--motion-standard) var(--ease-out);
 }
 
 .panel-header {
+  height: 54px;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--hairline);
-  flex-shrink: 0;
+  gap: 4px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--line);
+  --mascot-fill: var(--panel);
 }
 
 .panel-title {
-  display: grid;
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-left: 6px;
 }
 
 .panel-title strong {
   color: var(--ink);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .panel-status {
+  overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .icon-btn {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: var(--muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.icon-btn:hover:not(:disabled) {
-  color: var(--ink);
-  background: var(--surface-soft);
+  width: 34px;
+  height: 34px;
 }
 
 .icon-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
+  cursor: default;
+  opacity: 0.35;
 }
 
-.icon-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.icon-btn:disabled:hover {
+  background: transparent;
+  color: var(--muted);
 }
 
 .panel-hint {
-  padding: 20px 16px;
+  padding: 20px 18px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 13.5px;
 }
 
 .panel-hint.error {
-  color: var(--error);
+  color: var(--danger);
 }
 
 .notice {
-  margin: 10px 12px 0;
-  padding: 8px 10px;
+  margin: 12px 12px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
   color: var(--body);
-  background: var(--primary-light);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.6;
 }
 
 .link-btn {
   padding: 0;
-  color: var(--primary);
-  background: none;
   border: none;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .link-btn:disabled {
-  cursor: not-allowed;
+  cursor: default;
   opacity: 0.5;
 }
 
@@ -441,19 +419,19 @@ watch(
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: 18px;
+  padding: 18px 16px;
   overflow-y: auto;
 }
 
 .load-more {
   align-self: center;
-  padding: 2px 10px;
-  color: var(--muted);
-  background: none;
-  border: 1px solid var(--hairline);
+  padding: 3px 12px;
+  border: none;
   border-radius: var(--radius-pill);
-  font-size: 11px;
+  background: var(--fill);
+  color: var(--muted);
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -461,104 +439,77 @@ watch(
 .pending {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.75;
 }
 
 .composer {
-  padding: 10px 12px 12px;
-  border-top: 1px solid var(--hairline);
-  flex-shrink: 0;
+  flex: none;
+  padding: 0 12px 12px;
 }
 
 .composer-error {
-  margin: 0 0 6px;
-  color: var(--error);
-  font-size: 12px;
+  margin: 0 4px 8px;
+  color: var(--danger);
+  font-size: 12.5px;
 }
 
 .composer-box {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  padding: 10px 10px 10px 14px;
+  border-radius: 18px;
+  background: var(--fill);
+  transition: box-shadow var(--motion-fast) ease;
+}
+
+.composer-box:focus-within {
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
 
 .composer-box textarea {
-  flex: 1;
-  min-height: 52px;
+  display: block;
+  width: 100%;
+  min-height: 44px;
   max-height: 160px;
-  padding: 8px 10px;
-  color: var(--ink);
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-.composer-box textarea:focus {
+  padding: 2px 0;
+  border: none;
   outline: none;
-  border-color: var(--primary);
-  box-shadow: var(--focus-ring);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
 }
 
-.send-btn {
-  height: 34px;
-  padding: 0 14px;
-  color: var(--on-primary);
-  background: var(--primary);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.send-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.composer-box textarea::placeholder {
+  color: var(--faint);
 }
 
 .composer-tools {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .hint-btn {
+  height: 30px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 10px 0 8px;
-  color: var(--primary);
-  background: transparent;
-  border: 1px solid var(--line-strong);
+  gap: 5px;
+  padding: 0 11px 0 9px;
+  border: none;
   border-radius: var(--radius-pill);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.hint-btn svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .hint-btn:hover:not(:disabled) {
-  color: var(--on-primary);
-  background: var(--primary);
-  border-color: var(--primary);
+  color: var(--ink);
 }
 
 .hint-btn:focus-visible {
@@ -567,37 +518,52 @@ watch(
 }
 
 .hint-btn:disabled {
-  cursor: not-allowed;
+  cursor: default;
   opacity: 0.5;
 }
 
-.composer-tip {
+.send-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: none;
   margin-left: auto;
-  color: var(--muted-soft);
-  font-size: 11px;
-  white-space: nowrap;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
 }
 
-@media (max-width: 1024px) {
-  .companion-panel {
-    width: 320px;
-    flex-basis: 320px;
+.send-btn:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
   }
 }
 
-@media (max-width: 768px) {
+@media (prefers-reduced-motion: reduce) {
+  .companion-panel {
+    animation: none;
+  }
+}
+
+@media (max-width: 1024px) {
   .companion-panel {
     position: fixed;
     right: 0;
     bottom: 0;
     left: 0;
     z-index: 2000;
-    width: 100%;
     height: 78vh;
-    border-top: 1px solid var(--hairline);
-    border-left: none;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: var(--shadow-float);
   }
 }
 </style>

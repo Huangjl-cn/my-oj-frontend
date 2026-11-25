@@ -4,7 +4,9 @@
       <div class="panel lead">
         <h1>
           题库
-          <span v-if="libraryTotal != null" class="num">{{ libraryTotal }}</span>
+          <span v-if="libraryTotal != null" class="num">{{
+            libraryTotal
+          }}</span>
         </h1>
 
         <div v-if="resume" class="resume">
@@ -134,7 +136,11 @@
           </button>
           <div ref="sortRef" class="sort">
             <button
-              :class="['icon-btn', 'tip-up', { on: filters.sort !== 'default' }]"
+              :class="[
+                'icon-btn',
+                'tip-up',
+                { on: filters.sort !== 'default' },
+              ]"
               type="button"
               :data-tip="sortOpen ? undefined : `排序：${currentSort.label}`"
               aria-label="排序"
@@ -177,7 +183,11 @@
             <ProblemStatusIcon :status="statusOf(item.id)" />
             <span class="title">{{ item.title }}</span>
             <span class="tags">
-              <span v-for="tag in getTopicTags(item.tags)" :key="tag" class="tag">
+              <span
+                v-for="tag in getTopicTags(item.tags)"
+                :key="tag"
+                class="tag"
+              >
                 {{ tag }}
               </span>
             </span>
@@ -250,6 +260,7 @@ import UiSegmented from "@/components/ui/UiSegmented.vue";
 import { useDismissable } from "@/composables/useDismissable";
 import { useMyProgress } from "@/composables/useMyProgress";
 import { toGeneratedApiId } from "@/services/apiId";
+import { setProblemListContext } from "@/services/problemNavigation";
 import { getLatestQuestionDraft } from "@/services/questionDraft";
 import { formatAcceptanceRate } from "@/services/questionProgress";
 import {
@@ -279,7 +290,7 @@ const SORT_OPTIONS = [
   { value: "hot", label: "提交最多" },
   { value: "ac", label: "通过最多" },
 ] as const;
-type SortValue = typeof SORT_OPTIONS[number]["value"];
+type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 const SORT_FIELDS: Record<SortValue, string | undefined> = {
   default: undefined,
   new: "createTime",
@@ -435,8 +446,9 @@ const loadRows = async () => {
   loading.value = true;
   loadFailed.value = false;
   try {
+    const query = buildQuery();
     const response = await QuestionControllerService.listQuestionVoByPage(
-      buildQuery()
+      query
     );
     if (generation !== loadGeneration) return;
     if (response.code !== 0) {
@@ -444,6 +456,16 @@ const loadRows = async () => {
     }
     rows.value = response.data?.records ?? [];
     rowTotal.value = response.data?.total ?? 0;
+    // 做题页的上一题 / 下一题按这份列表走
+    const listQuery = { ...query };
+    delete listQuery.current;
+    setProblemListContext({
+      query: listQuery,
+      page: filters.value.page,
+      pageSize: PAGE_SIZE,
+      total: rowTotal.value,
+      items: rows.value,
+    });
     if (!hasFilters.value) unfilteredTotal.value = rowTotal.value;
     // 翻到了不存在的页（比如筛选后题变少了），回到最后一页
     const lastPage = Math.max(1, Math.ceil(rowTotal.value / PAGE_SIZE));
