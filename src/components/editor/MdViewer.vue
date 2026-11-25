@@ -206,7 +206,10 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 代码块在两种主题下都是深色背景：正文用 atom-one-dark 的基础色（和 CodeBlock 一致），
+   不能沿用上面行内代码的 --ink（亮色主题下接近黑色）；高亮的 token 有自己的颜色，不受影响 */
 .markdown-body pre code {
+  color: #abb2bf !important;
   background: transparent !important;
   font-family: var(--font-code) !important;
   font-size: 13px !important;

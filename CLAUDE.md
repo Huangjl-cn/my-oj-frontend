@@ -265,7 +265,7 @@ Save behavior in `QuestionsView.vue` (do not re-implement elsewhere):
 ### Code Highlighting
 
 - **`CodeBlock.vue`** (`src/components/editor/`) — read-only code display with highlight.js: registers only the 6 supported languages (java, javascript, typescript, python, cpp, go) + aliases (`c++`→cpp, `golang`→go, `js`, `ts`); falls back to `highlightAuto` for unknown languages. Props: `code`, `language`. Token colors are hand-written atom-one-dark style rules embedded in the component (no external theme CSS), background uses `--surface-dark`
-- **`MdViewer.vue`** — imports `highlight.js/styles/atom-one-dark.css` because `@bytemd/plugin-highlight` only applies hljs token spans to the DOM and ships **no CSS**. Note: any `.markdown-body pre code { color: ... !important }` override would wipe out hljs token colors — don't re-add one
+- **`MdViewer.vue`** — imports `highlight.js/styles/atom-one-dark.css` because `@bytemd/plugin-highlight` only applies hljs token spans to the DOM and ships **no CSS**. Code blocks sit on `--surface-dark` in both themes, so `.markdown-body pre code` sets the plain-text color to the atom-one-dark base `#abb2bf` (same as `CodeBlock.vue`); without it the inline-code `--ink` color leaks in and plain text turns near-black on dark in the light theme. Token spans keep their own hljs colors — just don't put a color on the token spans themselves
 - Used in `SubmissionDiagnosticPanel.vue` (browse submissions expand rows/mobile details) and QuestionsView's my-submission detail panel; 题解 (solution) tab gets highlighting for free via ByteMD's plugin
 
 ### Code Editor Formatting
