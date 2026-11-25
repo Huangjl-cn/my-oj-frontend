@@ -3,7 +3,7 @@
     <button
       :class="['rail-btn', { on: active || open }]"
       type="button"
-      :data-tip="open ? undefined : label"
+      :data-tip="open || noTip ? undefined : label"
       :aria-label="label"
       aria-haspopup="menu"
       :aria-expanded="open"
@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, PropType, ref } from "vue";
+import { defineEmits, defineProps, PropType, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import AppIcon from "@/components/ui/AppIcon.vue";
@@ -46,12 +46,19 @@ defineProps({
   items: { type: Array as PropType<RailMenuItem[]>, default: () => [] },
   /** 当前页面属于这个菜单 */
   active: { type: Boolean, default: false },
+  /** 不显示悬停的文字提示（外面有自己的悬停卡片时） */
+  noTip: { type: Boolean, default: false },
 });
+
+const emit = defineEmits<{
+  (event: "toggle", open: boolean): void;
+}>();
 
 const router = useRouter();
 const rootRef = ref<HTMLElement | null>(null);
 const open = ref(false);
 useDismissable(rootRef, open);
+watch(open, (value) => emit("toggle", value));
 
 const choose = (item: RailMenuItem) => {
   open.value = false;

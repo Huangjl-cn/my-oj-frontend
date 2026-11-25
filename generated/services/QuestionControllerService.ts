@@ -22,6 +22,7 @@ import type { BaseResponseQuestionSubmitQueueStatusVO } from '../models/BaseResp
 import type { BaseResponseQuestionSubmitRankVO } from '../models/BaseResponseQuestionSubmitRankVO';
 import type { BaseResponseQuestionSubmitVO } from '../models/BaseResponseQuestionSubmitVO';
 import type { BaseResponseQuestionVO } from '../models/BaseResponseQuestionVO';
+import type { BaseResponseSubmitCalendarVO } from '../models/BaseResponseSubmitCalendarVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
 import type { QuestionAddRequest } from '../models/QuestionAddRequest';
 import type { QuestionEditRequest } from '../models/QuestionEditRequest';
@@ -377,6 +378,23 @@ id: number,
         return __request(OpenAPI, {
             method: 'GET',
             url: '/question/progress/my',
+        });
+    }
+
+    /**
+     * @param days 
+     * @returns BaseResponseSubmitCalendarVO OK
+     * @throws ApiError
+     */
+    public static getMySubmitCalendar(
+days: number = 365,
+): CancelablePromise<BaseResponseSubmitCalendarVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/progress/calendar',
+            query: {
+                'days': days,
+            },
         });
     }
 

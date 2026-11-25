@@ -44,6 +44,8 @@
             去题库
           </router-link>
         </section>
+
+        <SubmitCalendar />
       </aside>
 
       <div class="settings">
@@ -160,6 +162,7 @@ import DifficultyLabel from "@/components/problem/DifficultyLabel.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 import AvatarPicker from "@/components/user/AvatarPicker.vue";
+import SubmitCalendar from "@/components/user/SubmitCalendar.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import {
   DEFAULT_USER_AVATAR,

@@ -1,0 +1,290 @@
+<template>
+  <section class="panel calendar">
+    <header class="calendar-head">
+      <h2>做题日历</h2>
+      <span class="range">最近 {{ WEEKS }} 周</span>
+    </header>
+
+    <div class="stats">
+      <div>
+        <b class="num">{{ totals.submits }}</b>
+        <span>次提交</span>
+      </div>
+      <div>
+        <b class="num">{{ acceptRate }}</b>
+        <span>通过率</span>
+      </div>
+      <div>
+        <b class="num">{{ streaks.current }}</b>
+        <span>天连续</span>
+      </div>
+    </div>
+
+    <p v-if="failed" class="failed">
+      日历没加载出来
+      <button type="button" @click="load(true)">重试</button>
+    </p>
+    <template v-else>
+      <div class="months" aria-hidden="true">
+        <span
+          v-for="month in months"
+          :key="month.index"
+          :style="{ gridColumn: `${month.index + 1} / span 4` }"
+        >
+          {{ month.label }}
+        </span>
+      </div>
+      <div
+        :class="['grid', { loading }]"
+        role="img"
+        :aria-label="`最近 ${WEEKS} 周提交了 ${recentSubmits} 次`"
+      >
+        <template v-for="(week, column) in weeks" :key="column">
+          <i
+            v-for="cell in week"
+            :key="cell.date"
+            :class="[
+              'cell',
+              `l${cell.level}`,
+              { future: cell.future, edge: column >= WEEKS - 4 },
+            ]"
+            :data-tip="cell.future ? undefined : describe(cell)"
+          />
+        </template>
+      </div>
+      <footer class="legend">
+        <span>最长连续 {{ streaks.longest }} 天</span>
+        <span class="scale" aria-hidden="true">
+          少
+          <i
+            v-for="level in 5"
+            :key="level"
+            :class="['cell', `l${level - 1}`]"
+          />
+          多
+        </span>
+      </footer>
+    </template>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted } from "vue";
+
+import { useSubmitCalendar } from "@/composables/useSubmitCalendar";
+import { formatAcceptanceRate } from "@/services/questionProgress";
+import {
+  buildCalendarWeeks,
+  CalendarCell,
+  monthLabels,
+} from "@/utils/submitCalendar";
+
+/** 画多少周；连续天数按接口返回的一整年算 */
+const WEEKS = 20;
+
+const { days, totals, loading, failed, streaks, load } = useSubmitCalendar();
+const today = new Date();
+
+const weeks = computed(() => buildCalendarWeeks(days.value, today, WEEKS));
+// 两个月份挨得太近（比如第一列正好是上个月最后一周）时只留后一个，免得叠在一起
+const months = computed(() =>
+  monthLabels(weeks.value).filter(
+    (month, index, labels) =>
+      index === labels.length - 1 || labels[index + 1].index - month.index >= 3
+  )
+);
+const recentSubmits = computed(() =>
+  weeks.value.flat().reduce((sum, cell) => sum + cell.count, 0)
+);
+const acceptRate = computed(() =>
+  formatAcceptanceRate(totals.value.accepted, totals.value.submits)
+);
+
+const describe = (cell: CalendarCell) => {
+  const [, month, day] = cell.date.split("-").map(Number);
+  if (!cell.count) return `${month}月${day}日 没有提交`;
+  return `${month}月${day}日 提交 ${cell.count} 次${
+    cell.accepted ? `，通过 ${cell.accepted} 次` : ""
+  }`;
+};
+
+// 进个人中心时总是取最新的
+onMounted(() => load(true));
+</script>
+
+<style scoped>
+.calendar {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px 18px;
+}
+
+.calendar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.range {
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stats div {
+  display: grid;
+  gap: 1px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
+}
+
+.stats b {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stats span {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+/* 月份和格子用同一套 20 列 */
+.months,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  column-gap: 3px;
+}
+
+.months {
+  height: 14px;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.months span {
+  grid-row: 1;
+}
+
+.grid {
+  grid-template-rows: repeat(7, auto);
+  grid-auto-flow: column;
+  row-gap: 3px;
+  margin-top: -8px;
+  transition: opacity var(--motion-fast) ease;
+}
+
+.grid.loading {
+  opacity: 0.4;
+}
+
+.cell {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 3px;
+}
+
+/* 只用黑白灰：提交越多越接近文字色 */
+.l0 {
+  background: var(--fill-strong);
+}
+
+.l1 {
+  background: color-mix(in srgb, var(--ink) 22%, var(--fill-strong));
+}
+
+.l2 {
+  background: color-mix(in srgb, var(--ink) 45%, var(--fill-strong));
+}
+
+.l3 {
+  background: color-mix(in srgb, var(--ink) 70%, var(--fill-strong));
+}
+
+.l4 {
+  background: var(--ink);
+}
+
+.cell.future {
+  background: transparent;
+}
+
+.grid .cell:not(.future):hover {
+  outline: 1.5px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* 悬停说明默认在右边；靠右的几列放到上面，不超出面板 */
+.grid .cell[data-tip]:hover::after {
+  left: 50%;
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+}
+
+.grid .cell.edge[data-tip]:hover::after {
+  left: auto;
+  right: -4px;
+  transform: none;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.scale .cell {
+  width: 10px;
+}
+
+.failed {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.failed button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .months,
+  .grid,
+  .legend {
+    max-width: 420px;
+  }
+}
+</style>

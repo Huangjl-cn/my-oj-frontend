@@ -44,6 +44,7 @@ export type { BaseResponseQuestionSubmitQueueStatusVO } from './models/BaseRespo
 export type { BaseResponseQuestionSubmitRankVO } from './models/BaseResponseQuestionSubmitRankVO';
 export type { BaseResponseQuestionSubmitVO } from './models/BaseResponseQuestionSubmitVO';
 export type { BaseResponseQuestionVO } from './models/BaseResponseQuestionVO';
+export type { BaseResponseSubmitCalendarVO } from './models/BaseResponseSubmitCalendarVO';
 export type { BaseResponseUserVO } from './models/BaseResponseUserVO';
 export type { CodeEdit } from './models/CodeEdit';
 export type { CodeEditProposal } from './models/CodeEditProposal';
@@ -107,6 +108,8 @@ export type { QuestionTagVO } from './models/QuestionTagVO';
 export type { QuestionUpdateRequest } from './models/QuestionUpdateRequest';
 export type { QuestionVO } from './models/QuestionVO';
 export type { SseEmitter } from './models/SseEmitter';
+export type { SubmitCalendarVO } from './models/SubmitCalendarVO';
+export type { SubmitDayVO } from './models/SubmitDayVO';
 export type { SupportedJudgeTypeVO } from './models/SupportedJudgeTypeVO';
 export type { SupportedLanguageVO } from './models/SupportedLanguageVO';
 export type { UserAddRequest } from './models/UserAddRequest';

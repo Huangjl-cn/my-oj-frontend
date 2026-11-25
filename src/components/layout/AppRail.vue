@@ -50,27 +50,36 @@
       <AppIcon :name="isDark ? 'sun' : 'moon'" :size="20" />
     </button>
 
-    <RailMenu
+    <div
       v-if="isLoggedIn"
-      :label="loginUser.userName || '我的账号'"
-      :items="accountItems"
-      :active="section === 'profile'"
+      class="account"
+      @mouseenter="showCard"
+      @mouseleave="hideCard"
     >
-      <template #trigger>
-        <UserAvatar
-          :avatar="loginUser.userAvatar"
-          :name="loginUser.userName"
-          :size="32"
-        />
-      </template>
-      <template #header>
-        <strong class="who">{{ loginUser.userName || "未设置昵称" }}</strong>
-        <span class="who-sub">
-          @{{ loginUser.userAccount || "--" }} ·
-          {{ formatUserRole(loginUser.userRole) }}
-        </span>
-      </template>
-    </RailMenu>
+      <RailMenu
+        :label="loginUser.userName || '我的账号'"
+        :items="accountItems"
+        :active="section === 'profile'"
+        no-tip
+        @toggle="onAccountMenu"
+      >
+        <template #trigger>
+          <UserAvatar
+            :avatar="loginUser.userAvatar"
+            :name="loginUser.userName"
+            :size="32"
+          />
+        </template>
+        <template #header>
+          <strong class="who">{{ loginUser.userName || "未设置昵称" }}</strong>
+          <span class="who-sub">
+            @{{ loginUser.userAccount || "--" }} ·
+            {{ formatUserRole(loginUser.userRole) }}
+          </span>
+        </template>
+      </RailMenu>
+      <UserHoverCard v-if="cardOpen" :user="loginUser" />
+    </div>
     <router-link
       v-else
       to="/user/login"
@@ -94,7 +103,7 @@
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 
@@ -103,9 +112,11 @@ import checkAccess from "@/access/checkAccess";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import RailMenu from "@/components/layout/RailMenu.vue";
+import UserHoverCard from "@/components/layout/UserHoverCard.vue";
 import { RailMenuItem } from "@/components/layout/railMenu";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
+import { useSubmitCalendar } from "@/composables/useSubmitCalendar";
 import { useTheme } from "@/composables/useTheme";
 import { formatUserRole } from "@/utils/userRole";
 import { UserControllerService } from "../../../generated";
@@ -121,6 +132,44 @@ const isLoggedIn = computed(() =>
   checkAccess(loginUser.value, ACCESS_ENUM.USER)
 );
 const isAdmin = computed(() => checkAccess(loginUser.value, ACCESS_ENUM.ADMIN));
+
+// ===== 头像悬停卡片：停一下才出现，移开稍后消失；菜单打开时不显示 =====
+const CARD_OPEN_DELAY = 250;
+const CARD_CLOSE_DELAY = 120;
+const cardOpen = ref(false);
+const menuOpen = ref(false);
+let cardTimer: number | undefined;
+const canHover =
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(hover: hover)").matches !== false;
+
+const showCard = () => {
+  if (!canHover || menuOpen.value) return;
+  window.clearTimeout(cardTimer);
+  cardTimer = window.setTimeout(() => (cardOpen.value = true), CARD_OPEN_DELAY);
+};
+const hideCard = () => {
+  window.clearTimeout(cardTimer);
+  cardTimer = window.setTimeout(
+    () => (cardOpen.value = false),
+    CARD_CLOSE_DELAY
+  );
+};
+const onAccountMenu = (open: boolean) => {
+  menuOpen.value = open;
+  if (open) {
+    window.clearTimeout(cardTimer);
+    cardOpen.value = false;
+  }
+};
+onBeforeUnmount(() => window.clearTimeout(cardTimer));
+
+// 换账号或退出后，卡片里的数字重新取
+const { reset: resetCalendar } = useSubmitCalendar();
+watch(
+  () => loginUser.value?.id,
+  () => resetCalendar()
+);
 
 /** 当前页面属于图标栏的哪一项 */
 const section = computed(() => {
@@ -234,6 +283,10 @@ const confirmLogout = async () => {
   box-shadow: var(--shadow-panel);
 }
 
+.account {
+  position: relative;
+}
+
 .who {
   display: block;
   color: var(--ink);
@@ -263,6 +316,11 @@ const confirmLogout = async () => {
   }
 
   .rail :deep([data-tip]:hover::after) {
+    display: none;
+  }
+
+  /* 图标栏在底部时卡片没地方放 */
+  .account :deep(.hover-card) {
     display: none;
   }
 }
