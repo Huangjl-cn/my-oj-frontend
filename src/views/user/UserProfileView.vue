@@ -46,110 +46,106 @@
         </section>
       </aside>
 
-      <section class="panel settings">
-        <header class="settings-head">
-          <h2>{{ activeTab === "profile" ? "个人资料" : "修改密码" }}</h2>
-          <UiSegmented
-            :model-value="activeTab"
-            :options="TABS"
-            label="设置项"
-            @update:model-value="setTab"
-          />
-        </header>
+      <div class="settings">
+        <section class="panel form-panel profile-card">
+          <h2>个人资料</h2>
+          <p class="form-hint">昵称、简介和头像别人都能看到。</p>
+          <form class="profile-form" @submit.prevent="saveProfile">
+            <div class="profile-fields">
+              <label class="field">
+                <span class="field-label">账号</span>
+                <UiInput :model-value="loginUser.userAccount" readonly />
+              </label>
+              <label class="field">
+                <span class="field-label">昵称</span>
+                <UiInput
+                  v-model="profileForm.userName"
+                  autocomplete="nickname"
+                  placeholder="别人看到的名字"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">简介</span>
+                <textarea
+                  v-model="profileForm.userProfile"
+                  class="textarea"
+                  rows="3"
+                  placeholder="一句话介绍自己"
+                ></textarea>
+              </label>
+            </div>
+            <div class="field avatar-field">
+              <span class="field-label">头像</span>
+              <AvatarPicker v-model="profileForm.userAvatar" />
+            </div>
+            <footer class="form-actions">
+              <p v-if="profileError" class="form-error">{{ profileError }}</p>
+              <button
+                class="btn primary sm"
+                type="submit"
+                :disabled="profileSaving"
+              >
+                <AppIcon name="check" :size="16" />
+                {{ profileSaving ? "保存中" : "保存资料" }}
+              </button>
+            </footer>
+          </form>
+        </section>
 
-        <form
-          v-if="activeTab === 'profile'"
-          class="settings-form"
-          @submit.prevent="saveProfile"
-        >
-          <div class="field-row">
+        <section class="panel form-panel">
+          <h2>AI 陪练</h2>
+          <p class="form-hint">做题时陪你的栗子，用你自己的 DeepSeek Key。</p>
+          <AiSettingForm />
+        </section>
+
+        <section class="panel form-panel">
+          <h2>修改密码</h2>
+          <p class="form-hint">新密码至少 8 位，改完下次登录生效。</p>
+          <form class="password-form" @submit.prevent="savePassword">
             <label class="field">
-              <span class="field-label">账号</span>
-              <UiInput :model-value="loginUser.userAccount" readonly />
-            </label>
-            <label class="field">
-              <span class="field-label">昵称</span>
+              <span class="field-label">旧密码</span>
               <UiInput
-                v-model="profileForm.userName"
-                autocomplete="nickname"
-                placeholder="别人看到的名字"
+                v-model="passwordForm.oldPassword"
+                icon="lock"
+                type="password"
+                autocomplete="current-password"
+                placeholder="现在的密码"
               />
             </label>
-          </div>
-          <label class="field">
-            <span class="field-label">简介</span>
-            <textarea
-              v-model="profileForm.userProfile"
-              class="textarea"
-              rows="3"
-              placeholder="一句话介绍自己"
-            ></textarea>
-          </label>
-          <div class="field">
-            <span class="field-label">头像</span>
-            <AvatarPicker v-model="profileForm.userAvatar" />
-          </div>
-          <p v-if="profileError" class="form-error">{{ profileError }}</p>
-          <div class="form-actions">
-            <button
-              class="btn primary sm"
-              type="submit"
-              :disabled="profileSaving"
-            >
-              <AppIcon name="check" :size="16" />
-              {{ profileSaving ? "保存中" : "保存" }}
-            </button>
-          </div>
-        </form>
-
-        <form
-          v-else
-          class="settings-form narrow"
-          @submit.prevent="savePassword"
-        >
-          <label class="field">
-            <span class="field-label">旧密码</span>
-            <UiInput
-              v-model="passwordForm.oldPassword"
-              icon="lock"
-              type="password"
-              autocomplete="current-password"
-              placeholder="现在的密码"
-            />
-          </label>
-          <label class="field">
-            <span class="field-label">新密码</span>
-            <UiInput
-              v-model="passwordForm.newPassword"
-              icon="lock"
-              type="password"
-              autocomplete="new-password"
-              placeholder="至少 8 位"
-            />
-          </label>
-          <label class="field">
-            <span class="field-label">确认新密码</span>
-            <UiInput
-              v-model="passwordForm.checkPassword"
-              icon="lock"
-              type="password"
-              autocomplete="new-password"
-              placeholder="再输入一次"
-            />
-          </label>
-          <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
-          <div class="form-actions">
-            <button
-              class="btn primary sm"
-              type="submit"
-              :disabled="passwordSaving"
-            >
-              <AppIcon name="lock" :size="16" />
-              {{ passwordSaving ? "修改中" : "修改密码" }}
-            </button>
-          </div>
-        </form>
-      </section>
+            <label class="field">
+              <span class="field-label">新密码</span>
+              <UiInput
+                v-model="passwordForm.newPassword"
+                icon="lock"
+                type="password"
+                autocomplete="new-password"
+                placeholder="至少 8 位"
+              />
+            </label>
+            <label class="field">
+              <span class="field-label">确认新密码</span>
+              <UiInput
+                v-model="passwordForm.checkPassword"
+                icon="lock"
+                type="password"
+                autocomplete="new-password"
+                placeholder="再输入一次"
+              />
+            </label>
+            <footer class="form-actions">
+              <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
+              <button
+                class="btn primary sm"
+                type="submit"
+                :disabled="passwordSaving"
+              >
+                <AppIcon name="lock" :size="16" />
+                {{ passwordSaving ? "修改中" : "修改密码" }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
     </div>
   </div>
 </template>
@@ -159,10 +155,10 @@ import message from "@arco-design/web-vue/es/message";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useStore } from "vuex";
 
+import AiSettingForm from "@/components/companion/AiSettingForm.vue";
 import DifficultyLabel from "@/components/problem/DifficultyLabel.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import UiInput from "@/components/ui/UiInput.vue";
-import UiSegmented from "@/components/ui/UiSegmented.vue";
 import AvatarPicker from "@/components/user/AvatarPicker.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import {
@@ -176,15 +172,8 @@ import { formatUserRole } from "@/utils/userRole";
 import { UserControllerService } from "../../../generated";
 
 const store = useStore();
-const activeTab = ref<"profile" | "password">("profile");
-const TABS = [
-  { value: "profile", label: "资料" },
-  { value: "password", label: "密码" },
-];
 const LEVELS: Difficulty[] = ["easy", "medium", "hard"];
-const setTab = (value: string) => {
-  activeTab.value = value === "password" ? "password" : "profile";
-};
+
 const { total, solved, load: loadProgress } = useMyProgress();
 const percent = (part: number, whole: number) =>
   whole ? `${Math.min(100, (part / whole) * 100)}%` : "0%";
@@ -301,7 +290,10 @@ const savePassword = async () => {
   gap: 14px;
 }
 
+/* 左边头像和进度：右边比较长，往下滚时左边留在原处 */
 .side {
+  position: sticky;
+  top: 16px;
   display: grid;
   gap: 14px;
 }
@@ -431,44 +423,58 @@ const savePassword = async () => {
   margin-top: 4px;
 }
 
+/* 右边：资料占一整行，AI 陪练和密码并排 */
 .settings {
-  padding: 22px 26px 26px;
-}
-
-.settings-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 22px;
-}
-
-.settings-head h2 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.settings-form {
   display: grid;
-  gap: 18px;
-}
-
-.settings-form.narrow {
-  max-width: 420px;
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: start;
   gap: 14px;
+}
+
+.profile-card {
+  grid-column: 1 / -1;
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px 28px;
+}
+
+.profile-fields {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.avatar-field {
+  align-content: start;
+}
+
+.profile-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.password-form {
+  display: grid;
+  gap: 16px;
 }
 
 .form-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
+}
+
+.form-actions .form-error {
+  margin-right: auto;
+}
+
+@media (max-width: 1280px) {
+  .settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {
@@ -476,7 +482,11 @@ const savePassword = async () => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .field-row {
+  .side {
+    position: static;
+  }
+
+  .profile-form {
     grid-template-columns: minmax(0, 1fr);
   }
 }
