@@ -567,9 +567,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.problems-page {
+/* 题少的时候题目面板一直撑到底，题多的时候整页往下滚 */
+div.problems-page {
+  flex: 1 0 auto;
   display: grid;
-  align-content: start;
+  grid-template-rows: auto 1fr;
   gap: 14px;
   padding: 16px 20px 0 4px;
   animation: page-enter var(--motion-standard) var(--ease-out);
@@ -759,6 +761,9 @@ onMounted(() => {
 
 /* ===== 题目面板 ===== */
 .problems {
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
   overflow: hidden;
 }
 
@@ -916,7 +921,9 @@ onMounted(() => {
 
 /* ===== 一行一道题 ===== */
 .plist {
-  min-height: 120px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 0 8px 6px;
   transition: opacity var(--motion-fast) ease;
 }
@@ -1019,10 +1026,12 @@ onMounted(() => {
 }
 
 .empty {
+  flex: 1;
   display: grid;
+  align-content: center;
   justify-items: center;
   gap: 12px;
-  padding: 48px 0 40px;
+  padding: 40px 0;
   color: var(--muted);
 }
 
@@ -1075,7 +1084,7 @@ onMounted(() => {
 }
 
 @media (max-width: 720px) {
-  .problems-page {
+  div.problems-page {
     padding: 12px 12px 0;
   }
 

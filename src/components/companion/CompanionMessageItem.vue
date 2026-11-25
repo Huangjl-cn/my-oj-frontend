@@ -132,6 +132,7 @@ const editsLabel = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -142,86 +143,148 @@ const editsLabel = computed(() =>
 .user-text {
   max-width: 88%;
   margin: 0;
-  padding: 8px 12px;
+  padding: 9px 15px;
   color: var(--on-primary);
   background: var(--primary);
-  border-radius: var(--radius-md) var(--radius-md) 4px var(--radius-md);
-  font-size: 13px;
+  border-radius: 18px;
+  font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .user-quote {
-  max-width: 88%;
+  width: 88%;
   margin: 0;
   overflow: hidden;
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-left: 3px solid var(--primary);
-  border-radius: var(--radius-sm);
+  background: var(--code-surface);
+  border-radius: 12px;
 }
 
 .user-quote figcaption {
-  padding: 4px 8px 0;
-  color: var(--muted);
-  font-size: 11px;
+  padding: 6px 12px 0;
+  color: var(--faint);
+  font-size: 11.5px;
 }
 
 .user-quote pre {
-  max-height: 120px;
+  max-height: 140px;
   margin: 0;
-  padding: 4px 8px 6px;
+  padding: 2px 12px 8px;
   overflow: auto;
-  color: var(--body);
-  font-family: var(--font-code);
-  font-size: 11.5px;
-  line-height: 1.5;
+  color: var(--code-ink);
+  font: 12.5px/1.6 var(--font-mono);
 }
 
-.message.assistant .assistant-text {
+/*
+ * 陪练的回答不套外框：文字直接排在面板上，代码块、表格各自是一块，
+ * 太宽时只有这一块左右滑动，不会带着整条回答一起滑
+ */
+.assistant-text {
+  min-width: 0;
   max-width: 100%;
-  padding: 8px 12px;
   color: var(--body);
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
-  border-radius: 4px var(--radius-md) var(--radius-md) var(--radius-md);
-  font-size: 13px;
-  line-height: 1.65;
-  overflow-x: auto;
 }
 
+.assistant-text :deep(.bytemd-viewer),
 .assistant-text :deep(.markdown-body) {
-  font-size: 13px;
-  line-height: 1.65;
+  min-width: 0;
+  max-width: 100%;
   background: transparent;
+  font-size: 14px !important;
+  line-height: 1.75 !important;
+  overflow-wrap: anywhere;
 }
 
-.assistant-text :deep(.markdown-body p) {
-  margin: 0 0 6px;
+.assistant-text :deep(.markdown-body > :first-child) {
+  margin-top: 0 !important;
 }
 
-.assistant-text :deep(.markdown-body p:last-child) {
-  margin-bottom: 0;
+.assistant-text :deep(.markdown-body > :last-child) {
+  margin-bottom: 0 !important;
+}
+
+.assistant-text :deep(.markdown-body p),
+.assistant-text :deep(.markdown-body ul),
+.assistant-text :deep(.markdown-body ol) {
+  margin: 0 0 10px !important;
+}
+
+.assistant-text :deep(.markdown-body h1),
+.assistant-text :deep(.markdown-body h2),
+.assistant-text :deep(.markdown-body h3),
+.assistant-text :deep(.markdown-body h4) {
+  margin: 16px 0 8px !important;
+  padding: 0 !important;
+  border: none !important;
+  font-size: 14.5px !important;
+}
+
+.assistant-text :deep(.markdown-code-block) {
+  margin: 10px 0 12px;
 }
 
 .assistant-text :deep(.markdown-body pre) {
-  margin: 6px 0;
-  font-size: 12px;
+  max-width: 100%;
+  overflow-x: auto !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  font-size: 12.5px;
+}
+
+.assistant-text :deep(.markdown-body pre code) {
+  white-space: pre !important;
+  overflow-wrap: normal;
+  font-size: 12.5px !important;
+}
+
+/* 表格：自己一块，超宽时这一块左右滑动 */
+.assistant-text :deep(.markdown-body table) {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 10px 0 12px !important;
+  overflow-x: auto;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px;
+  border-collapse: separate !important;
+  border-spacing: 0;
+  font-size: 13px;
+  overflow-wrap: normal;
+}
+
+.assistant-text :deep(.markdown-body table th),
+.assistant-text :deep(.markdown-body table td) {
+  border: none !important;
+  border-bottom: 1px solid var(--line) !important;
+  padding: 7px 12px !important;
+  white-space: nowrap;
+}
+
+.assistant-text :deep(.markdown-body table tr:last-child td) {
+  border-bottom: none !important;
+}
+
+.assistant-text :deep(.markdown-body table tr) {
+  background: transparent !important;
+  border: none !important;
+}
+
+.assistant-text :deep(.markdown-body blockquote) {
+  margin: 10px 0 !important;
+  padding: 2px 0 2px 12px !important;
+  border-left: 2px solid var(--line-strong) !important;
+  color: var(--muted) !important;
 }
 
 .message-badge {
   align-self: flex-start;
-  padding: 1px 8px;
-  color: var(--primary);
-  background: var(--primary-light);
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 500;
+  color: var(--faint);
+  font-size: 12px;
 }
 
 .thinking {
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .thinking-toggle {
@@ -229,61 +292,65 @@ const editsLabel = computed(() =>
   color: var(--muted);
   background: none;
   border: none;
-  font-family: var(--font-body);
-  font-size: 12px;
+  font: inherit;
   cursor: pointer;
+}
+
+.thinking-toggle:hover {
+  color: var(--ink);
 }
 
 .thinking-text {
   max-height: 180px;
-  margin: 4px 0 0;
-  padding: 8px 10px;
+  margin: 6px 0 0;
+  padding: 2px 0 2px 12px;
   overflow-y: auto;
   color: var(--muted);
-  background: var(--surface-soft);
-  border-left: 2px solid var(--hairline);
-  font-family: var(--font-body);
-  font-size: 12px;
-  line-height: 1.6;
+  border-left: 2px solid var(--line-strong);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 
 .edits-btn {
   align-self: flex-start;
-  padding: 4px 10px;
-  color: var(--primary);
-  background: transparent;
-  border: 1px solid var(--primary);
+  height: 30px;
+  padding: 0 14px;
+  color: var(--on-primary);
+  background: var(--primary);
+  border: none;
   border-radius: var(--radius-pill);
-  font-family: var(--font-body);
-  font-size: 12px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .compaction summary {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 12.5px;
   cursor: pointer;
 }
 
 .compaction :deep(.markdown-body) {
   margin-top: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
-  background: var(--surface-soft);
-  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  background: var(--fill);
+  border-radius: 12px;
 }
 
 .typing {
   display: inline-flex;
   gap: 4px;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 
 .typing i {
   width: 6px;
   height: 6px;
-  background: var(--muted-soft);
+  background: var(--faint);
   border-radius: 50%;
   animation: typing-dot 1.2s ease-in-out infinite;
 }

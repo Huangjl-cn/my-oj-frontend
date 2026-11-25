@@ -1,5 +1,9 @@
 <template>
-  <div :class="['ide', { 'with-companion': companionOpen }]">
+  <div
+    ref="ideRef"
+    :class="['ide', { 'with-companion': companionOpen }]"
+    :style="gridStyle"
+  >
     <!-- ===== 左：题面、题解、提交记录 ===== -->
     <section class="panel pane statement-pane">
       <div class="pane-head">
@@ -140,6 +144,15 @@
       />
     </section>
 
+    <PaneResizer
+      label="调整题面宽度"
+      @start="statementHandle.start"
+      @move="statementHandle.move"
+      @end="statementHandle.end"
+      @nudge="statementHandle.nudge"
+      @reset="statementHandle.reset"
+    />
+
     <!-- ===== 中：代码 ===== -->
     <section class="panel pane editor-pane">
       <div class="pane-head">
@@ -257,6 +270,15 @@
     </section>
 
     <!-- ===== 右：陪练 ===== -->
+    <PaneResizer
+      v-if="companionOpen"
+      label="调整陪练宽度"
+      @start="companionHandle.start"
+      @move="companionHandle.move"
+      @end="companionHandle.end"
+      @nudge="companionHandle.nudge"
+      @reset="companionHandle.reset"
+    />
     <CompanionPanel
       v-if="companionOpen"
       class="companion-pane"
@@ -293,6 +315,7 @@ import CompanionPanel from "@/components/companion/CompanionPanel.vue";
 import CompanionPet from "@/components/companion/CompanionPet.vue";
 import SelectionAskBox from "@/components/companion/SelectionAskBox.vue";
 import MySubmissionList from "@/components/problem/MySubmissionList.vue";
+import PaneResizer from "@/components/problem/PaneResizer.vue";
 import ProblemListDrawer from "@/components/problem/ProblemListDrawer.vue";
 import ProblemStatement from "@/components/problem/ProblemStatement.vue";
 import SubmissionDetail from "@/components/problem/SubmissionDetail.vue";
@@ -304,6 +327,7 @@ import {
   useMySubmissions,
 } from "@/composables/problem/useMySubmissions";
 import { useProblemEditor } from "@/composables/problem/useProblemEditor";
+import { useProblemLayout } from "@/composables/problem/useProblemLayout";
 import { useCompanion } from "@/composables/useCompanion";
 import { useMyProgress } from "@/composables/useMyProgress";
 import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
@@ -436,6 +460,13 @@ const companion = reactive(
 const companionName = computed(() => companion.session?.personaName || "栗子");
 const companionOpen = computed(
   () => companionEnabled.value && !!question.value && companion.panelOpen
+);
+
+// 三块面板的宽度：拖中间的竖条调整，记在本机
+const ideRef = ref<HTMLElement | null>(null);
+const { gridStyle, statementHandle, companionHandle } = useProblemLayout(
+  ideRef,
+  companionOpen
 );
 
 const editorSelection = ref<EditorSelection | null>(null);
@@ -708,17 +739,17 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 面板之间的 12px 是拖动条；量到宽度后由 useProblemLayout 写行内的列宽 */
 .ide {
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(440px, 1.25fr);
-  gap: 12px;
-  padding: 12px 12px 6px 2px;
+  grid-template-columns: minmax(300px, 0.72fr) 12px minmax(380px, 1fr);
+  padding: 12px 12px 6px 0;
   animation: page-enter var(--motion-standard) var(--ease-out);
 }
 
 .ide.with-companion {
-  grid-template-columns: minmax(320px, 1fr) minmax(420px, 1.2fr) 350px;
+  grid-template-columns: minmax(300px, 0.72fr) 12px minmax(380px, 1fr) 12px 360px;
 }
 
 .pane {
@@ -979,12 +1010,6 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1280px) {
-  .ide.with-companion {
-    grid-template-columns: minmax(300px, 1fr) minmax(380px, 1.15fr) 320px;
-  }
-}
-
 @media (max-width: 720px) {
   .lang select {
     max-width: 128px;
@@ -1002,9 +1027,14 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
   .ide,
   .ide.with-companion {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: minmax(260px, 0.9fr) minmax(360px, 1.1fr);
+    gap: 12px;
     padding: 10px;
+  }
+
+  .resizer {
+    display: none;
   }
 }
 </style>

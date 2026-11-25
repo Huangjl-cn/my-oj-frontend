@@ -110,7 +110,7 @@
         </p>
       </div>
 
-      <footer class="composer">
+      <footer :class="['composer', { lifted: !atBottom }]">
         <p v-if="companion.lastError" class="composer-error">
           {{ companion.lastError }}
         </p>
@@ -206,6 +206,14 @@ const draft = ref("");
 const solutionConfirmVisible = ref(false);
 const listRef = ref<HTMLElement | null>(null);
 let stickToBottom = true;
+/** 消息列表滚到了最底下；没到底时输入框上方加一条分隔，和上面的回答分开 */
+const atBottom = ref(true);
+
+const measureBottom = () => {
+  const list = listRef.value;
+  if (!list) return;
+  atBottom.value = list.scrollHeight - list.scrollTop - list.clientHeight < 4;
+};
 
 const session = computed(() => props.companion.session);
 const name = computed(() => session.value?.personaName || "栗子");
@@ -285,11 +293,13 @@ const onListScroll = () => {
   if (!list) return;
   stickToBottom =
     list.scrollHeight - list.scrollTop - list.clientHeight < STICK_TO_BOTTOM_PX;
+  measureBottom();
 };
 
 const scrollToBottom = () => {
   const list = listRef.value;
   if (list && stickToBottom) list.scrollTop = list.scrollHeight;
+  measureBottom();
 };
 
 watch(
@@ -419,9 +429,24 @@ watch(
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 18px 16px;
+  gap: 20px;
+  padding: 18px 16px 24px;
   overflow-y: auto;
+  /* 上下边缘淡出，滚动时文字不会贴着标题栏和输入框硬切 */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
 }
 
 .load-more {
@@ -444,8 +469,16 @@ watch(
 }
 
 .composer {
+  position: relative;
   flex: none;
-  padding: 0 12px 12px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid transparent;
+  transition: border-color var(--motion-fast) ease;
+}
+
+/* 上面还有没看到的回答：输入框区域和消息列表之间加一条线 */
+.composer.lifted {
+  border-top-color: var(--line);
 }
 
 .composer-error {
