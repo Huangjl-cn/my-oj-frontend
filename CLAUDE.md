@@ -26,7 +26,7 @@ npm only: `package-lock.json` is the lockfile (`npm ci` to install). Do not add 
 
 - **Framework:** Vue 3 (Composition API, `<script setup lang="ts">`)
 - **Build:** Vue CLI 5 + Babel + TypeScript ~4.5
-- **UI Library:** own components in `src/components/ui/` + line icons (`AppIcon`); Arco Design Vue is still used by pages not yet redesigned (submissions, manage, create question, profile, auth) and for `message` toasts, restyled by `src/styles/arco.css`
+- **UI Library:** own components in `src/components/ui/` (`AppIcon`, `UiInput`, `UiSelect`, `UiNumberInput`, `UiTagInput`, `UiSwitch`, `UiSegmented`, `UiPagination`). Arco Design Vue is only used for `message` toasts (styled by `src/styles/arco.css`); no Arco components are registered
 - **Fonts:** Geist / Geist Mono (`@fontsource-variable/*`, self-hosted); Chinese falls back to system fonts
 - **State:** Vuex 4 (namespaced `user` module)
 - **Router:** Vue Router 4 (`createWebHistory`)
@@ -58,19 +58,20 @@ src/
 │   ├── layout/
 │   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 提交记录, 出题 / 管理 menus, theme, account
 │   │   ├── RailMenu.vue + railMenu.ts  # Rail popover menu
-│   ├── problem/             # 题库页和做题页
+│   ├── problem/             # 题库页和做题页（PaneResizer：做题页面板之间的拖动条）
 │   │   ├── ProblemStatement.vue   # Title, facts (difficulty, rate, limits), tags, content, author
 │   │   ├── MySubmissionList.vue / SubmissionDetail.vue
 │   │   ├── VerdictDock.vue        # Judge result bar at the bottom of the editor panel
 │   │   ├── ProblemListDrawer.vue  # List drawer over the statement panel
 │   │   ├── DifficultyLabel.vue / ProblemStatusIcon.vue
 │   ├── question/            # Judge value editors, SubmissionRankRings, SubmissionDiagnosticPanel, admin details
-│   ├── ui/                  # AppIcon + icons.ts, UiSegmented, UiPagination
+│   ├── ui/                  # AppIcon + icons.ts, UiInput, UiSelect, UiNumberInput, UiTagInput, UiSwitch, UiSegmented, UiPagination
 │   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity
 ├── composables/
 │   ├── problem/useProblemEditor.ts   # Languages, starter code, local drafts (300ms debounce)
 │   ├── problem/useJudge.ts           # Submit, queue polling, rank, verdict state
 │   ├── problem/useMySubmissions.ts   # My submissions page + detail tabs with pollers
+│   ├── problem/useProblemLayout.ts   # Draggable panel widths on the problem page (localStorage["myoj:problem-layout"])
 │   ├── useMyProgress.ts   # Whole-library progress (GET /question/progress/my), shared by list and problem pages
 │   ├── useCompanion.ts / usePetPlacement.ts / useDismissable.ts / useTheme.ts
 ├── layouts/
@@ -83,7 +84,8 @@ src/
 │   ├── tokens.css        # Design tokens (light + dark) and legacy aliases for old pages
 │   ├── base.css          # Reset, typography, .panel, .btn, .icon-btn, [data-tip] tooltips
 │   ├── code.css          # Theme-aware code colors (--code-*, --sx-*) and highlight.js token rules
-│   └── arco.css          # Arco overrides for pages not yet redesigned
+│   ├── page.css          # Page skeleton for normal pages: .page, .page-head, .list-panel, .list-row, .field, .tag, .verdict-text
+│   └── arco.css          # Styles the Arco message toast (the only Arco piece left)
 ├── utils/                # dateTime (+ relative time, compact numbers), difficulty, editorSelection, userRole, copyText
 ├── views/
 │   ├── problem/ProblemsView.vue   # 题库 (/ and /questions)
@@ -102,8 +104,9 @@ generated/               # Auto-generated API client — DO NOT EDIT (npm run ge
 Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
 
 - **Tokens** live in `src/styles/tokens.css` for light and `:root[data-theme="dark"]`: surfaces `--bg` (canvas), `--panel`, `--fill`, `--fill-strong`; lines `--line`, `--line-strong`; text `--ink`, `--body`, `--muted`, `--faint`; `--primary` is black in light mode and near-white in dark mode (`--on-primary` flips with it); radii `--radius-sm` 8 / `md` 12 / `lg` 18 / `xl` 22 / `pill`; `--shadow-panel`, `--shadow-float`, `--focus-ring`; motion `--motion-fast|standard|layout`, `--ease-out|in-out|drawer`.
-- The bottom of `tokens.css` keeps **legacy aliases** (`--canvas`, `--hairline`, `--surface-soft`, `--surface-dark`, `--font-display`, `--error`, …) so pages not yet redesigned still render. New code uses the new names; the aliases go away when the last old page is redesigned.
+- The bottom of `tokens.css` keeps **legacy aliases** (`--canvas`, `--hairline`, `--surface-soft`, `--surface-dark`, `--font-display`, `--error`, …) that a few companion components still use. New code uses the new names.
 - **Shared classes** (`base.css`): `.panel` (white floating block), `.btn` / `.btn.primary` / `.btn.sm` (pills), `.icon-btn` (36px round, `.on` = pressed), `.num` (tabular numbers), `[data-tip]` CSS tooltips (right by default, `.tip-up` / `.tip-down`).
+- **Normal pages** (`page.css`): `div.page` grid → `.panel.page-head` (h1 + `.count`, `.head-end` actions) → `.panel.list-panel` (`.list-toolbar`, `.list-rows` with `.list-head` + `.list-row` grids whose columns each page defines, `.list-empty`, `.list-pager`). Filters apply as you type (300ms) — no 搜索 buttons. Row actions are icon buttons with `data-tip`. Forms use `.field` / `.field-label` + `Ui*` inputs and `.textarea`.
 - **Code colors** (`code.css`): `--code-surface`, `--code-ink`, `--sx-keyword|type|string|number|comment|function|tag|deletion`. Code follows the theme (white in light mode). Monaco can't read CSS variables, so `monacoThemes.ts` repeats the same colors; change both together.
 - **Mascot:** `CompanionAvatar` is a single-color line drawing in `currentColor`; its body fill is `--mascot-fill` (defaults to `--panel`), set it to the background it sits on.
 - **Theme toggle:** `useTheme` sets `data-theme` + `color-scheme` on `<html>`, `arco-theme="dark"` on `<body>`, persists `localStorage["myoj-theme"]`; `CodeEditor` switches the Monaco theme when it changes.
@@ -140,7 +143,7 @@ Each loaded page is recorded with `setProblemListContext` (sessionStorage); the 
 
 ### 做题页 (ProblemView, /problem/:id)
 
-Three floating panels: statement (tabs 题目 / 题解 / 我的提交 / 公开提交 ↗ / submission detail tabs; list drawer, prev / next), editor (language, draft-saved indicator, format, reset, submit; `VerdictDock` at the bottom), and the companion panel as a third column only while it is open (otherwise the pet floats over the editor). `?lang=` picks the initial language, then the last used one (`localStorage["myoj:last-language"]`). Logged-out users see 「登录后提交」 and are sent to login for 题解 / 我的提交. The component is recreated per question (route key), so composables start fresh.
+Three floating panels (widths draggable via `PaneResizer` + `useProblemLayout`; the editor always keeps at least 380px): statement (tabs 题目 / 题解 / 我的提交 / 公开提交 ↗ / submission detail tabs; list drawer, prev / next), editor (language, draft-saved indicator, format, reset, submit; `VerdictDock` at the bottom), and the companion panel as a third column only while it is open (otherwise the pet floats over the editor). `?lang=` picks the initial language, then the last used one (`localStorage["myoj:last-language"]`). Logged-out users see 「登录后提交」 and are sent to login for 题解 / 我的提交. The component is recreated per question (route key), so composables start fresh.
 
 ### ApiId: Bridging Java Long ↔ Routing
 
