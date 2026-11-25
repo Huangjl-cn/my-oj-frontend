@@ -14,8 +14,7 @@
         :title="copyLabel"
         @click="copyCode"
       >
-        <IconCheck v-if="copyState === 'copied'" />
-        <IconCopy v-else />
+        <AppIcon :name="copyState === 'copied' ? 'check' : 'copy'" :size="13" />
         <span>{{ copyLabel }}</span>
       </button>
     </div>
@@ -28,7 +27,7 @@
 
 <script setup lang="ts">
 import hljs from "highlight.js/lib/core";
-import { IconCheck, IconCopy } from "@arco-design/web-vue/es/icon";
+import AppIcon from "@/components/ui/AppIcon.vue";
 import { computed, defineProps, onBeforeUnmount, ref, withDefaults } from "vue";
 
 import { copyText } from "@/utils/copyText";

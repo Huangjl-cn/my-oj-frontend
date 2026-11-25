@@ -1,412 +1,407 @@
 <template>
-  <div id="questionSubmitView">
-    <div class="archive-shell">
-      <aside class="archive-side-controls">
-        <nav class="view-switcher" role="tablist" aria-label="提交展示模式">
-          <button
-            class="view-tab"
-            :class="{
-              active: viewMode === 'all' && selectedQuestionId == null,
-            }"
-            type="button"
-            role="tab"
-            :aria-selected="viewMode === 'all' && selectedQuestionId == null"
-            aria-label="全部提交"
-            title="全部提交"
-            @click="switchView('all')"
-          >
-            全部
-          </button>
-          <button
-            class="view-tab"
-            :class="{
-              active: viewMode === 'group' && selectedQuestionId == null,
-            }"
-            type="button"
-            role="tab"
-            :aria-selected="viewMode === 'group' && selectedQuestionId == null"
-            aria-label="按题目"
-            title="按题目"
-            @click="switchView('group')"
-          >
-            题目
-          </button>
-        </nav>
-
-        <div
-          v-if="viewContext === 'submission-detail' || viewContext === 'detail'"
-          class="detail-back-row"
+  <div class="page">
+    <section class="panel page-head">
+      <template v-if="viewContext === 'submission-detail'">
+        <button
+          class="icon-btn tip-down"
+          type="button"
+          data-tip="返回"
+          aria-label="返回列表"
+          @click="closeDetailView"
         >
+          <AppIcon name="chevron-left" :size="20" />
+        </button>
+        <h1>提交详情</h1>
+      </template>
+      <template v-else-if="viewContext === 'detail'">
+        <button
+          class="icon-btn tip-down"
+          type="button"
+          data-tip="返回"
+          aria-label="返回题目列表"
+          @click="closeDetailView"
+        >
+          <AppIcon name="chevron-left" :size="20" />
+        </button>
+        <h1>
+          {{ selectedQuestionTitle || "这道题" }} 的提交
+          <span class="count num">{{ total }}</span>
+        </h1>
+        <div class="head-end">
+          <router-link class="btn sm" :to="`/problem/${selectedQuestionId}`">
+            <AppIcon name="pen-square" :size="16" />
+            去做这道题
+          </router-link>
+        </div>
+      </template>
+      <template v-else>
+        <h1>
+          提交记录
+          <span class="count num">{{ total }}</span>
+        </h1>
+        <div class="head-end">
+          <UiSegmented
+            :model-value="viewMode"
+            :options="VIEW_OPTIONS"
+            label="查看方式"
+            @update:model-value="switchViewTo"
+          />
+        </div>
+      </template>
+    </section>
+
+    <!-- ===== 一条提交的详情 ===== -->
+    <section
+      v-if="viewContext === 'submission-detail' && selectedSubmission"
+      class="panel detail"
+    >
+      <header class="detail-head">
+        <span
+          :class="[
+            'verdict-text',
+            'big',
+            getSubmissionPresentation(selectedSubmission).tone,
+          ]"
+        >
+          {{ getSubmissionPresentation(selectedSubmission).label }}
+        </span>
+        <router-link
+          class="detail-problem"
+          :to="`/problem/${selectedSubmission.questionId}`"
+        >
+          {{ getSubmissionTitle(selectedSubmission) }}
+        </router-link>
+        <span class="detail-meta">
+          <UserIdentity
+            :user="submitterOf(selectedSubmission)"
+            :user-id="selectedSubmission.userId"
+            :size="24"
+            compact
+          />
+          <time class="cell-faint num">{{
+            formatDateTime(selectedSubmission.createTime)
+          }}</time>
+        </span>
+      </header>
+      <div class="metrics">
+        <div>
+          <span>语言</span>
+          <strong>{{ getLanguageText(selectedSubmission.language) }}</strong>
+        </div>
+        <div>
+          <span>用时</span>
+          <strong class="num">{{
+            formatTime(selectedSubmission.judgeInfo?.time)
+          }}</strong>
+        </div>
+        <div>
+          <span>内存</span>
+          <strong class="num">{{
+            formatJudgeMemory(selectedSubmission.judgeInfo?.memory)
+          }}</strong>
+        </div>
+      </div>
+      <SubmissionRankRings
+        v-if="getSubmissionPresentation(selectedSubmission).tone === 'passed'"
+        :rank="submissionRank"
+        :loading="rankLoading"
+        :error="rankError"
+        comparison-label="超过的同语言提交"
+      />
+      <SubmissionDiagnosticPanel :submission="selectedSubmission" />
+    </section>
+
+    <!-- ===== 列表 ===== -->
+    <section v-else class="panel list-panel">
+      <div class="list-toolbar">
+        <template v-if="viewContext === 'all'">
+          <UiInput
+            v-model="allFilters.questionQuery"
+            icon="book"
+            placeholder="题目名称或 ID"
+            clearable
+          />
+          <UiInput
+            v-model="allFilters.userQuery"
+            icon="user"
+            placeholder="提交者昵称或 ID"
+            clearable
+          />
+          <UiSelect
+            v-model="allFilters.judgeResult"
+            class="narrow"
+            :options="RESULT_OPTIONS"
+            placeholder="全部状态"
+            aria-label="判题结果"
+          />
+          <UiSelect
+            v-model="allFilters.language"
+            class="narrow"
+            :options="languageSelectOptions"
+            placeholder="全部语言"
+            aria-label="编程语言"
+          />
+          <UiSelect
+            v-model="allFilters.sortField"
+            class="narrow"
+            :options="SORT_OPTIONS"
+            aria-label="排序"
+          />
+        </template>
+        <template v-else-if="viewContext === 'group'">
+          <UiInput
+            v-model="groupFilters.questionQuery"
+            icon="search"
+            placeholder="在这一页里找题目"
+            clearable
+          />
+        </template>
+        <template v-else>
+          <UiInput
+            v-model="detailFilters.userQuery"
+            icon="user"
+            placeholder="提交者昵称或 ID"
+            clearable
+          />
+          <UiSelect
+            v-model="detailFilters.judgeResult"
+            class="narrow"
+            :options="RESULT_OPTIONS"
+            placeholder="全部状态"
+            aria-label="判题结果"
+          />
+          <UiSelect
+            v-model="detailFilters.language"
+            class="narrow"
+            :options="languageSelectOptions"
+            placeholder="全部语言"
+            aria-label="编程语言"
+          />
+          <UiSelect
+            v-model="detailFilters.sortField"
+            class="narrow"
+            :options="SORT_OPTIONS"
+            aria-label="排序"
+          />
+        </template>
+        <div class="toolbar-end">
           <button
-            class="detail-back-button"
+            class="icon-btn tip-up"
             type="button"
-            :aria-label="
-              viewContext === 'detail' ? '返回题目列表' : '返回提交列表'
-            "
-            :title="viewContext === 'detail' ? '返回题目列表' : '返回提交列表'"
-            @click="closeDetailView"
+            data-tip="刷新"
+            aria-label="刷新"
+            :disabled="loading"
+            @click="loadCurrentView"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m14 5-7 7 7 7" />
-            </svg>
+            <AppIcon name="refresh" :size="17" />
           </button>
         </div>
-      </aside>
-
-      <div class="archive-main">
-        <header class="page-heading">
-          <span class="page-kicker">SUBMISSION ARCHIVE</span>
-          <h2 class="page-title">浏览题目提交</h2>
-          <p class="page-lede">按题目、提交者和执行表现整理公开判题记录。</p>
-        </header>
-        <section
-          v-if="selectedSubmission == null"
-          class="filter-panel"
-          aria-label="提交筛选"
-        >
-          <form class="filter-grid" @submit.prevent="applyFilters">
-            <template v-if="viewContext === 'all'">
-              <div class="filter-field">
-                <span>题目</span>
-                <a-input
-                  v-model="allFilters.questionQuery"
-                  allow-clear
-                  placeholder="题目 ID / 名称"
-                />
-              </div>
-              <div class="filter-field">
-                <span>提交者</span>
-                <a-input
-                  v-model="allFilters.userQuery"
-                  allow-clear
-                  placeholder="用户 ID / 昵称"
-                />
-              </div>
-              <div class="filter-field">
-                <span>排序</span>
-                <a-select v-model="allFilters.sortField">
-                  <a-option value="latest">最新提交</a-option>
-                  <a-option value="time">运行时间：快到慢</a-option>
-                  <a-option value="memory">内存占用：低到高</a-option>
-                </a-select>
-              </div>
-              <div class="filter-field">
-                <span>提交状态</span>
-                <a-select v-model="allFilters.judgeResult">
-                  <a-option value="all">全部状态</a-option>
-                  <a-option value="accepted">通过</a-option>
-                  <a-option value="failed">未通过</a-option>
-                  <a-option value="pending">判题中</a-option>
-                </a-select>
-              </div>
-              <div class="filter-field">
-                <span>编程语言</span>
-                <a-select
-                  v-model="allFilters.language"
-                  allow-clear
-                  placeholder="全部语言"
-                >
-                  <a-option
-                    v-for="language in languageOptions"
-                    :key="language.value"
-                    :value="language.value"
-                  >
-                    {{ language.text }}
-                  </a-option>
-                </a-select>
-              </div>
-            </template>
-
-            <template v-else-if="viewContext === 'group'">
-              <div class="filter-field group-search-field">
-                <span>定位题目</span>
-                <a-input
-                  v-model="groupFilters.questionQuery"
-                  allow-clear
-                  placeholder="输入题目 ID 或名称"
-                />
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="filter-field">
-                <span>提交者</span>
-                <a-input
-                  v-model="detailFilters.userQuery"
-                  allow-clear
-                  placeholder="用户 ID / 昵称"
-                />
-              </div>
-              <div class="filter-field">
-                <span>排序</span>
-                <a-select v-model="detailFilters.sortField">
-                  <a-option value="latest">最新提交</a-option>
-                  <a-option value="time">运行时间：快到慢</a-option>
-                  <a-option value="memory">内存占用：低到高</a-option>
-                </a-select>
-              </div>
-              <div class="filter-field">
-                <span>提交状态</span>
-                <a-select v-model="detailFilters.judgeResult">
-                  <a-option value="all">全部状态</a-option>
-                  <a-option value="accepted">通过</a-option>
-                  <a-option value="failed">未通过</a-option>
-                  <a-option value="pending">判题中</a-option>
-                </a-select>
-              </div>
-              <div class="filter-field">
-                <span>编程语言</span>
-                <a-select
-                  v-model="detailFilters.language"
-                  allow-clear
-                  placeholder="全部语言"
-                >
-                  <a-option
-                    v-for="language in languageOptions"
-                    :key="language.value"
-                    :value="language.value"
-                  >
-                    {{ language.text }}
-                  </a-option>
-                </a-select>
-              </div>
-            </template>
-            <a-button class="filter-submit" type="primary" html-type="submit">
-              搜索
-            </a-button>
-          </form>
-        </section>
-
-        <section class="archive-content" aria-live="polite">
-          <div v-if="loading" class="archive-empty">正在加载提交记录...</div>
-          <div v-else-if="errorMessage" class="archive-empty error">
-            {{ errorMessage }}
-          </div>
-
-          <div
-            v-else-if="
-              viewContext === 'submission-detail' && selectedSubmission
-            "
-            class="submission-detail"
-          >
-            <header class="submission-detail-header">
-              <div class="submission-detail-meta">
-                <UserIdentity
-                  :user="
-                    selectedSubmission.userVO || {
-                      id: selectedSubmission.userId,
-                      userName: selectedSubmission.userName,
-                      userAvatar: selectedSubmission.userAvatar,
-                    }
-                  "
-                  :user-id="selectedSubmission.userId"
-                  :size="54"
-                />
-                <div>
-                  <span class="content-kicker">SUBMISSION</span>
-                  <h4>{{ getSubmissionTitle(selectedSubmission) }}</h4>
-                  <p>
-                    #{{ selectedSubmission.id ?? "--" }} ·
-                    {{ formatDateTime(selectedSubmission.createTime) }}
-                  </p>
-                </div>
-              </div>
-              <div
-                :class="[
-                  'detail-result',
-                  getSubmissionPresentation(selectedSubmission).tone,
-                ]"
-              >
-                {{ getSubmissionPresentation(selectedSubmission).label }}
-              </div>
-            </header>
-            <div class="detail-overview">
-              <div>
-                <span>编程语言</span>
-                <strong>{{
-                  getLanguageText(selectedSubmission.language)
-                }}</strong>
-              </div>
-              <div>
-                <span>运行时间</span>
-                <strong>{{
-                  formatTime(selectedSubmission.judgeInfo?.time)
-                }}</strong>
-              </div>
-              <div>
-                <span>内存占用</span>
-                <strong>{{
-                  formatJudgeMemory(selectedSubmission.judgeInfo?.memory)
-                }}</strong>
-              </div>
-            </div>
-            <SubmissionRankRings
-              v-if="
-                getSubmissionPresentation(selectedSubmission).tone === 'passed'
-              "
-              :rank="submissionRank"
-              :loading="rankLoading"
-              :error="rankError"
-              comparison-label="超过同语言提交"
-            />
-            <SubmissionDiagnosticPanel :submission="selectedSubmission" />
-          </div>
-
-          <div v-else-if="viewContext === 'group'" class="group-list">
-            <article
-              v-for="group in visibleGroups"
-              :key="String(group.questionId)"
-              class="group-card"
-            >
-              <header class="group-card-header">
-                <div class="group-title">
-                  <h4>
-                    {{
-                      group.questionTitle || `题目 #${group.questionId ?? "--"}`
-                    }}
-                  </h4>
-                  <span>
-                    #{{ group.questionId ?? "--" }}
-                    <template v-if="group.questionTags?.length">
-                      · {{ group.questionTags.join(" · ") }}
-                    </template>
-                  </span>
-                </div>
-                <span class="group-latest">最近提交</span>
-              </header>
-              <div class="group-metrics">
-                <div>
-                  <span>最近使用语言</span>
-                  <strong>{{ getLanguageText(group.latestLanguage) }}</strong>
-                </div>
-                <div>
-                  <span>最佳运行时间</span>
-                  <strong>{{ formatTime(group.bestTime) }}</strong>
-                </div>
-                <div>
-                  <span>最低内存占用</span>
-                  <strong>{{ formatJudgeMemory(group.bestMemory) }}</strong>
-                </div>
-              </div>
-              <div v-if="group.latestCode" class="group-code-preview">
-                <span>最近提交代码</span>
-                <CodeBlock
-                  :code="group.latestCode"
-                  :language="group.latestLanguage ?? ''"
-                />
-              </div>
-              <footer class="group-card-footer">
-                <time>{{ formatDateTime(group.latestSubmitTime) }}</time>
-                <button type="button" @click="openQuestionDetail(group)">
-                  查看该题提交
-                  <span aria-hidden="true">→</span>
-                </button>
-              </footer>
-            </article>
-            <p v-if="!visibleGroups.length" class="archive-empty">
-              暂无符合条件的题目记录
-            </p>
-          </div>
-
-          <div v-else class="submission-list">
-            <article
-              v-for="submission in currentSubmissions"
-              :key="String(submission.id)"
-              class="submission-card"
-              :class="getSubmissionPresentation(submission).tone"
-            >
-              <header class="submission-card-header">
-                <UserIdentity
-                  :user="
-                    submission.userVO || {
-                      id: submission.userId,
-                      userName: submission.userName,
-                      userAvatar: submission.userAvatar,
-                    }
-                  "
-                  :user-id="submission.userId"
-                  :size="42"
-                />
-                <div class="submission-result-block">
-                  <span class="result-label">判题结果</span>
-                  <strong>{{
-                    getSubmissionPresentation(submission).label
-                  }}</strong>
-                </div>
-              </header>
-              <div class="submission-card-body">
-                <div class="submission-problem">
-                  <span class="card-label">题目</span>
-                  <strong>{{ getSubmissionTitle(submission) }}</strong>
-                  <span class="card-subtitle"
-                    >#{{ submission.questionId ?? "--" }}</span
-                  >
-                </div>
-                <div class="submission-diagnostic">
-                  <span class="card-label">判题信息</span>
-                  <strong>{{ getJudgeSummary(submission).title }}</strong>
-                  <span v-if="getJudgeSummary(submission).preview">
-                    {{ getJudgeSummary(submission).preview }}
-                  </span>
-                </div>
-                <span class="language-pill">
-                  {{ getLanguageText(submission.language) }}
-                </span>
-                <div class="submission-metrics">
-                  <span
-                    ><small>运行时间</small
-                    ><strong>{{
-                      formatTime(submission.judgeInfo?.time)
-                    }}</strong></span
-                  >
-                  <span
-                    ><small>内存占用</small
-                    ><strong>{{
-                      formatJudgeMemory(submission.judgeInfo?.memory)
-                    }}</strong></span
-                  >
-                </div>
-                <time class="submission-time">{{
-                  formatDateTime(submission.createTime)
-                }}</time>
-              </div>
-              <button
-                class="details-toggle"
-                type="button"
-                @click="openSubmissionDetail(submission)"
-              >
-                查看提交详情
-                <span aria-hidden="true">→</span>
-              </button>
-            </article>
-            <p v-if="!currentSubmissions.length" class="archive-empty">
-              暂无符合条件的提交记录
-            </p>
-          </div>
-
-          <a-pagination
-            v-if="!loading && total > 0 && viewContext !== 'submission-detail'"
-            class="archive-pagination"
-            :current="currentPage"
-            :page-size="pageSize"
-            :total="total"
-            show-total
-            @change="onPageChange"
-          />
-        </section>
       </div>
-    </div>
+
+      <div
+        :class="[
+          'list-rows',
+          {
+            stale:
+              loading &&
+              (viewContext === 'group'
+                ? groups.length
+                : currentSubmissions.length),
+          },
+        ]"
+      >
+        <!-- 按题目 -->
+        <template v-if="viewContext === 'group'">
+          <div v-if="visibleGroups.length" class="list-head cols-group">
+            <span>题目</span>
+            <span>最近语言</span>
+            <span>最快</span>
+            <span>最省内存</span>
+            <span>最近提交</span>
+            <span />
+          </div>
+          <template
+            v-for="group in visibleGroups"
+            :key="String(group.questionId)"
+          >
+            <div
+              :class="[
+                'list-row',
+                'clickable',
+                'cols-group',
+                { open: isGroupExpanded(group.questionId) },
+              ]"
+              @click="openQuestionDetail(group)"
+            >
+              <span class="title-cell">
+                <span class="cell-title">{{
+                  group.questionTitle || "未命名题目"
+                }}</span>
+                <span
+                  v-if="getTopicTags(group.questionTags).length"
+                  class="tag-list"
+                >
+                  <span
+                    v-for="tag in getTopicTags(group.questionTags).slice(0, 2)"
+                    :key="tag"
+                    class="tag"
+                    >{{ tag }}</span
+                  >
+                </span>
+              </span>
+              <span class="cell-muted">{{
+                getLanguageText(group.latestLanguage)
+              }}</span>
+              <span class="cell-stat num">
+                <AppIcon name="clock" :size="14" />
+                {{ formatTime(group.bestTime) }}
+              </span>
+              <span class="cell-stat num">
+                <AppIcon name="chip" :size="14" />
+                {{ formatJudgeMemory(group.bestMemory) }}
+              </span>
+              <time
+                class="cell-faint num"
+                :title="formatDateTime(group.latestSubmitTime)"
+                >{{ relativeTime(group.latestSubmitTime) }}</time
+              >
+              <span class="row-actions">
+                <button
+                  v-if="group.latestCode"
+                  class="icon-btn tip-up"
+                  type="button"
+                  :data-tip="
+                    isGroupExpanded(group.questionId)
+                      ? '收起代码'
+                      : '最近的代码'
+                  "
+                  :aria-expanded="isGroupExpanded(group.questionId)"
+                  aria-label="最近提交的代码"
+                  @click.stop="toggleGroup(group.questionId)"
+                >
+                  <AppIcon name="align-left" :size="16" />
+                </button>
+                <AppIcon name="chevron-right" :size="18" class="go" />
+              </span>
+            </div>
+            <div
+              v-if="group.latestCode && isGroupExpanded(group.questionId)"
+              class="row-extra"
+            >
+              <CodeBlock
+                :code="group.latestCode"
+                :language="group.latestLanguage ?? ''"
+              />
+            </div>
+          </template>
+        </template>
+
+        <!-- 一条一条的提交 -->
+        <template v-else>
+          <div
+            v-if="currentSubmissions.length"
+            :class="['list-head', submissionCols]"
+          >
+            <span>结果</span>
+            <span v-if="viewContext === 'all'">题目</span>
+            <span>提交者</span>
+            <span>语言</span>
+            <span>用时</span>
+            <span>内存</span>
+            <span>时间</span>
+          </div>
+          <button
+            v-for="submission in currentSubmissions"
+            :key="String(submission.id)"
+            :class="['list-row', 'clickable', submissionCols]"
+            type="button"
+            @click="openSubmissionDetail(submission)"
+          >
+            <span
+              :class="[
+                'verdict-text',
+                getSubmissionPresentation(submission).tone,
+              ]"
+              >{{ getSubmissionPresentation(submission).label }}</span
+            >
+            <span v-if="viewContext === 'all'" class="cell-title">{{
+              getSubmissionTitle(submission)
+            }}</span>
+            <UserIdentity
+              :user="submitterOf(submission)"
+              :user-id="submission.userId"
+              :size="24"
+              compact
+            />
+            <span class="cell-muted">{{
+              getLanguageText(submission.language)
+            }}</span>
+            <span class="cell-stat num">{{
+              formatTime(submission.judgeInfo?.time)
+            }}</span>
+            <span class="cell-stat num">{{
+              formatJudgeMemory(submission.judgeInfo?.memory)
+            }}</span>
+            <time
+              class="cell-faint num"
+              :title="formatDateTime(submission.createTime)"
+              >{{ relativeTime(submission.createTime) }}</time
+            >
+          </button>
+        </template>
+
+        <div
+          v-if="
+            !loading &&
+            (errorMessage ||
+              (viewContext === 'group'
+                ? !visibleGroups.length
+                : !currentSubmissions.length))
+          "
+          class="list-empty"
+        >
+          <CompanionAvatar
+            :size="56"
+            :mood="errorMessage ? 'confused' : 'thoughtful'"
+          />
+          <p>{{ errorMessage || "还没有符合条件的提交" }}</p>
+          <button
+            v-if="errorMessage"
+            class="btn sm"
+            type="button"
+            @click="loadCurrentView"
+          >
+            <AppIcon name="refresh" :size="16" />
+            重新加载
+          </button>
+        </div>
+      </div>
+
+      <UiPagination
+        class="list-pager"
+        :current="currentPage"
+        :total="total"
+        :page-size="pageSize"
+        @change="onPageChange"
+      />
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
+import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import CodeBlock from "@/components/editor/CodeBlock.vue";
 import SubmissionRankRings from "@/components/question/SubmissionRankRings.vue";
 import SubmissionDiagnosticPanel from "@/components/question/SubmissionDiagnosticPanel.vue";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiPagination from "@/components/ui/UiPagination.vue";
+import UiSegmented from "@/components/ui/UiSegmented.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import UserIdentity from "@/components/user/UserIdentity.vue";
 import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
 import {
@@ -415,14 +410,14 @@ import {
   getJudgeResultPresentation,
   listQuestionSubmitGroups,
   listQuestionSubmissions,
-  splitJudgeMessage,
 } from "@/services/questionSubmit";
 import {
   getLanguageText as resolveLanguageText,
   getSupportedLanguageOptions,
   LanguageOption,
 } from "@/services/questionStarterCode";
-import { formatDateTime } from "@/utils/dateTime";
+import { formatDateTime, formatRelativeTime } from "@/utils/dateTime";
+import { getTopicTags } from "@/utils/difficulty";
 import {
   QuestionSubmitArchiveQueryRequest,
   QuestionSubmitGroupQueryRequest,
@@ -434,7 +429,23 @@ import {
 type ViewMode = "all" | "group";
 type ViewContext = ViewMode | "detail" | "submission-detail";
 type SortField = "latest" | "time" | "memory";
-type ResultFilter = "all" | "accepted" | "failed" | "pending";
+/** "" 表示全部状态 */
+type ResultFilter = "" | "accepted" | "failed" | "pending";
+
+const VIEW_OPTIONS = [
+  { value: "all", label: "全部提交" },
+  { value: "group", label: "按题目" },
+];
+const RESULT_OPTIONS = [
+  { value: "accepted", label: "通过" },
+  { value: "failed", label: "没通过" },
+  { value: "pending", label: "判题中" },
+];
+const SORT_OPTIONS = [
+  { value: "latest", label: "最新提交" },
+  { value: "time", label: "用时最短" },
+  { value: "memory", label: "内存最少" },
+];
 
 const route = useRoute();
 const viewMode = ref<ViewMode>("all");
@@ -454,6 +465,9 @@ const allSubmissions = ref<QuestionSubmitVO[]>([]);
 const detailSubmissions = ref<QuestionSubmitVO[]>([]);
 const groups = ref<QuestionSubmitGroupVO[]>([]);
 const languageOptions = ref<LanguageOption[]>([]);
+/** 按题目看提交时的题目名：从分组里点进来时有，直接打开链接时从第一条提交里取 */
+const selectedQuestionTitle = ref("");
+const expandedGroupIds = ref<string[]>([]);
 let requestGeneration = 0;
 let rankRequestId = 0;
 
@@ -461,16 +475,20 @@ const allFilters = reactive({
   questionQuery: "",
   userQuery: "",
   sortField: "latest" as SortField,
-  judgeResult: "all" as ResultFilter,
-  language: undefined as string | undefined,
+  judgeResult: "" as ResultFilter,
+  language: "",
 });
 const groupFilters = reactive({ questionQuery: "" });
 const detailFilters = reactive({
   userQuery: "",
   sortField: "latest" as SortField,
-  judgeResult: "all" as ResultFilter,
-  language: undefined as string | undefined,
+  judgeResult: "" as ResultFilter,
+  language: "",
 });
+
+const languageSelectOptions = computed(() =>
+  languageOptions.value.map(({ value, text }) => ({ value, label: text }))
+);
 
 const viewContext = computed<ViewContext>(() =>
   selectedSubmission.value != null
@@ -484,6 +502,9 @@ const currentPage = computed(() => {
   if (viewContext.value === "detail") return detailPage.value;
   return allPage.value;
 });
+const submissionCols = computed(() =>
+  viewContext.value === "all" ? "cols-all" : "cols-detail"
+);
 const currentSubmissions = computed(() =>
   viewContext.value === "detail"
     ? detailSubmissions.value
@@ -537,15 +558,6 @@ const getSubmissionTitle = (submission: QuestionSubmitVO) =>
   submission.questionVO?.title ||
   `题目 #${submission.questionId ?? "--"}`;
 
-const getJudgeSummary = (submission: QuestionSubmitVO) => {
-  const presentation = getJudgeResultPresentation(submission);
-  const parts = splitJudgeMessage(presentation.message);
-  return {
-    title: parts.title || presentation.label,
-    preview: parts.details.split(/\r?\n/).find(Boolean) || "",
-  };
-};
-
 const getSubmissionPresentation = (submission: QuestionSubmitVO) =>
   getJudgeResultPresentation(submission);
 
@@ -562,9 +574,8 @@ const loadAll = async () => {
       pageSize,
       questionId,
       ...buildUserQuery(allFilters.userQuery),
-      language: allFilters.language,
-      judgeResult:
-        allFilters.judgeResult === "all" ? undefined : allFilters.judgeResult,
+      language: allFilters.language || undefined,
+      judgeResult: allFilters.judgeResult || undefined,
       ...buildSort(allFilters.sortField),
     };
     const response = await listQuestionSubmissions(request);
@@ -636,11 +647,8 @@ const loadDetail = async () => {
       pageSize,
       questionId: toGeneratedApiId(questionId),
       ...buildUserQuery(detailFilters.userQuery),
-      language: detailFilters.language,
-      judgeResult:
-        detailFilters.judgeResult === "all"
-          ? undefined
-          : detailFilters.judgeResult,
+      language: detailFilters.language || undefined,
+      judgeResult: detailFilters.judgeResult || undefined,
       ...buildSort(detailFilters.sortField),
     };
     const response = await listQuestionSubmissions(request);
@@ -649,6 +657,11 @@ const loadDetail = async () => {
       throw new Error(response.message || "加载题目提交记录失败");
     detailSubmissions.value = response.data?.records ?? [];
     total.value = Number(response.data?.total ?? 0);
+    if (!selectedQuestionTitle.value && detailSubmissions.value.length) {
+      selectedQuestionTitle.value = getSubmissionTitle(
+        detailSubmissions.value[0]
+      );
+    }
   } catch (error) {
     if (generation !== requestGeneration) return;
     detailSubmissions.value = [];
@@ -688,6 +701,7 @@ const openQuestionDetail = (group: QuestionSubmitGroupVO) => {
   resetRankState();
   selectedSubmission.value = null;
   selectedQuestionId.value = group.questionId;
+  selectedQuestionTitle.value = group.questionTitle || "";
   detailPage.value = 1;
   loadDetail();
 };
@@ -696,7 +710,9 @@ const closeQuestionDetail = () => {
   resetRankState();
   selectedSubmission.value = null;
   selectedQuestionId.value = null;
+  selectedQuestionTitle.value = "";
   total.value = 0;
+  viewMode.value = "group";
   loadGroups();
 };
 
@@ -743,6 +759,57 @@ const loadSubmissionRank = async (submitId?: number) => {
   }
 };
 
+// 筛选条件一改就生效；输入框停下来 300ms 再查
+let filterTimer: number | undefined;
+watch(
+  () => [
+    allFilters.questionQuery,
+    allFilters.userQuery,
+    detailFilters.userQuery,
+  ],
+  () => {
+    window.clearTimeout(filterTimer);
+    filterTimer = window.setTimeout(applyFilters, 300);
+  }
+);
+watch(
+  () => [
+    allFilters.sortField,
+    allFilters.judgeResult,
+    allFilters.language,
+    detailFilters.sortField,
+    detailFilters.judgeResult,
+    detailFilters.language,
+  ],
+  () => applyFilters()
+);
+
+const switchViewTo = (value: string) =>
+  switchView(value === "group" ? "group" : "all");
+
+const isGroupExpanded = (questionId?: ApiId) =>
+  questionId != null && expandedGroupIds.value.includes(String(questionId));
+
+const toggleGroup = (questionId?: ApiId) => {
+  if (questionId == null) return;
+  const id = String(questionId);
+  expandedGroupIds.value = isGroupExpanded(questionId)
+    ? expandedGroupIds.value.filter((item) => item !== id)
+    : [...expandedGroupIds.value, id];
+};
+
+const relativeTime = (value?: string) => {
+  const time = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isNaN(time) ? "--" : formatRelativeTime(time);
+};
+
+const submitterOf = (submission: QuestionSubmitVO) =>
+  submission.userVO || {
+    id: submission.userId,
+    userName: submission.userName,
+    userAvatar: submission.userAvatar,
+  };
+
 const onPageChange = (page: number) => {
   if (viewContext.value === "all") allPage.value = page;
   else if (viewContext.value === "group") groupPage.value = page;
@@ -766,835 +833,139 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-#questionSubmitView {
-  width: min(1280px, calc(100% - 2 * var(--space-xl)));
-  margin: 0 auto;
-  padding: var(--space-xl) 0 var(--space-2xl);
-  animation: page-enter var(--motion-standard) var(--ease-out);
+.page-head > .icon-btn {
+  margin-right: -10px;
 }
 
-.page-heading {
-  margin-bottom: 0;
+.list-toolbar .narrow {
+  width: 132px;
 }
 
-.page-kicker,
-.content-kicker {
-  color: var(--primary);
-  font-family: var(--font-code);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.11em;
+.cols-all {
+  grid-template-columns: 88px minmax(0, 1.2fr) minmax(0, 0.9fr) 80px 72px 80px 84px;
 }
 
-.page-title {
-  margin: 3px 0 7px;
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 42px;
-  font-weight: 400;
-  line-height: 1;
+.cols-detail {
+  grid-template-columns: 88px minmax(0, 1fr) 90px 80px 90px 96px;
 }
 
-.page-lede {
-  max-width: 560px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
+.cols-group {
+  grid-template-columns: minmax(0, 1fr) 90px 86px 96px 84px 72px;
 }
 
-.archive-shell {
-  position: relative;
-  margin-top: 0;
-}
-
-.archive-main {
+.title-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
-.archive-side-controls {
-  position: fixed;
-  top: 50%;
-  left: max(14px, calc((100vw - 1280px) / 2 - 72px));
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transform: translateY(-50%);
+.title-cell .cell-title {
+  flex: 0 1 auto;
 }
 
-.view-switcher {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 58px;
-  padding: 5px 0;
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+.go {
+  margin: 0 6px 0 4px;
+  color: var(--faint);
 }
 
-.view-tab {
-  position: relative;
-  width: 100%;
-  padding: 14px 3px;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.view-tab::after {
-  position: absolute;
-  top: 9px;
-  bottom: 9px;
-  left: -1px;
-  width: 2px;
-  background: var(--primary);
-  content: "";
-  opacity: 0;
-  transform: scaleY(0.4);
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.view-tab:hover,
-.view-tab.active {
+.list-row.clickable:hover .go {
   color: var(--ink);
 }
 
-.view-tab.active::after {
-  opacity: 1;
-  transform: scaleY(1);
-}
-
-.filter-panel {
-  margin-top: var(--space-xl);
-  padding: var(--space-md);
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.filter-grid {
+/* ===== 提交详情 ===== */
+.detail {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(78px, auto);
-  align-items: end;
-  gap: var(--space-md);
-}
-
-.filter-field {
-  display: grid;
-  min-width: 0;
-  gap: 6px;
-}
-
-.filter-field > span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.group-search-field {
-  max-width: 520px;
-}
-
-.filter-submit {
-  min-width: 78px;
-  height: 36px;
-}
-
-.filter-grid :deep(.arco-input-wrapper),
-.filter-grid :deep(.arco-select-view) {
-  min-height: 36px;
-  background: var(--surface-card) !important;
-  border-color: var(--hairline) !important;
-  border-radius: var(--radius-sm);
-}
-
-.archive-content {
-  margin-top: var(--space-xl);
-}
-
-.detail-back-row {
-  display: grid;
-  width: 100%;
-  margin-top: 18px;
-  padding-top: 16px;
-  place-items: center;
-  border-top: 1px solid var(--hairline);
-}
-
-.detail-back-button {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  padding: 0;
-  color: var(--primary);
-  background: var(--surface-soft);
-  border: 1px solid var(--primary);
-  border-radius: 50%;
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  transition: color 160ms ease, background 160ms ease, border-color 160ms ease,
-    transform 160ms ease;
-}
-
-.detail-back-button svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.7;
-}
-
-.detail-back-button:hover {
-  color: var(--surface-card);
-  background: var(--primary);
-  border-color: var(--primary);
-  transform: translateX(-2px);
-}
-
-.submission-list,
-.group-list {
-  display: grid;
-  gap: var(--space-md);
-}
-
-.group-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-}
-
-.group-list > .archive-empty {
-  grid-column: 1 / -1;
-}
-
-.submission-card,
-.group-card {
-  position: relative;
-  overflow: hidden;
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: transform 180ms ease, box-shadow 180ms ease,
-    border-color 180ms ease;
-}
-
-.submission-card::before {
-  position: absolute;
-  inset: 16px auto 16px 0;
-  width: 3px;
-  background: var(--muted);
-  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
-  content: "";
-}
-
-.submission-card.passed::before {
-  background: var(--success);
-}
-
-.submission-card.failed::before {
-  background: var(--error);
-}
-
-.submission-card.pending::before {
-  background: var(--accent-amber);
-}
-
-.submission-card:hover,
-.group-card:hover {
-  border-color: color-mix(in srgb, var(--primary) 46%, var(--hairline));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.submission-card-header,
-.group-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  padding: 17px 22px 14px 28px;
-  border-bottom: 1px solid var(--hairline-soft);
-}
-
-.submission-result-block {
-  display: grid;
-  gap: 3px;
-  text-align: right;
-}
-
-.result-label,
-.card-label {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.submission-result-block strong {
-  color: var(--body-strong);
-  font-size: 13px;
-}
-
-.submission-card.passed .submission-result-block strong {
-  color: var(--success);
-}
-
-.submission-card.failed .submission-result-block strong {
-  color: var(--error);
-}
-
-.submission-card.pending .submission-result-block strong {
-  color: var(--accent-amber);
-}
-
-.submission-card-body {
-  display: grid;
-  grid-template-columns:
-    minmax(160px, 1.1fr) minmax(220px, 1.8fr) auto minmax(190px, 1.1fr)
-    auto;
-  align-items: center;
+  align-content: start;
   gap: 22px;
-  padding: 16px 22px 16px 28px;
+  padding: 24px 26px 28px;
 }
 
-.submission-problem,
-.submission-diagnostic {
+.detail-head {
   display: grid;
-  min-width: 0;
-  gap: 4px;
+  gap: 8px;
 }
 
-.submission-problem strong,
-.submission-diagnostic strong,
-.submission-diagnostic span:not(.card-label) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.verdict-text.big {
+  font-size: 24px;
+  font-weight: 800;
 }
 
-.submission-problem strong {
+.verdict-text.big::before {
+  width: 10px;
+  height: 10px;
+}
+
+.detail-problem {
+  justify-self: start;
   color: var(--ink);
   font-size: 15px;
-}
-
-.card-subtitle,
-.submission-diagnostic span:not(.card-label) {
-  color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 10px;
-}
-
-.submission-diagnostic strong {
-  color: var(--error);
-  font-size: 13px;
-}
-
-.submission-card.passed .submission-diagnostic strong {
-  color: var(--success);
-}
-
-.submission-card.pending .submission-diagnostic strong {
-  color: var(--accent-amber);
-}
-
-.language-pill {
-  max-width: 150px;
-  padding: 5px 9px;
-  overflow: hidden;
-  color: var(--body-strong);
-  background: var(--surface-soft);
-  border-radius: var(--radius-pill);
-  font-size: 11px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-decoration: none;
 }
 
-.submission-metrics {
+.detail-problem:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.detail-meta {
   display: flex;
-  gap: 18px;
+  align-items: center;
+  gap: 14px;
 }
 
-.submission-metrics span {
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metrics div {
   display: grid;
   gap: 2px;
-  min-width: 78px;
-}
-
-.submission-metrics small {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.submission-metrics strong {
-  color: var(--body-strong);
-  font-family: var(--font-code);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.submission-time,
-.group-card-footer time {
-  color: var(--muted-soft);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.details-toggle {
-  width: calc(100% - 50px);
-  margin: 0 22px 14px 28px;
-  padding: 8px 10px;
-  color: var(--primary);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.details-toggle span {
-  display: inline-block;
-  margin-left: 6px;
-  transition: transform 160ms ease;
-}
-
-.details-toggle:hover span {
-  transform: translateX(4px);
-}
-
-.submission-detail {
-  overflow: hidden;
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
+  padding: 12px 16px;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  animation: page-enter var(--motion-standard) var(--ease-out);
+  background: var(--fill);
 }
 
-.submission-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  padding: 22px 26px;
-  border-bottom: 1px solid var(--hairline-soft);
+.metrics span {
+  color: var(--faint);
+  font-size: 12px;
 }
 
-.submission-detail-meta {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 80px;
-}
-
-.submission-detail-meta > div:last-child {
-  min-width: 0;
-}
-
-.submission-detail-meta h4 {
-  margin: 4px 0 2px;
-  overflow: hidden;
+.metrics strong {
   color: var(--ink);
-  font-size: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.submission-detail-meta p {
-  margin: 0;
-  color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 11px;
-}
-
-.detail-result {
-  flex: 0 0 auto;
-  padding: 7px 12px;
-  background: var(--surface-soft);
-  border-radius: var(--radius-pill);
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
 }
 
-.detail-result.passed {
-  color: var(--success);
-}
-
-.detail-result.failed {
-  color: var(--error);
-}
-
-.detail-result.pending {
-  color: var(--accent-amber);
-}
-
-.detail-overview {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-bottom: 1px solid var(--hairline-soft);
-}
-
-.detail-overview > div {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  padding: 16px 20px;
-}
-
-.detail-overview > div + div {
-  border-left: 1px solid var(--hairline-soft);
-}
-
-.detail-overview span {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.detail-overview strong {
-  overflow: hidden;
-  color: var(--body-strong);
-  font-family: var(--font-code);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-code-preview {
-  margin: 0 22px 16px;
-}
-
-.group-code-preview > span {
-  display: block;
-  margin-bottom: 7px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.group-code-preview :deep(.code-block-pre) {
-  max-height: 180px;
-}
-
-.group-card-header {
-  padding-left: 22px;
-}
-
-.group-title {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.group-title h4 {
-  margin: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 17px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-title span {
-  overflow: hidden;
-  color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-latest {
-  flex: 0 0 auto;
-  padding: 5px 9px;
-  color: var(--muted);
-  background: var(--surface-soft);
-  border-radius: var(--radius-pill);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.group-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 14px 22px;
-  overflow: hidden;
-  background: var(--surface-soft);
-  border-radius: var(--radius-sm);
-}
-
-.group-metrics div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px 14px;
-}
-
-.group-metrics div + div {
-  border-left: 1px solid var(--hairline);
-}
-
-.group-metrics span {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.group-metrics strong {
-  overflow: hidden;
-  color: var(--body-strong);
-  font-family: var(--font-code);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  padding: 0 22px 15px;
-}
-
-.group-card-footer button {
-  padding: 5px 0;
-  color: var(--primary);
-  background: transparent;
-  border: 0;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.group-card-footer button span {
-  margin-left: 5px;
-  transition: margin-left 160ms ease;
-}
-
-.group-card-footer button:hover span {
-  margin-left: 9px;
-}
-
-.archive-empty {
-  padding: 48px 16px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.archive-empty.error {
-  color: var(--error);
-}
-
-.archive-pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-lg);
-}
-
-@media (max-width: 1024px) {
-  #questionSubmitView {
-    width: min(100% - 2 * var(--space-lg), 860px);
+@media (max-width: 1100px) {
+  .cols-all {
+    grid-template-columns: 80px minmax(0, 1fr) minmax(0, 0.8fr) 72px 84px;
   }
 
-  .filter-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .filter-submit {
-    grid-column: span 1;
-  }
-
-  .submission-card-body {
-    grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.4fr) auto;
-  }
-
-  .submission-metrics {
-    grid-column: 1 / span 2;
+  .cols-all > :nth-child(4),
+  .cols-all > :nth-child(6) {
+    display: none;
   }
 }
 
-@media (max-width: 680px) {
-  #questionSubmitView {
-    width: calc(100% - 2 * var(--space-md));
-    padding: var(--space-lg) 0 var(--space-xl);
-  }
-
-  .page-title {
-    font-size: 36px;
-  }
-
-  .archive-shell {
-    margin-top: 0;
-  }
-
-  .archive-side-controls {
-    top: 50%;
-    left: 8px;
-  }
-
-  .view-switcher {
-    width: 46px;
-    padding: 4px 0;
-  }
-
-  .view-tab {
-    width: 100%;
-    padding: 11px 2px;
-  }
-
-  .view-tab::after {
-    top: 7px;
-    right: auto;
-    bottom: 7px;
-    left: -1px;
-    width: 2px;
-    height: auto;
-    transform: scaleY(0.4);
-  }
-
-  .view-tab.active::after {
-    transform: scaleY(1);
-  }
-
-  .archive-content {
-    margin-top: var(--space-lg);
-  }
-
-  .detail-back-row {
-    margin-top: 16px;
-    padding-top: 14px;
-  }
-
-  .detail-back-button {
-    width: 48px;
-    height: 48px;
-  }
-
-  .filter-panel {
-    padding: var(--space-sm);
-  }
-
-  .filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .group-search-field,
-  .filter-submit {
-    max-width: none;
-    grid-column: auto;
-  }
-
-  .submission-detail-header {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 18px 18px;
-  }
-
-  .submission-detail-meta h4 {
-    font-size: 17px;
-  }
-
-  .detail-overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .detail-overview > div:nth-child(odd) {
-    border-left: 0;
-  }
-
-  .detail-overview > div:nth-child(n + 3) {
-    border-top: 1px solid var(--hairline-soft);
-  }
-
-  .group-list {
-    grid-template-columns: 1fr;
-  }
-
-  .submission-card-header,
-  .group-card-header {
-    padding: 14px 15px 12px 20px;
-  }
-
-  .submission-card-body {
+@media (max-width: 720px) {
+  .cols-all,
+  .cols-detail,
+  .cols-group {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 14px;
-    padding: 15px 15px 14px 20px;
   }
 
-  .submission-problem,
-  .submission-diagnostic {
-    grid-column: 1 / -1;
+  .cols-all > :not(:first-child):not(:nth-child(2)),
+  .cols-detail > :not(:first-child):not(:last-child),
+  .cols-group > :not(.title-cell):not(.row-actions) {
+    display: none;
   }
 
-  .language-pill {
-    grid-column: 2;
-    grid-row: 3;
-    max-width: 140px;
-  }
-
-  .submission-metrics {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
-    margin-top: 2px;
-    background: var(--surface-soft);
-    border-radius: var(--radius-sm);
-  }
-
-  .submission-metrics span {
-    padding: 10px 11px;
-  }
-
-  .submission-metrics span + span {
-    border-left: 1px solid var(--hairline);
-  }
-
-  .submission-time {
-    grid-column: 1 / -1;
-  }
-
-  .details-toggle {
-    width: calc(100% - 35px);
-    margin: 0 15px 13px 20px;
-  }
-
-  .group-card-header {
-    align-items: flex-start;
-  }
-
-  .group-metrics {
-    grid-template-columns: 1fr;
-    margin: 12px 15px;
-  }
-
-  .group-metrics div + div {
-    border-top: 1px solid var(--hairline);
-    border-left: 0;
-  }
-
-  .group-card-footer {
-    padding: 0 15px 14px 20px;
-  }
-
-  .archive-pagination {
-    justify-content: center;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .view-tab::after,
-  .submission-card,
-  .group-card,
-  .details-toggle span {
-    transition-duration: 100ms;
+  .metrics {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

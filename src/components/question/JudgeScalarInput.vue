@@ -1,26 +1,35 @@
 <template>
-  <a-select v-if="type === 'BOOLEAN'" v-model="booleanValue">
-    <a-option value="true">true</a-option>
-    <a-option value="false">false</a-option>
-  </a-select>
-  <a-input-number
+  <UiSelect
+    v-if="type === 'BOOLEAN'"
+    v-model="booleanValue"
+    :options="BOOLEAN_OPTIONS"
+    aria-label="布尔值"
+  />
+  <UiNumberInput
     v-else-if="type === 'INTEGER' || type === 'DOUBLE'"
     v-model="numberValue"
-    :precision="type === 'INTEGER' ? 0 : undefined"
-    hide-button
-    placeholder="请输入数值"
+    :integer="type === 'INTEGER'"
+    placeholder="数值"
   />
-  <a-input
+  <UiInput
     v-else
     v-model="textValue"
-    :placeholder="type === 'LONG' ? '请输入十进制整数' : '请输入文本'"
+    :placeholder="type === 'LONG' ? '十进制整数' : '文本'"
   />
 </template>
 
 <script setup lang="ts">
 import { computed, defineEmits, defineProps } from "vue";
 
+import UiInput from "@/components/ui/UiInput.vue";
+import UiNumberInput from "@/components/ui/UiNumberInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { JudgeValue } from "@/services/questionJudgeCase";
+
+const BOOLEAN_OPTIONS = [
+  { value: "true", label: "true" },
+  { value: "false", label: "false" },
+];
 
 const props = defineProps<{
   modelValue: JudgeValue;
@@ -47,12 +56,3 @@ const textValue = computed({
   set: (value: string) => emit("update:modelValue", value),
 });
 </script>
-
-<style scoped>
-:deep(.arco-input-wrapper),
-:deep(.arco-input-number),
-:deep(.arco-select-view) {
-  width: 100%;
-  min-width: 0;
-}
-</style>

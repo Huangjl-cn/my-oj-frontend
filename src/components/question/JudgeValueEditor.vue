@@ -8,13 +8,8 @@
 
   <div v-else-if="dimensions === 1" class="structured-value-editor">
     <label class="shape-control">
-      <span>数组长度</span>
-      <a-input-number
-        v-model="arrayLength"
-        :min="0"
-        :precision="0"
-        mode="button"
-      />
+      <span>长度</span>
+      <UiNumberInput v-model="arrayLength" :min="0" integer stepper />
     </label>
     <div v-if="arrayValue.length" class="array-grid">
       <label
@@ -36,22 +31,12 @@
   <div v-else class="structured-value-editor">
     <div class="matrix-shape-controls">
       <label class="shape-control">
-        <span>行数</span>
-        <a-input-number
-          v-model="matrixRowCount"
-          :min="0"
-          :precision="0"
-          mode="button"
-        />
+        <span>行</span>
+        <UiNumberInput v-model="matrixRowCount" :min="0" integer stepper />
       </label>
       <label class="shape-control">
-        <span>列数</span>
-        <a-input-number
-          v-model="matrixColumnCount"
-          :min="0"
-          :precision="0"
-          mode="button"
-        />
+        <span>列</span>
+        <UiNumberInput v-model="matrixColumnCount" :min="0" integer stepper />
       </label>
     </div>
     <div v-if="matrixValue.length" class="matrix-scroll">
@@ -86,6 +71,7 @@
 import { computed, defineEmits, defineProps } from "vue";
 
 import JudgeScalarInput from "@/components/question/JudgeScalarInput.vue";
+import UiNumberInput from "@/components/ui/UiNumberInput.vue";
 import {
   createDefaultJudgeValue,
   getJudgeTypeOption,
@@ -182,37 +168,39 @@ const updateMatrixItem = (
 }
 
 .shape-control {
-  display: grid;
-  grid-template-columns: auto minmax(150px, 220px);
+  display: flex;
   align-items: center;
-  justify-content: start;
-  gap: 12px;
+  gap: 10px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
+}
+
+.shape-control > :last-child {
+  width: 132px;
 }
 
 .matrix-shape-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 24px;
+  gap: 12px 20px;
 }
 
 .array-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
 }
 
 .value-cell {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 
 .value-cell > span {
-  color: var(--muted-soft);
-  font-family: var(--font-code);
-  font-size: 10px;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
 }
 
 .matrix-scroll {
@@ -223,42 +211,30 @@ const updateMatrixItem = (
 
 .matrix-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: max-content;
 }
 
 .matrix-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .matrix-cell {
-  width: 150px;
+  width: 140px;
 }
 
 .empty-value {
   margin: 0;
-  padding: 14px;
-  color: var(--muted-soft);
-  background: var(--surface-soft);
-  border: 1px dashed var(--hairline);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  color: var(--faint);
+  font-size: 13px;
   text-align: center;
 }
 
 @media (max-width: 768px) {
-  .shape-control {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .matrix-shape-controls {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
   .array-grid {
     grid-template-columns: 1fr;
   }

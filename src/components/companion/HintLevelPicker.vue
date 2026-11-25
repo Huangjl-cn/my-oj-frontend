@@ -13,7 +13,7 @@
         L{{ level }}
       </span>
       <span class="level-name">{{ chipLabel }}</span>
-      <IconDown class="chevron" aria-hidden="true" />
+      <AppIcon name="chevron-down" :size="12" class="chevron" />
     </button>
 
     <div v-if="open" class="level-popover">
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { IconDown } from "@arco-design/web-vue/es/icon";
+import AppIcon from "@/components/ui/AppIcon.vue";
 import { computed, defineEmits, defineProps, PropType, ref } from "vue";
 
 import { useDismissable } from "@/composables/useDismissable";

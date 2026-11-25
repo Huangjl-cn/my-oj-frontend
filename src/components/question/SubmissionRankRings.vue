@@ -2,7 +2,7 @@
   <section class="rank-section">
     <header class="rank-section-header">
       <div>
-        <h4>同语言表现</h4>
+        <h4>和同语言的通过提交比</h4>
       </div>
       <span v-if="loading && !rank" class="rank-loading">加载中...</span>
       <span v-else-if="error" class="rank-error">{{ error }}</span>
@@ -81,7 +81,7 @@ const memoryProgress = ref(0);
 let animationFrame: number | undefined;
 
 const ringStyle = (percent: number) => ({
-  background: `conic-gradient(var(--ring-color, var(--primary)) ${percent}%, var(--surface-soft) 0)`,
+  background: `conic-gradient(var(--ring-color, var(--ink)) ${percent}%, var(--fill-strong) 0)`,
 });
 
 const animate = () => {
@@ -112,9 +112,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .rank-section {
-  padding: 20px 22px 24px;
-  background: var(--surface-soft);
-  border-bottom: 1px solid var(--hairline-soft);
+  display: grid;
+  gap: 12px;
 }
 
 .rank-section-header {
@@ -126,25 +125,25 @@ onBeforeUnmount(() => {
 
 .rank-section-header h4 {
   margin: 0;
-  color: var(--body-strong);
-  font-size: 13px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .rank-error {
-  color: var(--error);
-  font-size: 11px;
+  color: var(--danger);
+  font-size: 12px;
 }
 
 .rank-loading {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .rank-rings {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-md);
-  margin-top: 14px;
+  gap: 10px;
 }
 
 .rank-ring-card {
@@ -152,66 +151,60 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 14px;
   min-width: 0;
-  padding: 14px 15px;
-  background: var(--surface-card);
-  border: 1px solid var(--hairline-soft);
-  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
 }
 
 .rank-ring {
   position: relative;
   display: grid;
   flex: 0 0 auto;
-  width: 76px;
-  height: 76px;
+  width: 64px;
+  height: 64px;
   place-items: center;
-  background: conic-gradient(var(--primary) 0, var(--surface-soft) 0);
   border-radius: 50%;
 }
 
 .rank-ring::after {
   position: absolute;
-  inset: 7px;
-  background: var(--surface-card);
+  inset: 5px;
+  background: var(--fill);
   border-radius: 50%;
   content: "";
 }
 
 .rank-ring.memory {
-  --ring-color: var(--accent-amber);
-  background: conic-gradient(var(--ring-color) 0, var(--surface-soft) 0);
+  --ring-color: var(--muted);
 }
 
 .rank-ring.empty {
-  background: var(--surface-soft) !important;
+  background: var(--fill-strong) !important;
 }
 
 .rank-ring strong {
   position: relative;
   z-index: 1;
-  color: var(--body-strong);
-  font-family: var(--font-code);
+  color: var(--ink);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .rank-ring-card h5 {
   margin: 0;
-  color: var(--body-strong);
+  color: var(--ink);
   font-size: 14px;
+  font-weight: 600;
 }
 
 .rank-ring-card p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12.5px;
 }
 
 @media (max-width: 680px) {
-  .rank-section {
-    padding: 16px 15px 18px;
-  }
-
   .rank-rings {
     grid-template-columns: 1fr;
   }

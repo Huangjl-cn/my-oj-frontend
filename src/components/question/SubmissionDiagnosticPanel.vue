@@ -1,27 +1,22 @@
 <template>
   <section class="diagnostic-panel">
-    <header>
-      <span :class="['diagnostic-result', presentation.tone]">
-        {{ presentation.label }}
-      </span>
-      <span class="diagnostic-metrics">
-        {{ submission.judgeInfo?.time ?? "--" }} ms
-        <span aria-hidden="true">·</span>
-        {{ formatJudgeMemory(submission.judgeInfo?.memory) }}
-      </span>
-    </header>
-    <div v-if="submission.code" class="submission-code">
-      <h3>提交代码</h3>
+    <div v-if="messageParts.title" class="block">
+      <h3>判题信息</h3>
+      <div class="diagnostic-content">
+        <strong :class="presentation.tone">{{ messageParts.title }}</strong>
+        <pre v-if="messageParts.details">{{ messageParts.details }}</pre>
+      </div>
+    </div>
+    <div v-if="submission.code" class="block">
+      <h3>代码</h3>
       <CodeBlock
         :code="submission.code"
         :language="submission.language ?? ''"
       />
     </div>
-    <div v-if="messageParts.title" class="diagnostic-content">
-      <strong :class="presentation.tone">{{ messageParts.title }}</strong>
-      <pre v-if="messageParts.details">{{ messageParts.details }}</pre>
-    </div>
-    <p v-else class="diagnostic-empty">暂无判题诊断</p>
+    <p v-if="!messageParts.title && !submission.code" class="diagnostic-empty">
+      没有判题信息
+    </p>
   </section>
 </template>
 
@@ -30,7 +25,6 @@ import { computed, defineProps } from "vue";
 
 import CodeBlock from "@/components/editor/CodeBlock.vue";
 import {
-  formatJudgeMemory,
   getJudgeResultPresentation,
   splitJudgeMessage,
 } from "@/services/questionSubmit";
@@ -50,106 +44,58 @@ const messageParts = computed(() =>
 
 <style scoped>
 .diagnostic-panel {
-  padding: 18px 22px;
-  background: transparent;
+  display: grid;
+  gap: 18px;
 }
 
-.diagnostic-panel header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
+.block {
+  display: grid;
+  gap: 8px;
 }
 
-.diagnostic-result {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.diagnostic-result.passed {
-  color: var(--success);
-}
-
-.diagnostic-result.failed {
-  color: var(--error);
-}
-
-.diagnostic-result.pending {
-  color: var(--accent-amber);
-}
-
-.submission-code {
-  margin-bottom: 14px;
-}
-
-.submission-code h3 {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.submission-code pre {
-  max-height: 360px;
+h3 {
   margin: 0;
-  padding: 14px 16px;
-  overflow: auto;
-  color: var(--on-dark);
-  background: var(--surface-dark);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  font: 12px/1.65 var(--font-code);
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.diagnostic-metrics {
-  color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 12px;
-  white-space: nowrap;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .diagnostic-content {
-  padding: 14px 16px;
-  color: var(--on-dark);
-  background: var(--surface-dark);
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
-  font-family: var(--font-code);
-  font-size: 12px;
-  line-height: 1.65;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
+  background: var(--fill);
 }
 
 .diagnostic-content strong {
-  font-weight: 600;
+  font-size: 13.5px;
 }
 
-.diagnostic-content strong.passed {
+.diagnostic-content .passed {
   color: var(--success);
 }
 
-.diagnostic-content strong.failed {
-  color: var(--error);
+.diagnostic-content .failed {
+  color: var(--danger);
 }
 
-.diagnostic-content strong.pending {
-  color: var(--accent-amber);
+.diagnostic-content .pending {
+  color: var(--muted);
 }
 
 .diagnostic-content pre {
-  margin: 8px 0 0;
-  color: var(--on-dark-soft);
-  font: inherit;
-  overflow-wrap: anywhere;
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  color: var(--ink);
+  font: 12.5px/1.6 var(--font-mono);
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .diagnostic-empty {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
 }
 </style>

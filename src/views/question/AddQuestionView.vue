@@ -1,357 +1,363 @@
 <template>
-  <div id="addQuestionView">
-    <div class="form-wrapper">
-      <header class="page-heading">
-        <span class="page-kicker">
-          {{ updatePage ? "EDIT PROBLEM" : "CREATE PROBLEM" }}
-        </span>
-        <h2 class="page-title">
-          {{ updatePage ? "更新题目" : "创建题目" }}
-        </h2>
+  <div class="page question-editor">
+    <section class="panel page-head editor-head">
+      <h1>{{ updatePage ? "编辑题目" : "创建题目" }}</h1>
+      <nav class="section-nav" aria-label="跳到">
+        <button
+          v-for="section in SECTIONS"
+          :key="section.id"
+          type="button"
+          @click="scrollToSection(section.id)"
+        >
+          {{ section.label }}
+        </button>
+      </nav>
+      <div class="head-end">
+        <button
+          class="btn primary sm"
+          type="button"
+          :disabled="
+            saving ||
+            starterCodeLoading ||
+            languageLoading ||
+            judgeTypeLoading ||
+            !judgeTypeOptions.length
+          "
+          @click="doSubmit"
+        >
+          <AppIcon :name="saving ? 'spinner' : 'check'" :size="16" />
+          {{ updatePage ? "保存修改" : "发布题目" }}
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== 基本信息 ===== -->
+    <section id="section-basic" class="panel form-panel">
+      <h2>基本信息</h2>
+      <p class="form-hint">标题、难度和知识点会显示在题库列表里。</p>
+      <div class="basic-grid">
+        <label class="field title-field">
+          <span class="field-label">标题</span>
+          <UiInput v-model="form.title" placeholder="比如：两数之和" />
+        </label>
+        <div class="field">
+          <span class="field-label">难度</span>
+          <UiSegmented
+            :model-value="difficulty"
+            :options="DIFFICULTY_OPTIONS"
+            label="难度"
+            @update:model-value="setDifficulty"
+          />
+        </div>
+        <label class="field topics-field">
+          <span class="field-label">知识点</span>
+          <UiTagInput
+            v-model="topicTags"
+            placeholder="输入后回车，比如：数组、哈希表"
+          />
+        </label>
+      </div>
+    </section>
+
+    <!-- ===== 题面 ===== -->
+    <section id="section-content" class="panel form-panel">
+      <header class="section-head">
+        <div>
+          <h2>题面</h2>
+          <p class="form-hint">
+            支持 Markdown。参考题解只有通过了这道题的人能看到。
+          </p>
+        </div>
+        <UiSegmented
+          v-model="contentTab"
+          :options="CONTENT_TABS"
+          label="编辑哪一部分"
+        />
       </header>
-      <a-form :model="form" label-align="left">
-        <div class="form-section">
-          <h3 class="section-title">基本信息</h3>
-          <a-form-item field="title" label="标题">
-            <a-input v-model="form.title" placeholder="请输入标题" />
-          </a-form-item>
-          <a-form-item field="tags" label="标签">
-            <a-input-tag
-              v-model="form.tags"
-              placeholder="请选择标签"
-              allow-clear
-            />
-          </a-form-item>
-        </div>
+      <div class="md-area">
+        <MdEditor
+          v-if="contentTab === 'content'"
+          key="content"
+          :value="form.content"
+          :handle-change="onContentChange"
+        />
+        <MdEditor
+          v-else
+          key="answer"
+          :value="form.answer"
+          :handle-change="onAnswerChange"
+        />
+      </div>
+    </section>
 
-        <div class="form-section">
-          <h3 class="section-title">题目内容</h3>
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item field="content" label="描述">
-                <MdEditor
-                  :value="form.content"
-                  :handle-change="onContentChange"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item field="answer" label="答案">
-                <MdEditor
-                  :value="form.answer"
-                  :handle-change="onAnswerChange"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </div>
+    <!-- ===== 判题 ===== -->
+    <section id="section-judge" class="panel form-panel">
+      <h2>判题</h2>
+      <p class="form-hint">运行限制，以及程序读入的参数和输出的类型。</p>
 
-        <div class="form-section">
-          <h3 class="section-title">判题配置</h3>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item field="judgeConfig.timeLimit" label="时间限制(ms)">
-                <a-input-number
-                  v-model="form.judgeConfig.timeLimit"
-                  placeholder="时间限制"
-                  mode="button"
-                  min="0"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item field="judgeConfig.memoryLimit" label="内存限制(KB)">
-                <a-input-number
-                  v-model="form.judgeConfig.memoryLimit"
-                  placeholder="内存限制"
-                  mode="button"
-                  min="0"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item field="judgeConfig.stackLimit" label="堆栈限制(KB)">
-                <a-input-number
-                  v-model="form.judgeConfig.stackLimit"
-                  placeholder="堆栈限制"
-                  mode="button"
-                  min="0"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </div>
+      <div class="limits">
+        <label class="field">
+          <span class="field-label">时间限制</span>
+          <UiNumberInput
+            v-model="form.judgeConfig.timeLimit"
+            :min="0"
+            integer
+            unit="ms"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">内存限制</span>
+          <UiNumberInput
+            v-model="form.judgeConfig.memoryLimit"
+            :min="0"
+            integer
+            unit="KB"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">栈限制</span>
+          <UiNumberInput
+            v-model="form.judgeConfig.stackLimit"
+            :min="0"
+            integer
+            unit="KB"
+          />
+        </label>
+      </div>
 
-        <div class="form-section">
-          <h3 class="section-title">输入输出定义</h3>
-          <div class="definition-layout">
-            <section class="definition-panel">
-              <header class="definition-header">
-                <div>
-                  <h4>输入参数</h4>
-                  <p>用例输入顺序与这里的参数顺序一致</p>
-                </div>
-                <button
-                  class="definition-command"
-                  type="button"
-                  @click="handleAddParameter"
-                >
-                  <IconPlus />
-                  添加参数
-                </button>
-              </header>
-              <div
-                v-for="(parameter, index) in form.judgeCase.inputDefinitions"
-                :key="parameter.key"
-                class="parameter-row"
-              >
-                <span class="parameter-index">{{ index + 1 }}</span>
-                <a-input
-                  v-model="parameter.name"
-                  placeholder="参数名称"
-                  allow-clear
-                />
-                <a-select
-                  v-model="parameter.type"
-                  placeholder="参数类型"
-                  @change="handleInputTypeChange(index)"
-                >
-                  <a-option
-                    v-for="type in judgeTypeOptions"
-                    :key="type.value"
-                    :value="type.value"
-                  >
-                    {{ type.text }}
-                  </a-option>
-                </a-select>
-                <div class="parameter-actions">
-                  <button
-                    class="icon-action"
-                    type="button"
-                    title="上移参数"
-                    :disabled="index === 0"
-                    @click="moveParameter(index, -1)"
-                  >
-                    <IconUp />
-                  </button>
-                  <button
-                    class="icon-action"
-                    type="button"
-                    title="下移参数"
-                    :disabled="
-                      index === form.judgeCase.inputDefinitions.length - 1
-                    "
-                    @click="moveParameter(index, 1)"
-                  >
-                    <IconDown />
-                  </button>
-                  <button
-                    class="icon-action danger"
-                    type="button"
-                    title="删除参数"
-                    @click="handleDeleteParameter(index)"
-                  >
-                    <IconDelete />
-                  </button>
-                </div>
-              </div>
-              <p
-                v-if="!form.judgeCase.inputDefinitions.length"
-                class="definition-empty"
-              >
-                暂无输入参数
-              </p>
-            </section>
-
-            <section class="definition-panel output-definition">
-              <header class="definition-header">
-                <div>
-                  <h4>输出类型</h4>
-                  <p>所有测试用例共用同一种输出类型</p>
-                </div>
-              </header>
-              <a-select
-                v-model="form.judgeCase.outputDefinition.type"
-                placeholder="选择输出类型"
-                @change="handleOutputTypeChange"
-              >
-                <a-option
-                  v-for="type in judgeTypeOptions"
-                  :key="type.value"
-                  :value="type.value"
-                >
-                  {{ type.text }}
-                </a-option>
-              </a-select>
-            </section>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h3 class="section-title">测试用例</h3>
+      <div class="io-grid">
+        <div class="io-block">
+          <header class="io-head">
+            <h3>输入参数</h3>
+            <span class="field-hint">用例里的输入按这个顺序</span>
+            <button
+              class="btn sm add-btn"
+              type="button"
+              :disabled="!judgeTypeOptions.length"
+              @click="handleAddParameter"
+            >
+              <AppIcon name="plus" :size="15" />
+              加一个
+            </button>
+          </header>
           <div
-            v-for="(judgeCaseItem, index) of form.judgeCase.cases"
-            :key="judgeCaseItem.key"
-            class="test-case-card"
+            v-for="(parameter, index) in form.judgeCase.inputDefinitions"
+            :key="parameter.key"
+            class="parameter-row"
           >
-            <div class="test-case-header">
-              <span class="test-case-label">用例 {{ index + 1 }}</span>
+            <span class="parameter-index num">{{ index + 1 }}</span>
+            <UiInput v-model="parameter.name" placeholder="参数名" />
+            <UiSelect
+              :model-value="parameter.type"
+              :options="judgeTypeSelectOptions"
+              aria-label="参数类型"
+              @update:model-value="setInputType(index, $event)"
+            />
+            <span class="row-actions">
               <button
-                class="delete-btn"
+                class="icon-btn"
                 type="button"
-                @click="handleDeleteCase(index)"
+                aria-label="上移"
+                title="上移"
+                :disabled="index === 0"
+                @click="moveParameter(index, -1)"
               >
-                删除
+                <AppIcon name="arrow-up" :size="15" />
               </button>
-            </div>
-            <div class="case-values">
-              <section
-                v-for="(parameter, inputIndex) in form.judgeCase
-                  .inputDefinitions"
-                :key="parameter.key"
-                class="case-value-block"
+              <button
+                class="icon-btn"
+                type="button"
+                aria-label="下移"
+                title="下移"
+                :disabled="index === form.judgeCase.inputDefinitions.length - 1"
+                @click="moveParameter(index, 1)"
               >
-                <header class="case-value-heading">
-                  <strong>{{
-                    parameter.name || `参数 ${inputIndex + 1}`
-                  }}</strong>
-                  <span>{{ getJudgeTypeText(parameter.type) }}</span>
-                </header>
-                <JudgeValueEditor
-                  v-model="judgeCaseItem.inputs[inputIndex]"
-                  :type="parameter.type"
-                  :types="judgeTypeOptions"
-                />
-              </section>
-              <section class="case-value-block expected-output">
-                <header class="case-value-heading">
-                  <strong>预期输出</strong>
-                  <span>{{
-                    getJudgeTypeText(form.judgeCase.outputDefinition.type)
-                  }}</span>
-                </header>
-                <JudgeValueEditor
-                  v-model="judgeCaseItem.expectedOutput"
-                  :type="form.judgeCase.outputDefinition.type"
-                  :types="judgeTypeOptions"
-                />
-              </section>
-            </div>
+                <AppIcon name="arrow-up" :size="15" class="flip" />
+              </button>
+              <button
+                class="icon-btn danger"
+                type="button"
+                aria-label="删除参数"
+                title="删除"
+                @click="handleDeleteParameter(index)"
+              >
+                <AppIcon name="trash" :size="15" />
+              </button>
+            </span>
           </div>
-          <button class="add-case-btn" type="button" @click="handleAddCase">
-            + 新增测试用例
-          </button>
+          <p v-if="!form.judgeCase.inputDefinitions.length" class="empty-hint">
+            还没有输入参数
+          </p>
         </div>
 
-        <div class="form-section">
-          <div class="starter-section-header">
-            <h3 class="section-title">初始代码模板</h3>
-            <button
-              v-if="
-                updatePage && languageOptions.length && !starterCodeLoadError
-              "
-              class="sync-template-btn"
-              type="button"
-              :disabled="starterCodeLoading"
-              @click="syncStarterCodesToJudgeCase"
-            >
-              <IconRefresh />
-              按参数同步模板
-            </button>
-            <label v-if="!updatePage" class="starter-toggle">
-              <span>自定义模板</span>
-              <a-switch v-model="starterCodeEnabled" size="small" />
-            </label>
-          </div>
-
-          <div v-if="starterCodeLoadError" class="starter-code-alert">
-            <div>
-              <strong>模板配置异常</strong>
-              <span>{{ starterCodeLoadError }}</span>
-            </div>
-            <button
-              v-if="updatePage && languageOptions.length"
-              class="repair-template-btn"
-              type="button"
-              @click="syncStarterCodesToJudgeCase"
-            >
-              按参数同步模板
-            </button>
-          </div>
-
-          <Transition name="starter-workspace">
-            <div
-              v-if="starterCodeEnabled && languageOptions.length"
-              class="starter-code-workspace"
-            >
-              <div class="starter-language-tabs" role="tablist">
-                <button
-                  v-for="language in languageOptions"
-                  :key="language.value"
-                  :class="[
-                    'starter-language-tab',
-                    { active: activeStarterLanguage === language.value },
-                  ]"
-                  type="button"
-                  role="tab"
-                  :aria-selected="activeStarterLanguage === language.value"
-                  @click="activeStarterLanguage = language.value"
-                >
-                  {{ language.text }}
-                </button>
-              </div>
-              <div class="starter-code-editor">
-                <CodeEditor
-                  :value="starterCodes[activeStarterLanguage] || ''"
-                  :language="activeStarterLanguage"
-                  :handle-change="onStarterCodeChange"
-                />
-              </div>
-            </div>
-          </Transition>
+        <div class="io-block">
+          <header class="io-head">
+            <h3>输出类型</h3>
+            <span class="field-hint">所有用例共用</span>
+          </header>
+          <UiSelect
+            :model-value="form.judgeCase.outputDefinition.type"
+            :options="judgeTypeSelectOptions"
+            placeholder="选择输出类型"
+            aria-label="输出类型"
+            @update:model-value="setOutputType"
+          />
         </div>
+      </div>
+    </section>
 
-        <div class="form-footer">
+    <!-- ===== 测试用例 ===== -->
+    <section id="section-cases" class="panel form-panel">
+      <header class="section-head">
+        <div>
+          <h2>
+            测试用例
+            <span class="count num">{{ form.judgeCase.cases.length }}</span>
+          </h2>
+          <p class="form-hint">每个用例填好全部输入和预期输出。</p>
+        </div>
+        <button class="btn sm" type="button" @click="handleAddCase">
+          <AppIcon name="plus" :size="15" />
+          加一个用例
+        </button>
+      </header>
+
+      <div class="cases">
+        <article
+          v-for="(judgeCaseItem, index) of form.judgeCase.cases"
+          :key="judgeCaseItem.key"
+          class="case-card"
+        >
+          <header class="case-head">
+            <strong class="num">用例 {{ index + 1 }}</strong>
+            <button
+              class="icon-btn danger"
+              type="button"
+              aria-label="删除用例"
+              title="删除用例"
+              @click="handleDeleteCase(index)"
+            >
+              <AppIcon name="trash" :size="15" />
+            </button>
+          </header>
+          <div class="case-values">
+            <section
+              v-for="(parameter, inputIndex) in form.judgeCase.inputDefinitions"
+              :key="parameter.key"
+              class="case-value"
+            >
+              <span class="case-label">
+                <b>{{ parameter.name || `参数 ${inputIndex + 1}` }}</b>
+                {{ getJudgeTypeText(parameter.type) }}
+              </span>
+              <JudgeValueEditor
+                v-model="judgeCaseItem.inputs[inputIndex]"
+                :type="parameter.type"
+                :types="judgeTypeOptions"
+              />
+            </section>
+            <section class="case-value expected">
+              <span class="case-label">
+                <b>预期输出</b>
+                {{ getJudgeTypeText(form.judgeCase.outputDefinition.type) }}
+              </span>
+              <JudgeValueEditor
+                v-model="judgeCaseItem.expectedOutput"
+                :type="form.judgeCase.outputDefinition.type"
+                :types="judgeTypeOptions"
+              />
+            </section>
+          </div>
+        </article>
+        <p v-if="!form.judgeCase.cases.length" class="empty-hint">
+          还没有测试用例
+        </p>
+      </div>
+    </section>
+
+    <!-- ===== 初始代码 ===== -->
+    <section id="section-starter" class="panel form-panel">
+      <header class="section-head">
+        <div>
+          <h2>初始代码</h2>
+          <p class="form-hint">
+            {{
+              updatePage
+                ? "做题时编辑器里一开始的代码。改了参数可以按参数重新生成。"
+                : "不自定义时，按输入参数自动生成每种语言的模板。"
+            }}
+          </p>
+        </div>
+        <button
+          v-if="updatePage && languageOptions.length && !starterCodeLoadError"
+          class="btn sm"
+          type="button"
+          :disabled="starterCodeLoading"
+          @click="syncStarterCodesToJudgeCase"
+        >
+          <AppIcon name="refresh" :size="15" />
+          按参数重新生成
+        </button>
+        <label v-if="!updatePage" class="switch-label">
+          自定义
+          <UiSwitch v-model="starterCodeEnabled" label="自定义初始代码" />
+        </label>
+      </header>
+
+      <div v-if="starterCodeLoadError" class="starter-alert">
+        <span> <b>模板有问题：</b>{{ starterCodeLoadError }} </span>
+        <button
+          v-if="updatePage && languageOptions.length"
+          class="btn sm"
+          type="button"
+          @click="syncStarterCodesToJudgeCase"
+        >
+          按参数重新生成
+        </button>
+      </div>
+
+      <div
+        v-if="starterCodeEnabled && languageOptions.length"
+        class="starter-workspace"
+      >
+        <div class="language-tabs" role="tablist" aria-label="语言">
           <button
-            class="claude-btn-primary"
+            v-for="language in languageOptions"
+            :key="language.value"
+            :class="{ on: activeStarterLanguage === language.value }"
             type="button"
-            :disabled="
-              starterCodeLoading ||
-              languageLoading ||
-              judgeTypeLoading ||
-              !judgeTypeOptions.length
-            "
-            @click="doSubmit"
+            role="tab"
+            :aria-selected="activeStarterLanguage === language.value"
+            @click="activeStarterLanguage = language.value"
           >
-            {{ updatePage ? "更新" : "提交" }}
+            {{ language.text }}
           </button>
         </div>
-      </a-form>
-    </div>
+        <div class="starter-editor">
+          <CodeEditor
+            :value="starterCodes[activeStarterLanguage] || ''"
+            :language="activeStarterLanguage"
+            :handle-change="onStarterCodeChange"
+          />
+        </div>
+      </div>
+    </section>
+
+    <ConfirmDialog
+      v-model:visible="showCreateLeaveDialog"
+      :title="updatePage ? '不保存就离开？' : '放弃这道题？'"
+      :message="
+        updatePage ? '还没保存的修改会丢掉。' : '已经填写的内容会丢掉。'
+      "
+      :confirm-text="updatePage ? '离开' : '放弃'"
+      tone="danger"
+      @confirm="confirmCreateLeave"
+    />
   </div>
-  <ConfirmDialog
-    v-model:visible="showCreateLeaveDialog"
-    :title="updatePage ? '离开更新页面' : '离开创建页面'"
-    :message="
-      updatePage
-        ? '离开后，当前尚未提交的题目修改将不会保留。'
-        : '离开后，当前尚未提交的题目内容将会丢失。'
-    "
-    :confirm-text="updatePage ? '离开页面' : '放弃内容'"
-    tone="danger"
-    @confirm="confirmCreateLeave"
-  />
 </template>
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import {
-  IconDelete,
-  IconDown,
-  IconPlus,
-  IconRefresh,
-  IconUp,
-} from "@arco-design/web-vue/es/icon";
 import { computed, onMounted, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 
@@ -359,6 +365,13 @@ import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import CodeEditor from "@/components/editor/CodeEditor.vue";
 import MdEditor from "@/components/editor/MdEditor.vue";
 import JudgeValueEditor from "@/components/question/JudgeValueEditor.vue";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiNumberInput from "@/components/ui/UiNumberInput.vue";
+import UiSegmented from "@/components/ui/UiSegmented.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
+import UiSwitch from "@/components/ui/UiSwitch.vue";
+import UiTagInput from "@/components/ui/UiTagInput.vue";
 import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
 import {
   buildJudgeCaseConfig,
@@ -384,6 +397,12 @@ import {
 } from "@/services/questionStarterCode";
 import { normalizeJudgeConfig } from "@/services/questionJudgeConfig";
 import { clearQuestionDraftsForQuestion } from "@/services/questionDraft";
+import {
+  Difficulty,
+  DIFFICULTY_LABELS,
+  difficultyOfTag,
+  getDifficulty,
+} from "@/utils/difficulty";
 import { JudgeConfig, QuestionControllerService } from "../../../generated";
 
 interface QuestionForm {
@@ -431,6 +450,54 @@ const initialCreateFormSnapshot = ref("");
 const showCreateLeaveDialog = ref(false);
 const pendingCreateLeavePath = ref("");
 let allowCreateLeave = false;
+const saving = ref(false);
+
+// ===== 页面上方的分区导航 =====
+const SECTIONS = [
+  { id: "section-basic", label: "基本信息" },
+  { id: "section-content", label: "题面" },
+  { id: "section-judge", label: "判题" },
+  { id: "section-cases", label: "测试用例" },
+  { id: "section-starter", label: "初始代码" },
+];
+const scrollToSection = (id: string) =>
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
+// ===== 难度和知识点：都存在 tags 里，难度单独用一组按钮选 =====
+const DIFFICULTY_OPTIONS = [
+  { value: "", label: "不标" },
+  { value: "easy", label: "简单" },
+  { value: "medium", label: "中等" },
+  { value: "hard", label: "困难" },
+];
+const difficulty = computed(() => getDifficulty(form.value.tags) ?? "");
+const setDifficulty = (value: string) => {
+  const topics = form.value.tags.filter((tag) => !difficultyOfTag(tag));
+  form.value.tags = value
+    ? [DIFFICULTY_LABELS[value as Difficulty], ...topics]
+    : topics;
+};
+const topicTags = computed({
+  get: () => form.value.tags.filter((tag) => !difficultyOfTag(tag)),
+  set: (tags: string[]) => {
+    const difficultyTag = form.value.tags.find((tag) => difficultyOfTag(tag));
+    form.value.tags = [
+      ...(difficultyTag ? [difficultyTag] : []),
+      ...tags.filter((tag) => !difficultyOfTag(tag)),
+    ];
+  },
+});
+
+// 题目描述和参考题解共用一个编辑区，用两个按钮切换
+const contentTab = ref("content");
+const CONTENT_TABS = [
+  { value: "content", label: "题目描述" },
+  { value: "answer", label: "参考题解" },
+];
+
+const judgeTypeSelectOptions = computed(() =>
+  judgeTypeOptions.value.map(({ value, text }) => ({ value, label: text }))
+);
 
 const getCreateFormSnapshot = () =>
   JSON.stringify({
@@ -582,6 +649,12 @@ const syncStarterCodesToJudgeCase = () => {
 };
 
 const doSubmit = async () => {
+  if (saving.value) return;
+  if (!form.value.title.trim()) {
+    message.warning("先给题目起个标题");
+    scrollToSection("section-basic");
+    return;
+  }
   const judgeCaseError = validateJudgeCaseConfig(
     form.value.judgeCase,
     judgeTypeOptions.value
@@ -590,7 +663,15 @@ const doSubmit = async () => {
     message.warning(judgeCaseError);
     return;
   }
+  saving.value = true;
+  try {
+    await submitQuestion();
+  } finally {
+    saving.value = false;
+  }
+};
 
+const submitQuestion = async () => {
   const starterCodeList =
     starterCodeEnabled.value && (!updatePage || starterCodeDirty.value)
       ? buildStarterCodeList(starterCodes.value, languageOptions.value)
@@ -616,7 +697,7 @@ const doSubmit = async () => {
         clearQuestionDraftsForQuestion(form.value.id);
       }
       allowCreateLeave = true;
-      message.success("更新成功");
+      message.success("已保存");
       router.push(
         route.query.from === "my" ? "/my/question" : "/manage/question"
       );
@@ -629,7 +710,7 @@ const doSubmit = async () => {
         clearQuestionDraftsForQuestion(res.data);
       }
       allowCreateLeave = true;
-      message.success("创建成功");
+      message.success("题目已发布");
       router.push("/questions");
     } else message.error("创建失败，" + res.message);
   }
@@ -680,6 +761,19 @@ const moveParameter = (index: number, offset: -1 | 1) => {
   });
 };
 
+const setInputType = (index: number, type: string) => {
+  const parameter = form.value.judgeCase.inputDefinitions[index];
+  if (!parameter || parameter.type === type) return;
+  parameter.type = type;
+  handleInputTypeChange(index);
+};
+
+const setOutputType = (type: string) => {
+  if (form.value.judgeCase.outputDefinition.type === type) return;
+  form.value.judgeCase.outputDefinition.type = type;
+  handleOutputTypeChange();
+};
+
 const handleInputTypeChange = (index: number) => {
   const type = form.value.judgeCase.inputDefinitions[index]?.type;
   if (!type) return;
@@ -719,766 +813,312 @@ const onAnswerChange = (value: string) => {
 </script>
 
 <style scoped>
-#addQuestionView {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: var(--space-lg) 0;
-  animation: page-enter var(--motion-standard) var(--ease-out);
+div.page.question-editor {
+  grid-template-rows: none;
+  padding-bottom: 20px;
 }
 
-.form-wrapper {
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  padding: var(--space-xl);
-  box-shadow: var(--shadow-sm);
+/* 标题栏滚动时贴在顶部，随时能保存 */
+.editor-head {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
-/* Make description/answer labels compact inside 50% columns */
-.arco-col-12 .arco-form-item-label-col {
-  flex: 0 0 auto !important;
-  padding-right: 4px !important;
-}
-
-.arco-col-12 .arco-form-item-wrapper-col {
-  flex: 1 !important;
-}
-
-.page-heading {
-  margin-bottom: var(--space-lg);
-  padding-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.page-kicker {
-  color: var(--primary);
-  font-family: var(--font-code);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-}
-
-.page-title {
-  font-family: var(--font-sans);
-  font-size: 32px;
-  font-weight: 400;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-  margin: 2px 0 0;
-}
-
-.form-section {
-  margin-bottom: var(--space-xl);
-}
-
-.section-title {
+.section-nav {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.section-title::before {
-  content: "";
-  width: 22px;
-  height: 2px;
-  flex: 0 0 auto;
-  background: var(--primary);
-}
-
-.arco-form-item {
-  margin-bottom: var(--space-md);
-}
-
-.arco-form-item-label {
-  color: var(--muted) !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  flex-shrink: 0 !important;
-  width: auto !important;
-  min-width: 60px !important;
-  padding-right: 12px !important;
-}
-
-.arco-input-tag {
-  display: flex !important;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  width: 100% !important;
-  min-width: 0 !important;
+  gap: 2px;
 }
 
-.arco-input-tag input {
-  width: auto !important;
-  min-width: 120px !important;
-  flex: 1 1 120px !important;
-}
-
-/* Fix input-number width */
-.arco-input-number {
-  width: 100% !important;
-}
-
-/* Make form item content fill remaining space */
-.arco-form-item-content {
-  flex: 1 !important;
-  overflow: hidden;
-}
-
-.definition-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: var(--space-md);
-}
-
-.definition-panel {
-  min-width: 0;
-  padding: var(--space-md);
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-}
-
-.definition-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: 14px;
-}
-
-.definition-header h4 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.definition-header p {
-  margin: 3px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.definition-command {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
+.section-nav button {
   height: 32px;
-  padding: 0 11px;
-  color: var(--primary);
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-pill);
   background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13.5px;
   cursor: pointer;
 }
 
-.definition-command:hover {
-  background: var(--primary-light);
-  border-color: var(--primary);
+.section-nav button:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.form-panel {
+  scroll-margin-top: 96px;
+}
+
+.form-panel h2 .count {
+  margin-left: 6px;
+  color: var(--faint);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.section-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.section-head .form-hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+/* ===== 基本信息 ===== */
+.basic-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 20px;
+}
+
+.topics-field {
+  grid-column: 1 / -1;
+}
+
+/* ===== 题面 ===== */
+.md-area :deep(.bytemd) {
+  height: 520px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden;
+}
+
+/* ===== 判题 ===== */
+.limits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px));
+  gap: 14px;
+}
+
+.io-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.io-block {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+
+.io-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.io-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.field-hint {
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.add-btn {
+  margin-left: auto;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .parameter-row {
   display: grid;
-  grid-template-columns: 24px minmax(110px, 0.8fr) minmax(170px, 1.2fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 10px 0;
-  border-top: 1px solid var(--hairline-soft);
+}
+
+.parameter-row :deep(.ui-input),
+.parameter-row :deep(.ui-select select),
+.io-block :deep(.ui-select select) {
+  background: var(--panel);
 }
 
 .parameter-index {
-  color: var(--muted-soft);
-  font-family: var(--font-code);
-  font-size: 11px;
+  color: var(--faint);
+  font-size: 13px;
   text-align: center;
 }
 
-.parameter-actions {
-  display: flex;
-  gap: 4px;
+.flip {
+  transform: rotate(180deg);
 }
 
-.icon-action {
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  padding: 0;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.icon-action:hover:not(:disabled) {
-  color: var(--ink);
-  background: var(--surface-soft);
-  border-color: var(--hairline);
-}
-
-.icon-action.danger:hover:not(:disabled) {
-  color: var(--error);
-  background: rgba(198, 69, 69, 0.08);
-  border-color: rgba(198, 69, 69, 0.24);
-}
-
-.icon-action:disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
-}
-
-.definition-empty {
+.empty-hint {
   margin: 0;
-  padding: 18px;
-  color: var(--muted-soft);
-  border-top: 1px solid var(--hairline-soft);
-  font-size: 12px;
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  color: var(--faint);
+  font-size: 13px;
   text-align: center;
 }
 
-.output-definition :deep(.arco-select-view) {
-  width: 100%;
+/* ===== 测试用例 ===== */
+.cases {
+  display: grid;
+  gap: 12px;
 }
 
-.test-case-card {
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  margin-bottom: var(--space-sm);
+.case-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
 }
 
-.test-case-header {
+.case-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-sm);
 }
 
-.test-case-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--body);
+.case-head strong {
+  color: var(--ink);
+  font-size: 14px;
 }
 
 .case-values {
   display: grid;
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
 }
 
-.case-value-block {
-  min-width: 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--hairline-soft);
-}
-
-.case-value-heading {
-  display: flex;
-  align-items: baseline;
+.case-value {
+  display: grid;
+  align-content: start;
   gap: 8px;
-  margin-bottom: 10px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--panel);
 }
 
-.case-value-heading strong {
+.case-value.expected {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.case-label {
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.case-label b {
+  margin-right: 6px;
   color: var(--ink);
   font-size: 13px;
   font-weight: 600;
 }
 
-.case-value-heading span {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.expected-output {
-  padding: 14px;
-  background: var(--surface-soft);
-  border-top: 2px solid var(--primary);
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-}
-
-.delete-btn {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--error);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  padding: 2px 10px;
-  cursor: pointer;
-  transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
-  line-height: 1.4;
-}
-
-.delete-btn:hover {
-  background: rgba(198, 69, 69, 0.08);
-  border-color: var(--error);
-}
-
-.add-case-btn {
-  width: 100%;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary);
-  background: transparent;
-  border: 1px dashed var(--hairline);
-  border-radius: var(--radius-sm);
-  padding: 10px;
-  cursor: pointer;
-  transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
-}
-
-.delete-btn:active,
-.add-case-btn:active {
-  transform: translateY(1px);
-}
-
-.starter-workspace-enter-active,
-.starter-workspace-leave-active {
-  transition: opacity 180ms ease, transform 180ms var(--ease-out);
-}
-
-.starter-workspace-enter-from,
-.starter-workspace-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-.add-case-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-light);
-}
-
-.starter-section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-md);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.starter-section-header .section-title {
-  flex: 1;
-  margin-bottom: 0;
-  border-bottom: 0;
-}
-
-.sync-template-btn {
+/* ===== 初始代码 ===== */
+.switch-label {
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  color: var(--primary);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 12px;
-  cursor: pointer;
-  transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
+  gap: 10px;
+  color: var(--body);
+  font-size: 13.5px;
 }
 
-.sync-template-btn:hover {
-  background: var(--primary-light);
-  border-color: var(--primary);
-}
-
-.sync-template-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.sync-template-btn:active {
-  transform: translateY(1px);
-}
-
-.starter-toggle {
+.starter-alert {
   display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 2px 0 10px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.starter-code-alert {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-md);
-  margin-top: var(--space-md);
+  gap: 12px;
+  margin-bottom: 14px;
   padding: 12px 14px;
-  background: rgba(198, 69, 69, 0.08);
-  border-left: 3px solid var(--error);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--body);
+  font-size: 13.5px;
 }
 
-.starter-code-alert > div {
-  display: grid;
-  gap: 3px;
-}
-
-.starter-code-alert strong {
-  color: var(--error);
-  font-size: 13px;
-}
-
-.starter-code-alert span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.repair-template-btn {
-  flex-shrink: 0;
-  height: 32px;
-  padding: 0 12px;
-  color: var(--error);
-  background: transparent;
-  border: 1px solid var(--error);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 12px;
-  cursor: pointer;
-  transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
-}
-
-.repair-template-btn:hover {
-  background: rgba(198, 69, 69, 0.08);
-}
-
-.starter-code-workspace {
-  margin-top: var(--space-md);
+.starter-workspace {
   overflow: hidden;
-  background: var(--surface-dark);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
 
-.starter-language-tabs {
+.language-tabs {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 2px;
   padding: 8px;
-  overflow-x: auto;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--line);
 }
 
-.starter-language-tab {
-  flex: 0 0 auto;
+.language-tabs button {
   height: 30px;
   padding: 0 12px;
-  color: var(--on-dark-soft);
+  border: none;
+  border-radius: var(--radius-pill);
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  font-family: var(--font-body);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13px;
   cursor: pointer;
 }
 
-.starter-language-tab:hover {
-  color: var(--on-dark);
-  background: var(--surface-dark-elevated);
+.language-tabs button:hover {
+  color: var(--ink);
 }
 
-.starter-language-tab.active {
-  color: var(--on-dark);
-  background: var(--surface-dark-elevated);
-  border-color: #444;
+.language-tabs button.on {
+  background: var(--fill);
+  color: var(--ink);
+  font-weight: 600;
 }
 
-.starter-code-editor :deep(#code-editor) {
+.starter-editor {
+  height: 380px;
+}
+
+.starter-editor :deep(#code-editor) {
   width: 100% !important;
   height: 380px !important;
-  min-height: 320px !important;
 }
 
-.form-footer {
-  margin-top: var(--space-lg);
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--hairline);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.claude-btn-primary {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-  height: 40px;
-  padding: 0 32px;
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: var(--on-primary);
-  border: none;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
-}
-
-.repair-template-btn:active,
-.claude-btn-primary:not(:disabled):active {
-  transform: translateY(1px);
-}
-
-.claude-btn-primary:hover {
-  background: var(--primary-active);
-}
-
-.claude-btn-primary:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-@media (max-width: 768px) {
-  #addQuestionView {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    padding: 20px 16px 32px;
+@media (max-width: 900px) {
+  .editor-head {
+    position: static;
   }
 
-  .form-wrapper {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    padding: 20px 16px;
-    border-radius: var(--radius-md);
+  .basic-grid,
+  .io-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .page-heading {
-    margin-bottom: 20px;
-    padding-bottom: 18px;
-  }
-
-  .page-title {
-    font-size: 32px;
-  }
-
-  .form-section {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    margin-bottom: 30px;
-  }
-
-  .section-title {
-    font-size: 17px;
-  }
-
-  :deep(.arco-row) {
-    display: block;
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-  }
-
-  :deep(.arco-col-8),
-  :deep(.arco-col-12) {
-    width: 100%;
-    max-width: 100%;
-    display: block;
-    flex: 0 0 100%;
-    padding-right: 0 !important;
-    padding-left: 0 !important;
-  }
-
-  :deep(.arco-form-item) {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  :deep(.arco-form-item-label-col),
-  :deep(.arco-form-item-wrapper-col) {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    display: block;
-    flex: 0 0 100%;
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-  }
-
-  :deep(.arco-form-item-label) {
-    width: 100% !important;
-    padding: 0 0 6px !important;
-    text-align: left !important;
-  }
-
-  :deep(.arco-form-item-content) {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .form-section :deep(.bytemd) {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: 320px !important;
-    min-height: 280px !important;
-    overflow: hidden;
-  }
-
-  .form-section :deep(.bytemd-preview) {
-    display: none;
-  }
-
-  .form-section :deep(.bytemd-editor) {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    border-right: 0 !important;
-  }
-
-  .form-section :deep(.bytemd-toolbar) {
-    display: flex;
-    width: 100%;
-    max-width: 100%;
-    align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-  }
-
-  .form-section :deep(.bytemd-toolbar-left),
-  .form-section :deep(.bytemd-toolbar-right) {
-    float: none;
-    flex: 0 0 auto;
-  }
-
-  .form-section :deep(.bytemd-body),
-  .form-section :deep(.CodeMirror) {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .form-section :deep(.bytemd-status) {
-    display: flex;
-    width: 100%;
-    max-width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-  }
-
-  .form-section :deep(.bytemd-status-left),
-  .form-section :deep(.bytemd-status-right) {
-    float: none;
-    flex: 0 0 auto;
-  }
-
-  .test-case-card {
-    padding: 14px;
-  }
-
-  .definition-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .definition-header {
-    align-items: flex-start;
-  }
-
-  .parameter-row {
-    grid-template-columns: 22px minmax(0, 1fr) auto;
-  }
-
-  .parameter-row > :deep(.arco-select) {
-    grid-column: 2 / -1;
-  }
-
-  .parameter-actions {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .case-value-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .starter-section-header {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .sync-template-btn {
-    justify-content: center;
-    width: 100%;
-  }
-
-  .starter-toggle {
-    justify-content: space-between;
-  }
-
-  .starter-code-alert {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .repair-template-btn {
-    width: 100%;
-  }
-
-  .starter-code-editor :deep(#code-editor) {
-    height: 320px !important;
-    min-height: 280px !important;
-  }
-
-  .form-footer {
-    padding-top: 18px;
-  }
-
-  .claude-btn-primary {
-    width: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .starter-workspace-enter-active,
-  .starter-workspace-leave-active {
-    transition-duration: 120ms;
-  }
-
-  .starter-workspace-enter-from,
-  .starter-workspace-leave-to {
-    transform: none;
+  .limits {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
