@@ -20,7 +20,7 @@ npm run generate:api       # Regenerate API client from backend OpenAPI spec (re
 
 ## Package Manager
 
-Both `yarn.lock` and `package-lock.json` coexist in this repo. Use **npm** for installs (`npm install`) — `npm run` scripts work regardless of lockfile.
+npm only: `package-lock.json` is the lockfile (`npm ci` to install). Do not add a `yarn.lock` — Vue CLI sees it and refuses to start `serve` when yarn is not installed.
 
 ## Tech Stack
 
