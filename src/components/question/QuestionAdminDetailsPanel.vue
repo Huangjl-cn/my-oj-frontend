@@ -1,27 +1,22 @@
 <template>
   <section class="question-details">
-    <article class="details-main">
-      <span class="section-label">题目概览</span>
-      <h2>{{ question.title || "未命名题目" }}</h2>
-      <p class="content-preview">{{ question.content || "暂无内容" }}</p>
-    </article>
-
+    <p class="content-preview">{{ question.content || "暂无内容" }}</p>
     <dl class="judge-metrics">
       <div>
         <dt>时间限制</dt>
-        <dd>{{ judgeConfig.timeLimit ?? "--" }} <small>ms</small></dd>
+        <dd class="num">{{ judgeConfig.timeLimit ?? "--" }} ms</dd>
       </div>
       <div>
         <dt>内存限制</dt>
-        <dd>{{ formatJudgeMemory(judgeConfig.memoryLimit) }}</dd>
+        <dd class="num">{{ formatJudgeMemory(judgeConfig.memoryLimit) }}</dd>
       </div>
       <div>
-        <dt>堆栈限制</dt>
-        <dd>{{ formatJudgeMemory(judgeConfig.stackLimit) }}</dd>
+        <dt>栈限制</dt>
+        <dd class="num">{{ formatJudgeMemory(judgeConfig.stackLimit) }}</dd>
       </div>
       <div>
         <dt>测试用例</dt>
-        <dd>{{ judgeCaseCount }} <small>个</small></dd>
+        <dd class="num">{{ judgeCaseCount }} 个</dd>
       </div>
     </dl>
   </section>
@@ -58,100 +53,57 @@ const judgeCaseCount = computed(() => judgeCaseConfig.value.cases?.length ?? 0);
 <style scoped>
 .question-details {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(520px, 1.2fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 36px;
-  padding: 20px 28px;
-  background: transparent;
-}
-
-.details-main {
-  min-width: 0;
-  padding-left: 18px;
-  border-left: 3px solid var(--primary);
-}
-
-.section-label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.details-main h2 {
-  margin: 3px 0 6px;
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 20px;
-  font-weight: 500;
+  gap: 24px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
 }
 
 .content-preview {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  color: var(--body);
-  font-size: 12px;
-  line-height: 1.6;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .judge-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, auto);
+  gap: 0 28px;
   margin: 0;
-  overflow: hidden;
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-}
-
-.judge-metrics > div {
-  min-width: 0;
-  padding: 8px 16px;
-}
-
-.judge-metrics > div + div {
-  border-left: 1px solid var(--hairline-soft);
 }
 
 .judge-metrics dt {
-  color: var(--muted);
-  font-size: 11px;
+  color: var(--faint);
+  font-size: 12px;
   white-space: nowrap;
 }
 
 .judge-metrics dd {
-  margin: 7px 0 0;
+  margin: 4px 0 0;
   color: var(--ink);
-  font-family: var(--font-code);
   font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.judge-metrics small {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 500;
-}
-
 @media (max-width: 900px) {
   .question-details {
     grid-template-columns: 1fr;
-    gap: 20px;
   }
 
   .judge-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-left: 0;
-  }
-
-  .judge-metrics > div:nth-child(3) {
-    border-left: 0;
+    grid-template-columns: repeat(2, auto);
+    gap: 12px 28px;
+    justify-content: start;
   }
 }
 </style>

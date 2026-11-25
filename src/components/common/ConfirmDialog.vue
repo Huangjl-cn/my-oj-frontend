@@ -8,7 +8,9 @@
           aria-modal="true"
           :aria-labelledby="titleId"
         >
-          <div :class="['confirm-dialog-marker', tone]">!</div>
+          <div :class="['confirm-dialog-marker', tone]" aria-hidden="true">
+            <AppIcon :name="tone === 'danger' ? 'trash' : 'bulb'" :size="18" />
+          </div>
           <div class="confirm-dialog-copy">
             <h2 :id="titleId">{{ title }}</h2>
             <p>{{ message }}</p>
@@ -32,7 +34,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, withDefaults } from "vue";
+import {
+  computed,
+  defineEmits,
+  defineProps,
+  onBeforeUnmount,
+  watch,
+  withDefaults,
+} from "vue";
+
+import AppIcon from "@/components/ui/AppIcon.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -59,6 +70,20 @@ const titleId = computed(
   () => `confirm-dialog-${props.title.replace(/\s+/g, "-")}`
 );
 const close = () => emit("update:visible", false);
+
+// 打开时 Esc 关闭
+const onKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Escape") close();
+};
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) document.addEventListener("keydown", onKeydown);
+    else document.removeEventListener("keydown", onKeydown);
+  },
+  { immediate: true }
+);
+onBeforeUnmount(() => document.removeEventListener("keydown", onKeydown));
 </script>
 
 <style scoped>
@@ -69,8 +94,8 @@ const close = () => emit("update:visible", false);
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(18, 17, 15, 0.52);
-  backdrop-filter: blur(3px);
+  background: rgba(9, 9, 11, 0.42);
+  backdrop-filter: blur(4px);
 }
 
 .confirm-dialog-enter-active,
@@ -80,7 +105,6 @@ const close = () => emit("update:visible", false);
 
 .confirm-dialog-enter-active .confirm-dialog,
 .confirm-dialog-leave-active .confirm-dialog {
-  transform-origin: center;
   transition: opacity var(--motion-standard) ease,
     transform var(--motion-standard) var(--ease-out);
 }
@@ -94,54 +118,49 @@ const close = () => emit("update:visible", false);
 
 .confirm-dialog-enter-from .confirm-dialog,
 .confirm-dialog-leave-to .confirm-dialog {
-  transform: translateY(6px) scale(0.97);
+  transform: translateY(8px) scale(0.98);
 }
 
 .confirm-dialog {
-  width: min(440px, 100%);
+  width: min(420px, 100%);
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: 14px;
-  padding: 22px;
+  padding: 24px 22px 20px;
   color: var(--body);
-  background: var(--surface-card);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-float);
 }
 
 .confirm-dialog-marker {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  color: var(--primary);
-  background: var(--primary-light);
-  border: 1px solid var(--primary);
   border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
+  background: var(--fill);
+  color: var(--ink);
 }
 
 .confirm-dialog-marker.danger {
-  color: var(--error);
-  background: rgba(198, 69, 69, 0.1);
-  border-color: var(--error);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
 }
 
 .confirm-dialog-copy h2 {
-  margin: 1px 0 7px;
+  margin: 2px 0 6px;
   color: var(--ink);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .confirm-dialog-copy p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 13.5px;
+  line-height: 1.7;
 }
 
 .confirm-dialog-actions {
@@ -149,30 +168,49 @@ const close = () => emit("update:visible", false);
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .dialog-btn {
-  height: 36px;
-  padding: 0 16px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 13px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
+  transition: opacity var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
 }
 
-.dialog-btn:active {
-  transform: translateY(1px);
+.dialog-btn.secondary {
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+}
+
+.dialog-btn.secondary:hover {
+  background: var(--fill);
+}
+
+.dialog-btn.primary {
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.dialog-btn.danger {
+  color: #fff;
+  background: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.dialog-btn.primary:hover,
+.dialog-btn.danger:hover {
+  opacity: 0.88;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .confirm-dialog-enter-active,
-  .confirm-dialog-leave-active,
   .confirm-dialog-enter-active .confirm-dialog,
   .confirm-dialog-leave-active .confirm-dialog {
     transition-duration: 120ms;
@@ -182,36 +220,5 @@ const close = () => emit("update:visible", false);
   .confirm-dialog-leave-to .confirm-dialog {
     transform: none;
   }
-}
-
-.dialog-btn.secondary {
-  color: var(--body);
-  background: transparent;
-  border: 1px solid var(--hairline);
-}
-
-.dialog-btn.primary,
-.dialog-btn.danger {
-  color: var(--on-primary);
-  border: 1px solid var(--primary);
-  background: var(--primary);
-}
-
-.dialog-btn.danger {
-  border-color: var(--error);
-  background: var(--error);
-}
-
-.dialog-btn.secondary:hover {
-  color: var(--ink);
-  background: var(--surface-soft);
-}
-
-.dialog-btn.primary:hover {
-  background: var(--primary-active);
-}
-
-.dialog-btn.danger:hover {
-  filter: brightness(0.9);
 }
 </style>

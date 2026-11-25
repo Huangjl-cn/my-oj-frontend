@@ -41,6 +41,7 @@ import "@fontsource-variable/geist-mono";
 import "@/styles/tokens.css";
 import "@/styles/base.css";
 import "@/styles/code.css";
+import "@/styles/page.css";
 import "@/styles/arco.css";
 import router from "./router";
 import store from "./store";

@@ -1,186 +1,193 @@
 <template>
-  <main id="userProfileView">
-    <header class="page-header">
-      <span class="page-kicker">ACCOUNT</span>
-      <h1>个人中心</h1>
-    </header>
+  <div class="page">
+    <div class="profile-grid">
+      <aside class="side">
+        <section class="panel identity">
+          <UserAvatar
+            :avatar="loginUser.userAvatar"
+            :name="loginUser.userName || loginUser.userAccount"
+            :size="88"
+          />
+          <h1>{{ loginUser.userName || "未设置昵称" }}</h1>
+          <p class="account">
+            @{{ loginUser.userAccount || "--" }}
+            <span class="role">{{ formatUserRole(loginUser.userRole) }}</span>
+          </p>
+          <p class="bio">{{ loginUser.userProfile || "还没有写简介" }}</p>
+          <p class="joined">
+            <AppIcon name="clock" :size="14" />
+            {{ formatDateTime(loginUser.createTime).slice(0, 10) }} 加入
+          </p>
+        </section>
 
-    <div class="profile-layout">
-      <aside class="identity-panel">
-        <UserAvatar
-          :avatar="loginUser.userAvatar"
-          :name="loginUser.userName || loginUser.userAccount"
-          :size="112"
-        />
-        <div class="identity-heading">
-          <h2>{{ loginUser.userName || "未设置昵称" }}</h2>
-          <p>@{{ loginUser.userAccount || "--" }}</p>
-        </div>
-        <span class="identity-role">{{
-          formatUserRole(loginUser.userRole)
-        }}</span>
-        <p class="identity-profile">
-          {{ loginUser.userProfile || "暂未填写个人简介" }}
-        </p>
-        <dl class="identity-meta">
-          <div>
-            <dt>注册时间</dt>
-            <dd>{{ formatDateTime(loginUser.createTime) }}</dd>
+        <section class="panel progress">
+          <header>
+            <h2>做题进度</h2>
+            <span class="num">
+              <b>{{ solved.all }}</b> / {{ total.all }}
+            </span>
+          </header>
+          <div v-for="level in LEVELS" :key="level" class="bar-row">
+            <DifficultyLabel :difficulty="level" />
+            <span class="bar">
+              <i
+                :class="level"
+                :style="{ width: percent(solved[level], total[level]) }"
+              />
+            </span>
+            <span class="bar-count num">
+              {{ solved[level] }} / {{ total[level] }}
+            </span>
           </div>
-          <div>
-            <dt>更新时间</dt>
-            <dd>{{ formatDateTime(loginUser.updateTime) }}</dd>
-          </div>
-        </dl>
+          <router-link class="btn sm" to="/">
+            <AppIcon name="book" :size="16" />
+            去题库
+          </router-link>
+        </section>
       </aside>
 
-      <section class="settings-panel">
-        <div class="settings-tabs" role="tablist" aria-label="个人设置">
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'profile'"
-            :class="{ active: activeTab === 'profile' }"
-            @click="activeTab = 'profile'"
-          >
-            <IconUser />
-            个人资料
-          </button>
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'password'"
-            :class="{ active: activeTab === 'password' }"
-            @click="activeTab = 'password'"
-          >
-            <IconLock />
-            修改密码
-          </button>
-        </div>
+      <section class="panel settings">
+        <header class="settings-head">
+          <h2>{{ activeTab === "profile" ? "个人资料" : "修改密码" }}</h2>
+          <UiSegmented
+            :model-value="activeTab"
+            :options="TABS"
+            label="设置项"
+            @update:model-value="setTab"
+          />
+        </header>
 
-        <Transition name="settings-panel" mode="out-in">
-          <form
-            v-if="activeTab === 'profile'"
-            key="profile"
-            class="settings-form"
-            @submit.prevent="saveProfile"
-          >
-            <header class="form-heading">
-              <h2>个人资料</h2>
-              <p>更新昵称、简介和头像。</p>
-            </header>
-
-            <label class="form-field">
-              <span>账号</span>
-              <input :value="loginUser.userAccount" readonly />
+        <form
+          v-if="activeTab === 'profile'"
+          class="settings-form"
+          @submit.prevent="saveProfile"
+        >
+          <div class="field-row">
+            <label class="field">
+              <span class="field-label">账号</span>
+              <UiInput :model-value="loginUser.userAccount" readonly />
             </label>
-            <label class="form-field">
-              <span>昵称</span>
-              <input
+            <label class="field">
+              <span class="field-label">昵称</span>
+              <UiInput
                 v-model="profileForm.userName"
-                autocomplete="name"
-                placeholder="请输入昵称"
+                autocomplete="nickname"
+                placeholder="别人看到的名字"
               />
             </label>
-            <label class="form-field">
-              <span>个人简介</span>
-              <textarea
-                v-model="profileForm.userProfile"
-                rows="4"
-                placeholder="介绍一下自己"
-              ></textarea>
-            </label>
-            <fieldset class="avatar-field">
-              <legend>选择头像</legend>
-              <AvatarPicker v-model="profileForm.userAvatar" />
-            </fieldset>
-            <p v-if="profileError" class="form-error">{{ profileError }}</p>
-            <div class="form-actions">
-              <button
-                class="primary-button"
-                type="submit"
-                :disabled="profileSaving"
-              >
-                <IconSave />
-                {{ profileSaving ? "保存中..." : "保存资料" }}
-              </button>
-            </div>
-          </form>
+          </div>
+          <label class="field">
+            <span class="field-label">简介</span>
+            <textarea
+              v-model="profileForm.userProfile"
+              class="textarea"
+              rows="3"
+              placeholder="一句话介绍自己"
+            ></textarea>
+          </label>
+          <div class="field">
+            <span class="field-label">头像</span>
+            <AvatarPicker v-model="profileForm.userAvatar" />
+          </div>
+          <p v-if="profileError" class="form-error">{{ profileError }}</p>
+          <div class="form-actions">
+            <button
+              class="btn primary sm"
+              type="submit"
+              :disabled="profileSaving"
+            >
+              <AppIcon name="check" :size="16" />
+              {{ profileSaving ? "保存中" : "保存" }}
+            </button>
+          </div>
+        </form>
 
-          <form
-            v-else
-            key="password"
-            class="settings-form password-form"
-            @submit.prevent="savePassword"
-          >
-            <header class="form-heading">
-              <h2>修改密码</h2>
-              <p>新密码至少需要 8 位。</p>
-            </header>
-
-            <label class="form-field">
-              <span>旧密码</span>
-              <input
-                v-model="passwordForm.oldPassword"
-                type="password"
-                autocomplete="current-password"
-                placeholder="请输入旧密码"
-              />
-            </label>
-            <label class="form-field">
-              <span>新密码</span>
-              <input
-                v-model="passwordForm.newPassword"
-                type="password"
-                autocomplete="new-password"
-                placeholder="至少 8 位"
-              />
-            </label>
-            <label class="form-field">
-              <span>确认新密码</span>
-              <input
-                v-model="passwordForm.checkPassword"
-                type="password"
-                autocomplete="new-password"
-                placeholder="再次输入新密码"
-              />
-            </label>
-            <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
-            <div class="form-actions">
-              <button
-                class="primary-button"
-                type="submit"
-                :disabled="passwordSaving"
-              >
-                <IconLock />
-                {{ passwordSaving ? "修改中..." : "修改密码" }}
-              </button>
-            </div>
-          </form>
-        </Transition>
+        <form
+          v-else
+          class="settings-form narrow"
+          @submit.prevent="savePassword"
+        >
+          <label class="field">
+            <span class="field-label">旧密码</span>
+            <UiInput
+              v-model="passwordForm.oldPassword"
+              icon="lock"
+              type="password"
+              autocomplete="current-password"
+              placeholder="现在的密码"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">新密码</span>
+            <UiInput
+              v-model="passwordForm.newPassword"
+              icon="lock"
+              type="password"
+              autocomplete="new-password"
+              placeholder="至少 8 位"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">确认新密码</span>
+            <UiInput
+              v-model="passwordForm.checkPassword"
+              icon="lock"
+              type="password"
+              autocomplete="new-password"
+              placeholder="再输入一次"
+            />
+          </label>
+          <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
+          <div class="form-actions">
+            <button
+              class="btn primary sm"
+              type="submit"
+              :disabled="passwordSaving"
+            >
+              <AppIcon name="lock" :size="16" />
+              {{ passwordSaving ? "修改中" : "修改密码" }}
+            </button>
+          </div>
+        </form>
       </section>
     </div>
-  </main>
+  </div>
 </template>
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { IconLock, IconSave, IconUser } from "@arco-design/web-vue/es/icon";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useStore } from "vuex";
 
+import DifficultyLabel from "@/components/problem/DifficultyLabel.vue";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSegmented from "@/components/ui/UiSegmented.vue";
 import AvatarPicker from "@/components/user/AvatarPicker.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import {
   DEFAULT_USER_AVATAR,
   normalizeUserAvatar,
 } from "@/constants/userAvatars";
+import { useMyProgress } from "@/composables/useMyProgress";
 import { formatDateTime } from "@/utils/dateTime";
+import { Difficulty } from "@/utils/difficulty";
 import { formatUserRole } from "@/utils/userRole";
 import { UserControllerService } from "../../../generated";
 
 const store = useStore();
 const activeTab = ref<"profile" | "password">("profile");
+const TABS = [
+  { value: "profile", label: "资料" },
+  { value: "password", label: "密码" },
+];
+const LEVELS: Difficulty[] = ["easy", "medium", "hard"];
+const setTab = (value: string) => {
+  activeTab.value = value === "password" ? "password" : "profile";
+};
+const { total, solved, load: loadProgress } = useMyProgress();
+const percent = (part: number, whole: number) =>
+  whole ? `${Math.min(100, (part / whole) * 100)}%` : "0%";
 const profileSaving = ref(false);
 const passwordSaving = ref(false);
 const profileError = ref("");
@@ -210,6 +217,7 @@ watch(
 );
 
 onMounted(async () => {
+  void loadProgress();
   try {
     await store.dispatch("user/getLoginUser");
   } catch {
@@ -286,290 +294,176 @@ const savePassword = async () => {
 </script>
 
 <style scoped>
-#userProfileView {
-  width: min(1180px, 100%);
-  min-width: 0;
-  margin: 0 auto;
-  padding: var(--space-lg);
-  animation: page-enter var(--motion-standard) var(--ease-out);
-}
-
-.page-header {
-  margin-bottom: 22px;
-}
-
-.page-kicker {
-  color: var(--primary);
-  font-family: var(--font-code);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-}
-
-.page-header h1 {
-  margin: 2px 0 0;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 32px;
-  font-weight: 400;
-  letter-spacing: 0;
-}
-
-.profile-layout {
+.profile-grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   align-items: start;
-  gap: 18px;
+  gap: 14px;
 }
 
-.identity-panel {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 30px 24px 24px;
-  color: var(--on-dark);
-  background: var(--surface-dark);
-  border-radius: var(--radius-lg);
-}
-
-:global(:root[data-theme="dark"] .identity-panel) {
-  color: #141413;
-  background: #f5f0e8;
-  border: 1px solid #e6dfd8;
-  box-shadow: var(--shadow-md);
-}
-
-.identity-heading {
-  max-width: 100%;
-  margin-top: 16px;
-  text-align: center;
-}
-
-.identity-heading h2,
-.identity-heading p {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.identity-heading h2 {
-  color: var(--on-dark);
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 400;
-}
-
-.identity-heading p {
-  color: var(--on-dark-soft);
-  font-size: 12px;
-}
-
-.identity-role {
-  margin-top: 12px;
-  padding: 3px 10px;
-  color: var(--on-dark);
-  background: var(--surface-dark-elevated);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-pill);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.identity-profile {
-  width: 100%;
-  margin-top: 18px;
-  color: var(--on-dark-soft);
-  font-size: 12px;
-  line-height: 1.65;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-
-.identity-meta {
-  width: 100%;
+.side {
   display: grid;
-  gap: 10px;
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 14px;
 }
 
-.identity-meta div {
+.identity {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 30px 24px 24px;
+  text-align: center;
+}
+
+.identity h1 {
+  margin: 14px 0 0;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.role {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+  color: var(--body);
+  font-size: 12px;
+}
+
+.bio {
+  margin: 12px 0 0;
+  color: var(--body);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.joined {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.progress {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px 22px;
+}
+
+.progress header {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
+}
+
+.progress h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.progress header span {
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.progress header b {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 52px;
+  align-items: center;
   gap: 12px;
 }
 
-.identity-meta dt {
-  color: var(--on-dark-soft);
-  font-size: 10px;
+.bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
 }
 
-.identity-meta dd {
-  color: var(--on-dark);
-  font-family: var(--font-code);
-  font-size: 9px;
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.bar i.easy {
+  background: var(--easy);
+}
+
+.bar i.medium {
+  background: var(--medium);
+}
+
+.bar i.hard {
+  background: var(--hard);
+}
+
+.bar-count {
+  color: var(--faint);
+  font-size: 12.5px;
   text-align: right;
 }
 
-:global(:root[data-theme="dark"] .identity-heading h2),
-:global(:root[data-theme="dark"] .identity-meta dd) {
-  color: #141413;
+.progress .btn {
+  justify-self: start;
+  margin-top: 4px;
 }
 
-:global(:root[data-theme="dark"] .identity-heading p),
-:global(:root[data-theme="dark"] .identity-profile),
-:global(:root[data-theme="dark"] .identity-meta dt) {
-  color: #6c6a64;
+.settings {
+  padding: 22px 26px 26px;
 }
 
-:global(:root[data-theme="dark"] .identity-role) {
-  color: #3d3d3a;
-  background: #efe9de;
-  border-color: #e6dfd8;
-}
-
-:global(:root[data-theme="dark"] .identity-meta) {
-  border-top-color: #e6dfd8;
-}
-
-.settings-panel {
-  min-width: 0;
-  overflow: hidden;
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-}
-
-.settings-tabs {
+.settings-head {
   display: flex;
-  gap: 4px;
-  padding: 10px 12px;
-  background: var(--surface-soft);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.settings-tabs button {
-  height: 36px;
-  display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
-  padding: 0 13px;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
 }
 
-.settings-tabs button.active {
+.settings-head h2 {
+  margin: 0;
   color: var(--ink);
-  background: var(--surface-card);
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .settings-form {
-  width: 100%;
-  max-width: 760px;
   display: grid;
   gap: 18px;
-  padding: 26px;
 }
 
-.settings-panel-enter-active,
-.settings-panel-leave-active {
-  transition: opacity 180ms ease, transform 180ms var(--ease-out);
+.settings-form.narrow {
+  max-width: 420px;
 }
 
-.settings-panel-enter-from,
-.settings-panel-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-.password-form {
-  max-width: 560px;
-}
-
-.form-heading {
-  padding-bottom: 4px;
-}
-
-.form-heading h2 {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 400;
-}
-
-.form-heading p {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.form-field {
+.field-row {
   display: grid;
-  gap: 7px;
-}
-
-.form-field > span,
-.avatar-field legend {
-  color: var(--body-strong);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.form-field input,
-.form-field textarea {
-  width: 100%;
-  color: var(--ink);
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  outline: none;
-  font-family: var(--font-body);
-  font-size: 14px;
-}
-
-.form-field input {
-  height: 42px;
-  padding: 0 12px;
-}
-
-.form-field textarea {
-  min-height: 100px;
-  padding: 10px 12px;
-  line-height: 1.55;
-  resize: vertical;
-}
-
-.form-field input:focus,
-.form-field textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
-}
-
-.form-field input[readonly] {
-  color: var(--muted);
-  background: var(--surface-soft);
-}
-
-.avatar-field {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-}
-
-.avatar-field legend {
-  margin-bottom: 8px;
-}
-
-.form-error {
-  color: var(--error);
-  font-size: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .form-actions {
@@ -577,94 +471,13 @@ const savePassword = async () => {
   justify-content: flex-end;
 }
 
-.primary-button {
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 17px;
-  color: var(--on-primary);
-  background: var(--primary);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  transition: background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
-}
-
-.primary-button:not(:disabled):active {
-  transform: translateY(1px);
-}
-
-.primary-button:disabled {
-  color: var(--muted);
-  background: var(--primary-disabled);
-  border-color: var(--primary-disabled);
-}
-
-@media (max-width: 820px) {
-  .profile-layout {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .profile-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .identity-panel {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    column-gap: 16px;
-    text-align: left;
-  }
-
-  .identity-heading {
-    margin: 0;
-    text-align: left;
-  }
-
-  .identity-role {
-    margin: 0;
-  }
-
-  .identity-profile,
-  .identity-meta {
-    grid-column: 1 / -1;
-  }
-
-  .identity-profile {
-    text-align: left;
-  }
-}
-
-@media (max-width: 560px) {
-  #userProfileView {
-    padding: 16px;
-  }
-
-  .identity-panel {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .identity-role {
-    grid-column: 2;
-    justify-self: start;
-  }
-
-  .settings-form {
-    padding: 20px 16px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .settings-panel-enter-active,
-  .settings-panel-leave-active {
-    transition-duration: 120ms;
-  }
-
-  .settings-panel-enter-from,
-  .settings-panel-leave-to {
-    transform: none;
+  .field-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

@@ -1,54 +1,72 @@
 <template>
   <AuthShell
-    kicker="NEW ACCOUNT"
     title="创建账号"
-    subtitle="加入 MyOJ，开始记录你的解题轨迹"
+    subtitle="注册后，做过的题和草稿都会记下来"
+    mood="excited"
   >
-    <a-form
-      class="auth-form"
-      :model="form"
-      layout="vertical"
-      @submit="handleSubmit"
-    >
-      <a-form-item field="userAccount" label="账号">
-        <a-input v-model="form.userAccount" placeholder="请输入账号" />
-      </a-form-item>
-
-      <a-form-item field="userName" label="用户名">
-        <a-input v-model="form.userName" placeholder="请输入用户名" />
-      </a-form-item>
-
-      <a-form-item field="userPassword" label="密码">
-        <a-input-password
+    <form class="auth-form" @submit.prevent="handleSubmit">
+      <label class="auth-field">
+        <span>账号</span>
+        <UiInput
+          v-model="form.userAccount"
+          icon="user"
+          placeholder="登录用的账号"
+          autocomplete="username"
+        />
+      </label>
+      <label class="auth-field">
+        <span>昵称</span>
+        <UiInput
+          v-model="form.userName"
+          icon="edit"
+          placeholder="别人看到的名字"
+          autocomplete="nickname"
+        />
+      </label>
+      <label class="auth-field">
+        <span>密码</span>
+        <UiInput
           v-model="form.userPassword"
-          placeholder="请输入密码"
+          icon="lock"
+          type="password"
+          placeholder="至少 8 位"
+          autocomplete="new-password"
         />
-      </a-form-item>
-
-      <a-form-item field="checkPassword" label="确认密码">
-        <a-input-password
+      </label>
+      <label class="auth-field">
+        <span>确认密码</span>
+        <UiInput
           v-model="form.checkPassword"
-          placeholder="请再次输入密码"
+          icon="lock"
+          type="password"
+          placeholder="再输入一次"
+          autocomplete="new-password"
         />
-      </a-form-item>
-
-      <a-form-item>
-        <button type="submit" class="auth-submit">注册</button>
-      </a-form-item>
-    </a-form>
+      </label>
+      <button
+        class="btn primary auth-submit"
+        type="submit"
+        :disabled="submitting"
+      >
+        <AppIcon :name="submitting ? 'spinner' : 'check'" :size="17" />
+        {{ submitting ? "注册中" : "注册" }}
+      </button>
+    </form>
 
     <template #footer>
-      <span>已有账号？</span>
-      <button class="auth-link" type="button" @click="goToLogin">去登录</button>
+      <span>已经有账号？</span>
+      <router-link to="/user/login">去登录</router-link>
     </template>
   </AuthShell>
 </template>
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import AuthShell from "@/components/user/AuthShell.vue";
 import { UserControllerService } from "../../../generated";
 
@@ -61,14 +79,18 @@ const form = reactive({
 
 const router = useRouter();
 
-const goToLogin = () => {
-  router.push({
-    path: "/user/login",
-  });
-};
+const submitting = ref(false);
 
 const handleSubmit = async () => {
-  const res = await UserControllerService.userRegister(form);
+  if (submitting.value) return;
+  if (form.userPassword !== form.checkPassword) {
+    message.warning("两次输入的密码不一样");
+    return;
+  }
+  submitting.value = true;
+  const res = await UserControllerService.userRegister(form).finally(() => {
+    submitting.value = false;
+  });
   if (res.code === 0) {
     message.success("注册成功");
     router.push({
@@ -76,7 +98,7 @@ const handleSubmit = async () => {
       replace: true,
     });
   } else {
-    message.error("注册失败，" + res.message);
+    message.error(`注册失败，${res.message || "请稍后重试"}`);
   }
 };
 </script>

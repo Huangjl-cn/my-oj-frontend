@@ -1,5 +1,5 @@
 <template>
-  <div class="user-identity">
+  <div class="user-identity" :title="`用户 ID ${displayId}`">
     <UserAvatar
       :avatar="resolvedUser?.userAvatar"
       :name="resolvedUser?.userName || resolvedUser?.userAccount || '用户'"
@@ -7,10 +7,9 @@
     />
     <div class="identity-copy">
       <strong>{{ resolvedUser?.userName || fallbackName }}</strong>
-      <span v-if="resolvedUser?.userAccount">
+      <span v-if="!compact && resolvedUser?.userAccount">
         @{{ resolvedUser.userAccount }}
       </span>
-      <code :title="String(displayId)">{{ displayId }}</code>
     </div>
   </div>
 </template>
@@ -34,11 +33,14 @@ const props = withDefaults(
     user?: UserIdentityData;
     userId?: ApiId;
     size?: number;
+    /** 只显示头像和昵称 */
+    compact?: boolean;
   }>(),
   {
     user: undefined,
     userId: undefined,
     size: 38,
+    compact: false,
   }
 );
 
@@ -86,8 +88,7 @@ watch(
 }
 
 .identity-copy strong,
-.identity-copy span,
-.identity-copy code {
+.identity-copy span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -96,18 +97,12 @@ watch(
 
 .identity-copy strong {
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
 }
 
 .identity-copy span {
   color: var(--muted);
-  font-size: 11px;
-}
-
-.identity-copy code {
-  color: var(--muted-soft);
-  font-family: var(--font-code);
-  font-size: 10px;
+  font-size: 12px;
 }
 </style>

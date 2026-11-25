@@ -7,40 +7,27 @@
         type="button"
         role="tab"
         :aria-selected="activeGroupValue === group.value"
-        :class="{ active: activeGroupValue === group.value }"
+        :class="{ on: activeGroupValue === group.value }"
         @click="activeGroupValue = group.value"
       >
         {{ group.label }}
       </button>
     </div>
-    <Transition name="avatar-group" mode="out-in">
-      <section v-if="activeGroup" :key="activeGroup.value" class="avatar-group">
-        <header class="group-header">
-          <h3>{{ activeGroup.label }}</h3>
-          <span>{{ activeGroup.avatars.length }} 个</span>
-        </header>
-        <div class="avatar-grid">
-          <button
-            v-for="avatar in activeGroup.avatars"
-            :key="avatar.value"
-            class="avatar-option"
-            :class="{ selected: modelValue === avatar.value }"
-            type="button"
-            role="radio"
-            :aria-checked="modelValue === avatar.value"
-            :title="avatar.label"
-            @click="$emit('update:modelValue', avatar.value)"
-          >
-            <UserAvatar
-              :avatar="avatar.value"
-              :name="avatar.label"
-              :size="54"
-            />
-            <span>{{ avatar.label }}</span>
-          </button>
-        </div>
-      </section>
-    </Transition>
+    <div v-if="activeGroup" :key="activeGroup.value" class="avatar-grid">
+      <button
+        v-for="avatar in activeGroup.avatars"
+        :key="avatar.value"
+        :class="['avatar-option', { selected: modelValue === avatar.value }]"
+        type="button"
+        role="radio"
+        :aria-checked="modelValue === avatar.value"
+        :aria-label="avatar.label"
+        :title="avatar.label"
+        @click="$emit('update:modelValue', avatar.value)"
+      >
+        <UserAvatar :avatar="avatar.value" :name="avatar.label" :size="44" />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -78,130 +65,65 @@ watch(
 <style scoped>
 .avatar-picker {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .style-tabs {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 
 .style-tabs button {
-  min-width: 0;
-  min-height: 34px;
-  padding: 5px 8px;
-  overflow-wrap: anywhere;
-  color: var(--muted);
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-pill);
   background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.25;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.style-tabs button.active {
+.style-tabs button:hover {
   color: var(--ink);
-  background: var(--canvas);
-  box-shadow: var(--shadow-sm);
 }
 
-.avatar-group {
-  min-width: 0;
-}
-
-.avatar-group-enter-active,
-.avatar-group-leave-active {
-  transition: opacity 160ms ease, transform 160ms var(--ease-out);
-}
-
-.avatar-group-enter-from,
-.avatar-group-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-.group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.group-header h3 {
+.style-tabs button.on {
+  background: var(--fill);
   color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 12px;
   font-weight: 600;
-}
-
-.group-header span {
-  color: var(--muted-soft);
-  font-family: var(--font-code);
-  font-size: 10px;
 }
 
 .avatar-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(76px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
 }
 
 .avatar-option {
-  min-width: 0;
-  min-height: 86px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 4px;
-  color: var(--muted);
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
   border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 10px;
-  transition: border-color 150ms ease, background-color 150ms ease;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease;
 }
 
-.avatar-option:hover,
-.avatar-option.selected {
-  color: var(--ink);
-  background: var(--surface-soft);
-  border-color: var(--primary);
+.avatar-option:hover {
+  background: var(--fill);
 }
 
 .avatar-option.selected {
-  box-shadow: 0 0 0 2px var(--primary-light);
+  background: var(--fill);
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
-@media (max-width: 760px) {
-  .style-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .avatar-grid {
-    grid-template-columns: repeat(3, minmax(76px, 1fr));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .avatar-group-enter-active,
-  .avatar-group-leave-active {
-    transition-duration: 120ms;
-  }
-
-  .avatar-group-enter-from,
-  .avatar-group-leave-to {
-    transform: none;
-  }
+.avatar-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 </style>

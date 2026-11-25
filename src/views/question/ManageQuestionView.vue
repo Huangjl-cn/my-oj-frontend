@@ -1,166 +1,155 @@
 <template>
-  <div id="manageQuestionView">
-    <header class="page-heading">
-      <span class="page-kicker">{{ pageKicker }}</span>
-      <h2 class="page-title">{{ pageTitle }}</h2>
-    </header>
-    <div class="page-card">
-      <a-table
-        class="desktop-table"
-        row-key="id"
-        :columns="columns"
-        :data="dataList"
-        :expandable="expandable"
-        table-layout-fixed
-        :pagination="{
-          showTotal: true,
-          pageSize: searchParams.pageSize,
-          current: searchParams.current,
-          total,
-        }"
-        @page-change="onPageChange"
-      >
-        <template #id="{ record }">
-          <span class="table-id" :title="String(record.id ?? '')">
-            {{ record.id ?? "--" }}
-          </span>
-        </template>
-        <template #user="{ record }">
-          <UserIdentity :user-id="record.userId" />
-        </template>
-        <template #tags="{ record }">
-          <span v-if="getQuestionTags(record).length" class="tag-list">
-            <span
-              v-for="(tag, i) in getQuestionTags(record)"
-              :key="i"
-              class="tag"
-              >{{ tag }}</span
-            >
-          </span>
-        </template>
-        <template #createTime="{ record }">
-          <time class="table-time">{{
-            formatDateTime(record.createTime)
-          }}</time>
-        </template>
-        <template #updateTime="{ record }">
-          <time class="table-time">{{
-            formatDateTime(record.updateTime)
-          }}</time>
-        </template>
-        <template #optional="{ record }">
-          <span class="action-group">
-            <button class="action-btn edit" @click="doUpdate(record)">
-              修改
-            </button>
-            <button class="action-btn delete" @click="doDelete(record)">
-              删除
-            </button>
-          </span>
-        </template>
-      </a-table>
-      <div class="mobile-question-list">
-        <article
-          v-for="(question, index) in dataList"
-          :key="String(question.id ?? index)"
-          class="mobile-question-card"
-        >
-          <header class="mobile-question-header">
+  <div class="page">
+    <section class="panel page-head">
+      <h1>
+        {{ pageTitle }}
+        <span class="count num">{{ total }}</span>
+      </h1>
+      <div class="head-end">
+        <router-link class="btn primary sm" to="/add/question">
+          <AppIcon name="plus" :size="16" />
+          创建题目
+        </router-link>
+      </div>
+    </section>
+
+    <section class="panel list-panel">
+      <div class="list-toolbar">
+        <UiInput
+          v-model="keyword"
+          icon="search"
+          placeholder="搜索题目"
+          clearable
+        />
+        <div class="toolbar-end">
+          <button
+            class="icon-btn tip-up"
+            type="button"
+            data-tip="刷新"
+            aria-label="刷新"
+            :disabled="loading"
+            @click="loadData"
+          >
+            <AppIcon name="refresh" :size="17" />
+          </button>
+        </div>
+      </div>
+
+      <div :class="['list-rows', { stale: loading && dataList.length }]">
+        <div v-if="dataList.length" :class="['list-head', columnsClass]">
+          <span>题目</span>
+          <span v-if="scope === 'all'">出题人</span>
+          <span>难度</span>
+          <span>提交</span>
+          <span>通过</span>
+          <span>{{ scope === "mine" ? "更新" : "创建" }}</span>
+          <span />
+        </div>
+        <template v-for="question in dataList" :key="String(question.id)">
+          <div
+            :class="[
+              'list-row',
+              columnsClass,
+              { open: isExpanded(question.id) },
+            ]"
+          >
+            <div class="title-cell">
+              <router-link
+                class="cell-title"
+                :to="`/problem/${question.id}`"
+                :title="question.title"
+              >
+                {{ question.title || "未命名题目" }}
+              </router-link>
+              <span v-if="topicTags(question).length" class="tag-list">
+                <span v-for="tag in topicTags(question)" :key="tag" class="tag">
+                  {{ tag }}
+                </span>
+              </span>
+            </div>
             <UserIdentity
               v-if="scope === 'all'"
               :user-id="getQuestionUserId(question)"
-              :size="42"
+              :size="26"
+              compact
             />
-            <span class="mobile-question-id" :title="String(question.id ?? '')">
-              #{{ question.id ?? "--" }}
-            </span>
-          </header>
-
-          <div class="mobile-question-body">
-            <h3>{{ question.title || "未命名题目" }}</h3>
-            <div v-if="getQuestionTags(question).length" class="tag-list">
-              <span
-                v-for="(tag, tagIndex) in getQuestionTags(question)"
-                :key="tagIndex"
-                class="tag"
-              >
-                {{ tag }}
-              </span>
-            </div>
-
-            <dl class="mobile-question-stats">
-              <div>
-                <dt>提交次数</dt>
-                <dd>{{ question.submitNum ?? 0 }}</dd>
-              </div>
-              <div>
-                <dt>通过次数</dt>
-                <dd>{{ question.acceptedNum ?? 0 }}</dd>
-              </div>
-            </dl>
-
-            <div class="mobile-question-times">
-              <time>创建 {{ formatDateTime(question.createTime) }}</time>
-              <time v-if="scope === 'mine'">
-                更新 {{ formatDateTime(question.updateTime) }}
-              </time>
-            </div>
-          </div>
-
-          <footer class="mobile-question-actions">
-            <button
-              v-if="scope === 'all'"
-              class="action-btn detail"
-              type="button"
-              @click="toggleMobileQuestion(question.id)"
-            >
-              {{
-                isMobileQuestionExpanded(question.id) ? "收起详情" : "查看详情"
-              }}
-            </button>
-            <span class="action-group">
+            <DifficultyLabel :difficulty="getDifficulty(tagsOf(question))" />
+            <span class="cell-stat num">{{ question.submitNum ?? 0 }}</span>
+            <span class="cell-stat num">{{ question.acceptedNum ?? 0 }}</span>
+            <time class="cell-faint num">{{
+              formatDate(
+                scope === "mine" ? question.updateTime : question.createTime
+              )
+            }}</time>
+            <span class="row-actions">
               <button
-                class="action-btn edit"
+                v-if="scope === 'all'"
+                class="icon-btn tip-up"
                 type="button"
+                :data-tip="isExpanded(question.id) ? '收起' : '判题配置'"
+                :aria-expanded="isExpanded(question.id)"
+                aria-label="判题配置"
+                @click="toggleExpanded(question.id)"
+              >
+                <AppIcon
+                  name="chevron-down"
+                  :size="16"
+                  :class="['chevron', { open: isExpanded(question.id) }]"
+                />
+              </button>
+              <button
+                class="icon-btn tip-up"
+                type="button"
+                data-tip="修改"
+                aria-label="修改题目"
                 @click="doUpdate(question)"
               >
-                修改
+                <AppIcon name="edit" :size="16" />
               </button>
               <button
-                class="action-btn delete"
+                class="icon-btn danger tip-up"
                 type="button"
+                data-tip="删除"
+                aria-label="删除题目"
                 @click="doDelete(question)"
               >
-                删除
+                <AppIcon name="trash" :size="16" />
               </button>
             </span>
-          </footer>
+          </div>
+          <div
+            v-if="scope === 'all' && isExpanded(question.id)"
+            class="row-extra"
+          >
+            <QuestionAdminDetailsPanel :question="getAdminQuestion(question)" />
+          </div>
+        </template>
 
-          <Transition name="mobile-details">
-            <QuestionAdminDetailsPanel
-              v-if="scope === 'all' && isMobileQuestionExpanded(question.id)"
-              :question="getAdminQuestion(question)"
-            />
-          </Transition>
-        </article>
-        <p v-if="!dataList.length" class="mobile-empty">暂无题目</p>
-        <a-pagination
-          class="mobile-pagination"
-          :current="searchParams.current"
-          :page-size="searchParams.pageSize"
-          :total="total"
-          simple
-          hide-on-single-page
-          @change="onPageChange"
-        />
+        <div v-if="!dataList.length && !loading" class="list-empty">
+          <CompanionAvatar :size="56" mood="thoughtful" />
+          <p>{{ keyword ? "没有找到这道题" : emptyText }}</p>
+          <router-link v-if="!keyword" class="btn sm" to="/add/question">
+            <AppIcon name="plus" :size="16" />
+            创建题目
+          </router-link>
+        </div>
       </div>
-    </div>
+
+      <UiPagination
+        class="list-pager"
+        :current="searchParams.current"
+        :total="total"
+        :page-size="searchParams.pageSize"
+        @change="onPageChange"
+      />
+    </section>
+
     <ConfirmDialog
       v-model:visible="showDeleteDialog"
       title="删除题目"
-      :message="`确定删除题目「${
+      :message="`确定删除「${
         pendingDeleteQuestion?.title || ''
-      }」吗？此操作不可撤销。`"
+      }」吗？题目和它的提交记录都会删掉，不能撤销。`"
       confirm-text="删除题目"
       tone="danger"
       @confirm="confirmDelete"
@@ -170,14 +159,20 @@
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { computed, defineProps, h, ref, withDefaults, watchEffect } from "vue";
+import { computed, defineProps, ref, watch, withDefaults } from "vue";
 import { useRouter } from "vue-router";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
+import DifficultyLabel from "@/components/problem/DifficultyLabel.vue";
 import QuestionAdminDetailsPanel from "@/components/question/QuestionAdminDetailsPanel.vue";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiPagination from "@/components/ui/UiPagination.vue";
 import UserIdentity from "@/components/user/UserIdentity.vue";
 import { ApiId, toGeneratedApiId } from "@/services/apiId";
 import { formatDateTime } from "@/utils/dateTime";
+import { getDifficulty, getTopicTags } from "@/utils/difficulty";
 import {
   Question,
   QuestionControllerService,
@@ -195,20 +190,27 @@ const props = withDefaults(
   }
 );
 
+const router = useRouter();
 const pageTitle = computed(() =>
   props.scope === "mine" ? "我的题目" : "题目管理"
 );
-const pageKicker = computed(() =>
-  props.scope === "mine" ? "MY PROBLEMS" : "PROBLEM ADMINISTRATION"
+const emptyText = computed(() =>
+  props.scope === "mine" ? "还没有出过题" : "题库还是空的"
+);
+const columnsClass = computed(() =>
+  props.scope === "mine" ? "cols-mine" : "cols-all"
 );
 const dataList = ref<QuestionListRecord[]>([]);
 const total = ref(0);
-const searchParams = ref({ pageSize: 10, current: 1 });
+const loading = ref(false);
+const keyword = ref("");
+const searchParams = ref({ pageSize: 10, current: 1, title: "" });
 const showDeleteDialog = ref(false);
 const pendingDeleteQuestion = ref<QuestionListRecord | null>(null);
-const expandedMobileQuestionIds = ref<string[]>([]);
+const expandedIds = ref<string[]>([]);
 
-const getQuestionTags = (question: QuestionListRecord): string[] => {
+/** 管理接口返回的 tags 是 JSON 字符串，普通接口返回数组 */
+const tagsOf = (question: QuestionListRecord): string[] => {
   if (Array.isArray(question.tags)) return question.tags;
   if (!question.tags) return [];
   try {
@@ -218,6 +220,8 @@ const getQuestionTags = (question: QuestionListRecord): string[] => {
     return [];
   }
 };
+const topicTags = (question: QuestionListRecord) =>
+  getTopicTags(tagsOf(question)).slice(0, 3);
 
 const getQuestionUserId = (question: QuestionListRecord) =>
   "userId" in question
@@ -226,84 +230,59 @@ const getQuestionUserId = (question: QuestionListRecord) =>
 
 const getAdminQuestion = (question: QuestionListRecord) => question as Question;
 
-const isMobileQuestionExpanded = (questionId?: ApiId) =>
-  questionId != null &&
-  expandedMobileQuestionIds.value.includes(String(questionId));
+const formatDate = (value?: string) => formatDateTime(value).slice(0, 10);
 
-const toggleMobileQuestion = (questionId?: ApiId) => {
+const isExpanded = (questionId?: ApiId) =>
+  questionId != null && expandedIds.value.includes(String(questionId));
+
+const toggleExpanded = (questionId?: ApiId) => {
   if (questionId == null) return;
   const id = String(questionId);
-  expandedMobileQuestionIds.value = isMobileQuestionExpanded(questionId)
-    ? expandedMobileQuestionIds.value.filter((item) => item !== id)
-    : [...expandedMobileQuestionIds.value, id];
+  expandedIds.value = isExpanded(questionId)
+    ? expandedIds.value.filter((item) => item !== id)
+    : [...expandedIds.value, id];
 };
 
+let loadGeneration = 0;
 const loadData = async () => {
-  const res =
-    props.scope === "mine"
-      ? await QuestionControllerService.listMyQuestionVoByPage(
-          searchParams.value
-        )
-      : await QuestionControllerService.listQuestionByPage(searchParams.value);
-  if (res.code === 0) {
-    dataList.value = res.data?.records ?? [];
-    total.value = Number(res.data?.total ?? 0);
-  } else {
-    message.error("加载失败，" + res.message);
+  const generation = ++loadGeneration;
+  loading.value = true;
+  try {
+    const request = {
+      ...searchParams.value,
+      title: searchParams.value.title || undefined,
+    };
+    const res =
+      props.scope === "mine"
+        ? await QuestionControllerService.listMyQuestionVoByPage(request)
+        : await QuestionControllerService.listQuestionByPage(request);
+    if (generation !== loadGeneration) return;
+    if (res.code === 0) {
+      dataList.value = res.data?.records ?? [];
+      total.value = Number(res.data?.total ?? 0);
+    } else {
+      message.error(`加载失败，${res.message || "请稍后重试"}`);
+    }
+  } catch {
+    if (generation === loadGeneration) message.error("加载失败，请稍后重试");
+  } finally {
+    if (generation === loadGeneration) loading.value = false;
   }
 };
 
-watchEffect(() => {
-  loadData();
+watch(searchParams, loadData, { deep: true, immediate: true });
+
+let keywordTimer: number | undefined;
+watch(keyword, (value) => {
+  window.clearTimeout(keywordTimer);
+  keywordTimer = window.setTimeout(() => {
+    searchParams.value = {
+      ...searchParams.value,
+      title: value.trim(),
+      current: 1,
+    };
+  }, 300);
 });
-
-const adminColumns = [
-  { title: "用户", slotName: "user", width: 170 },
-  { title: "题目 ID", slotName: "id", width: 120 },
-  {
-    title: "标题",
-    dataIndex: "title",
-    width: 160,
-    ellipsis: true,
-    tooltip: true,
-  },
-  { title: "标签", slotName: "tags", width: 120 },
-  { title: "提交次数", dataIndex: "submitNum", width: 70, align: "center" },
-  { title: "通过次数", dataIndex: "acceptedNum", width: 70, align: "center" },
-  { title: "创建时间", slotName: "createTime", width: 130 },
-  { title: "操作", slotName: "optional", width: 112 },
-];
-
-const myQuestionColumns = [
-  { title: "题目 ID", slotName: "id", width: 130 },
-  {
-    title: "标题",
-    dataIndex: "title",
-    width: 180,
-    ellipsis: true,
-    tooltip: true,
-  },
-  { title: "标签", slotName: "tags", width: 120 },
-  { title: "提交次数", dataIndex: "submitNum", width: 70, align: "center" },
-  { title: "通过次数", dataIndex: "acceptedNum", width: 70, align: "center" },
-  { title: "创建时间", slotName: "createTime", width: 130 },
-  { title: "更新时间", slotName: "updateTime", width: 130 },
-  { title: "操作", slotName: "optional", width: 130 },
-];
-
-const columns = computed(() =>
-  props.scope === "mine" ? myQuestionColumns : adminColumns
-);
-const expandable = computed(() =>
-  props.scope === "all"
-    ? {
-        title: "详情",
-        width: 42,
-        expandedRowRender: (record: Question) =>
-          h(QuestionAdminDetailsPanel, { question: record }),
-      }
-    : undefined
-);
 
 const onPageChange = (page: number) => {
   searchParams.value = { ...searchParams.value, current: page };
@@ -320,19 +299,17 @@ const confirmDelete = async () => {
     id: toGeneratedApiId(pendingDeleteQuestion.value.id),
   });
   if (res.code === 0) {
-    message.success("删除成功");
+    message.success("已删除");
     showDeleteDialog.value = false;
     pendingDeleteQuestion.value = null;
-    loadData();
+    void loadData();
   } else {
-    message.error("删除失败");
+    message.error(`删除失败，${res.message || "请稍后重试"}`);
   }
 };
 
-const router = useRouter();
-
 const doUpdate = (question: QuestionListRecord) => {
-  router.push({
+  void router.push({
     path: "/update/question",
     query: {
       id: question.id,
@@ -343,350 +320,66 @@ const doUpdate = (question: QuestionListRecord) => {
 </script>
 
 <style scoped>
-#manageQuestionView {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  animation: page-enter var(--motion-standard) var(--ease-out);
-  padding: var(--space-lg) 0;
+.cols-all {
+  grid-template-columns: minmax(0, 1fr) 150px 64px 56px 56px 96px 112px;
 }
 
-.page-heading {
-  width: calc(100% - (var(--space-xl) * 2));
-  margin: 0 auto var(--space-lg);
+.cols-mine {
+  grid-template-columns: minmax(0, 1fr) 64px 56px 56px 96px 80px;
 }
 
-.page-kicker {
-  color: var(--primary);
-  font-family: var(--font-code);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-}
-
-.page-title {
-  font-family: var(--font-sans);
-  font-size: 32px;
-  font-weight: 400;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-  margin: 2px 0 0;
-}
-
-.page-card {
-  width: calc(100% - (var(--space-xl) * 2));
-  margin: 0 auto;
-  background: var(--surface-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  position: relative;
-}
-
-.page-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--primary);
-  opacity: 0.3;
-}
-
-.mobile-question-list {
-  display: none;
-}
-
-.mobile-details-enter-active,
-.mobile-details-leave-active {
-  transition: opacity 180ms ease, transform 180ms var(--ease-out);
-}
-
-.mobile-details-enter-from,
-.mobile-details-leave-to {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
-.tag-list {
+.title-cell {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.table-id,
-.table-time {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--body-strong);
-  font-family: var(--font-code);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
+.title-cell .cell-title {
+  flex: 0 1 auto;
+  text-decoration: none;
 }
 
-.table-time {
-  color: var(--muted);
+.title-cell .cell-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.tag {
-  display: inline-block;
-  background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
+.title-cell .tag-list {
+  flex: 0 1 auto;
 }
 
-.action-group {
-  display: flex;
-  gap: 6px;
-  white-space: nowrap;
+.chevron {
+  transition: transform var(--motion-fast) ease;
 }
 
-.action-btn {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  padding: 3px 8px;
-  cursor: pointer;
-  transition: color var(--motion-fast) ease,
-    background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease,
-    transform var(--motion-fast) var(--ease-out);
-  line-height: 1.4;
+.chevron.open {
+  transform: rotate(180deg);
 }
 
-.action-btn:active {
-  transform: translateY(1px);
-}
-
-.action-btn.edit {
-  color: var(--primary);
-}
-
-.action-btn.edit:hover {
-  background: var(--surface-soft);
-  border-color: var(--primary);
-}
-
-.action-btn.delete {
-  color: var(--error);
-}
-
-.action-btn.delete:hover {
-  background: rgba(198, 69, 69, 0.08);
-  border-color: var(--error);
-}
-
-.action-btn.detail {
-  color: var(--muted);
-}
-
-:deep(.arco-table-th),
-:deep(.arco-table-td) {
-  padding-right: 12px !important;
-  padding-left: 12px !important;
-  vertical-align: middle;
-}
-
-:deep(.arco-table-th:first-child),
-:deep(.arco-table-td:first-child) {
-  padding-left: 16px !important;
-}
-
-:deep(.arco-table-container),
-:deep(.arco-table-body) {
-  max-width: 100%;
-  overflow: hidden !important;
-  background: var(--surface-soft) !important;
-}
-
-:deep(.arco-table-td) {
-  background: var(--surface-card) !important;
-}
-
-:deep(.arco-table-tr:hover .arco-table-td) {
-  background: var(--surface-cream-strong) !important;
-}
-
-:deep(.arco-table-element) {
-  width: 100% !important;
-  min-width: 0 !important;
-}
-
-:deep(.arco-table-tr:not(.arco-table-tr-expand) .arco-table-td) {
-  height: 74px;
-}
-
-:deep(.arco-table-tr-expand > .arco-table-td) {
-  padding: 0;
-  background: var(--surface-soft) !important;
-}
-
-:deep(.arco-table-tr-expand:hover > .arco-table-td) {
-  background: var(--surface-soft) !important;
-}
-
-@media (max-width: 768px) {
-  #manageQuestionView {
-    padding: 20px 16px 28px;
+@media (max-width: 1100px) {
+  .cols-all {
+    grid-template-columns: minmax(0, 1fr) 64px 56px 56px 112px;
   }
 
-  .page-heading {
-    width: 100%;
-    margin-bottom: 18px;
-  }
-
-  .page-title {
-    font-size: 32px;
-  }
-
-  .page-card {
-    width: 100%;
-    overflow: visible;
-    border-radius: var(--radius-md);
-  }
-
-  .desktop-table {
+  .cols-all > :nth-child(2),
+  .cols-all > :nth-child(6) {
     display: none;
   }
 
-  .mobile-question-list {
-    display: grid;
-    gap: 12px;
-    padding: 14px;
-  }
-
-  .mobile-question-card {
-    min-width: 0;
-    overflow: hidden;
-    background: var(--canvas);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-md);
-  }
-
-  .mobile-question-header {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px;
-    background: var(--surface-soft);
-    border-bottom: 1px solid var(--hairline-soft);
-  }
-
-  .mobile-question-id {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--muted);
-    font-family: var(--font-code);
-    font-size: 10px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mobile-question-body {
-    padding: 16px 14px;
-  }
-
-  .mobile-question-body h3 {
-    margin: 0 0 10px;
-    color: var(--ink);
-    font-size: 17px;
-    font-weight: 600;
-  }
-
-  .mobile-question-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 16px 0 12px;
-    overflow: hidden;
-    background: var(--surface-soft);
-    border-radius: var(--radius-sm);
-  }
-
-  .mobile-question-stats > div {
-    padding: 10px 12px;
-  }
-
-  .mobile-question-stats > div + div {
-    border-left: 1px solid var(--hairline);
-  }
-
-  .mobile-question-stats dt {
-    color: var(--muted);
-    font-size: 10px;
-  }
-
-  .mobile-question-stats dd {
-    margin: 3px 0 0;
-    color: var(--ink);
-    font-family: var(--font-code);
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .mobile-question-times {
-    display: grid;
-    gap: 3px;
-    color: var(--muted-soft);
-    font-family: var(--font-code);
-    font-size: 9px;
-  }
-
-  .mobile-question-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 12px 14px;
-    border-top: 1px solid var(--hairline-soft);
-  }
-
-  .mobile-question-actions > .action-group {
-    margin-left: auto;
-  }
-
-  .mobile-question-card :deep(.question-details) {
-    padding: 16px 14px;
-    border-top: 1px solid var(--hairline-soft);
-  }
-
-  .mobile-empty {
-    padding: 48px 16px;
-    color: var(--muted);
-    text-align: center;
-  }
-
-  .mobile-pagination {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    min-width: 0;
-    padding: 10px 0 8px !important;
+  .title-cell .tag-list {
+    display: none;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mobile-details-enter-active,
-  .mobile-details-leave-active {
-    transition-duration: 120ms;
+@media (max-width: 720px) {
+  .cols-all,
+  .cols-mine {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .mobile-details-enter-from,
-  .mobile-details-leave-to {
-    transform: none;
+  .list-row > :not(.title-cell):not(.row-actions) {
+    display: none;
   }
 }
 </style>
