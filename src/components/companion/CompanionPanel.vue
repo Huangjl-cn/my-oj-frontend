@@ -1,7 +1,23 @@
 <template>
-  <aside class="companion-panel" aria-label="AI 陪练">
+  <aside ref="rootRef" class="companion-panel" aria-label="AI 陪练">
     <header class="panel-header">
-      <CompanionAvatar :mood="companion.pet.mood" :size="30" />
+      <!-- 面板打开时，编辑器上的鸭鸭飞到这里，动作照常 -->
+      <span
+        ref="duckBox"
+        :class="['panel-duck', { 'in-flight': flight.active }]"
+        @pointerenter="duck?.hover()"
+      >
+        <CompanionAvatar
+          v-if="duck"
+          :pose="duck.pose.value"
+          :replay="duck.poseKey.value"
+          :amp="companion.pet.intensity"
+          :look="look"
+          :size="40"
+          lively
+        />
+        <CompanionAvatar v-else :mood="companion.pet.mood" :size="30" />
+      </span>
       <div class="panel-title">
         <strong>{{ name }}</strong>
         <span v-if="companion.busy" class="panel-status">{{ statusText }}</span>
@@ -181,7 +197,15 @@
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { computed, defineProps, nextTick, PropType, ref, watch } from "vue";
+import {
+  computed,
+  defineExpose,
+  defineProps,
+  nextTick,
+  PropType,
+  ref,
+  watch,
+} from "vue";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import AiSettingDialog from "@/components/companion/AiSettingDialog.vue";
@@ -192,6 +216,9 @@ import ConversationMenu from "@/components/companion/ConversationMenu.vue";
 import HintLevelPicker from "@/components/companion/HintLevelPicker.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import { CompanionState, SOLUTION_LEVEL } from "@/composables/useCompanion";
+import { toFlightRect, useDuckFlight } from "@/composables/useDuckFlight";
+import { PetBehavior } from "@/composables/usePetBehavior";
+import { usePetLook } from "@/composables/usePetLook";
 import { CompanionMessage } from "@/services/companion";
 
 /** 离底部不到这么多像素时，新内容到来自动滚到底 */
@@ -200,7 +227,45 @@ const STICK_TO_BOTTOM_PX = 80;
 // 用运行时声明：CompanionState 是从 vue 泛型推导出的复杂类型，避免 SFC 编译器去解析它
 const props = defineProps({
   companion: { type: Object as PropType<CompanionState>, required: true },
+  /** 和编辑器上的桌宠共用的鸭鸭行为；不传就显示静态的小鸭鸭 */
+  duck: { type: Object as PropType<PetBehavior | null>, default: null },
 });
+
+// region 标题里的鸭鸭
+
+const rootRef = ref<HTMLElement | null>(null);
+const duckBox = ref<HTMLElement | null>(null);
+const { flight } = useDuckFlight();
+const look = usePetLook(duckBox, (point) =>
+  props.duck?.noteUserActivity(point)
+);
+
+/** 飞行动画用：标题里鸭鸭的最终位置（面板刚打开时还在滑入，扣掉这段位移） */
+const duckRect = () => {
+  const svg = duckBox.value?.querySelector("svg");
+  if (!svg) return null;
+  const rect = svg.getBoundingClientRect();
+  const transform = rootRef.value
+    ? getComputedStyle(rootRef.value).transform
+    : "none";
+  let dx = 0;
+  let dy = 0;
+  if (transform && transform !== "none") {
+    const matrix = new DOMMatrixReadOnly(transform);
+    dx = matrix.m41;
+    dy = matrix.m42;
+  }
+  return toFlightRect({
+    left: rect.left - dx,
+    top: rect.top - dy,
+    width: rect.width,
+    height: rect.height,
+  });
+};
+
+defineExpose({ duckRect });
+
+// endregion
 
 const draft = ref("");
 const solutionConfirmVisible = ref(false);
@@ -347,6 +412,16 @@ watch(
   padding: 0 8px 0 14px;
   border-bottom: 1px solid var(--line);
   --mascot-fill: var(--panel);
+}
+
+.panel-duck {
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.panel-duck.in-flight {
+  visibility: hidden;
 }
 
 .panel-title {

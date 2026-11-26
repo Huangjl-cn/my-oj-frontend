@@ -258,14 +258,12 @@
         v-if="
           companionEnabled && question && !companionOpen && !companion.preview
         "
+        ref="petRef"
         class="pet-anchor"
-        :mood="companion.pet.mood"
+        :behavior="duck"
         :intensity="companion.pet.intensity"
-        :beat="companion.pet.beat"
         :bubble="companion.pet.bubble"
         :name="companionName"
-        :activity="petActivity"
-        :typing-beat="typingBeat"
         @open="companion.openPanel()"
         @dismiss="companion.dismissBubble()"
       />
@@ -283,9 +281,12 @@
     />
     <CompanionPanel
       v-if="companionOpen"
+      ref="panelRef"
       class="companion-pane"
       :companion="companion"
+      :duck="duck"
     />
+    <DuckFlight />
 
     <ConfirmDialog
       v-model:visible="resetDialogOpen"
@@ -302,6 +303,7 @@ import message from "@arco-design/web-vue/es/message";
 import {
   computed,
   defineAsyncComponent,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   reactive,
@@ -315,7 +317,9 @@ import CodeEditPreviewBar from "@/components/companion/CodeEditPreviewBar.vue";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import CompanionPanel from "@/components/companion/CompanionPanel.vue";
 import CompanionPet from "@/components/companion/CompanionPet.vue";
-import { PetActivity } from "@/composables/usePetBehavior";
+import DuckFlight from "@/components/companion/DuckFlight.vue";
+import { useDuckFlight } from "@/composables/useDuckFlight";
+import { PetActivity, usePetBehavior } from "@/composables/usePetBehavior";
 import SelectionAskBox from "@/components/companion/SelectionAskBox.vue";
 import MySubmissionList from "@/components/problem/MySubmissionList.vue";
 import PaneResizer from "@/components/problem/PaneResizer.vue";
@@ -624,6 +628,28 @@ const onCodeChange = (value: string) => {
   editor.changeCode(value);
   typingBeat.value += 1;
 };
+
+/** 鸭鸭只有一只：编辑器上的桌宠和陪练面板标题里的是同一个，状态连着 */
+const duck = usePetBehavior({
+  mood: () => companion.pet.mood,
+  beat: () => companion.pet.beat,
+  activity: () => petActivity.value,
+  typingBeat: () => typingBeat.value,
+});
+
+// 打开 / 收起陪练面板时，鸭鸭在两个位置之间飞过去。
+// 这个回调在页面更新之前执行，起点还在，先量起点；等新位置渲染出来再量终点。
+const petRef = ref<InstanceType<typeof CompanionPet> | null>(null);
+const panelRef = ref<InstanceType<typeof CompanionPanel> | null>(null);
+const { fly } = useDuckFlight();
+watch(companionOpen, async (open) => {
+  const from = open ? petRef.value?.rect() : panelRef.value?.duckRect();
+  if (!from) return;
+  await nextTick();
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  const to = open ? panelRef.value?.duckRect() : petRef.value?.rect();
+  if (to) fly(from, to, () => duck.land());
+});
 
 const goLogin = () => {
   void router.push({

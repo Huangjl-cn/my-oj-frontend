@@ -203,6 +203,14 @@ describe("pet behavior", () => {
     expect(behavior.pose.value).toBe("idle");
   });
 
+  it("lands with a squash after flying to a new place", () => {
+    const { behavior } = current;
+    behavior.land();
+    expect(behavior.pose.value).toBe("land");
+    vi.advanceTimersByTime(PET_TIMING.land + 250);
+    expect(behavior.pose.value).toBe("idle");
+  });
+
   it("wakes up quietly when the companion has something to say", async () => {
     const { behavior, setMood } = current;
     vi.advanceTimersByTime(

@@ -4,7 +4,12 @@
       <div
         :class="[
           'companion-pet',
-          { dragging, 'bubble-right': bubbleOnRight, placed: ready },
+          {
+            dragging,
+            'bubble-right': bubbleOnRight,
+            placed: ready,
+            'in-flight': flight.active,
+          },
         ]"
         :style="petStyle"
       >
@@ -71,45 +76,33 @@
 import {
   computed,
   defineEmits,
+  defineExpose,
   defineProps,
   onBeforeUnmount,
   onMounted,
+  PropType,
   ref,
   watch,
-  withDefaults,
 } from "vue";
 
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
-import { PetMood } from "@/constants/companionMoods";
-import { PetActivity, usePetBehavior } from "@/composables/usePetBehavior";
+import { toFlightRect, useDuckFlight } from "@/composables/useDuckFlight";
+import { PetBehavior } from "@/composables/usePetBehavior";
+import { usePetLook } from "@/composables/usePetLook";
 import {
   clampPetPosition,
   PetPosition,
   usePetPlacement,
 } from "@/composables/usePetPlacement";
 
-const props = withDefaults(
-  defineProps<{
-    mood: PetMood;
-    intensity?: number;
-    /** 每次变化都重播一次动作 */
-    beat?: number;
-    bubble?: string;
-    name?: string;
-    /** 正在回答（流式输出中）或等判题结果 */
-    activity?: PetActivity;
-    /** 编辑器里每打一次字加一，鸭鸭会盯着代码看 */
-    typingBeat?: number;
-  }>(),
-  {
-    intensity: 1,
-    beat: 0,
-    bubble: "",
-    name: "鸭鸭",
-    activity: null,
-    typingBeat: 0,
-  }
-);
+const props = defineProps({
+  /** 鸭鸭的行为（做题页创建，和陪练面板标题里的鸭鸭共用一个） */
+  behavior: { type: Object as PropType<PetBehavior>, required: true },
+  /** 动作幅度 1-3 */
+  intensity: { type: Number, default: 1 },
+  bubble: { type: String, default: "" },
+  name: { type: String, default: "鸭鸭" },
+});
 
 const emit = defineEmits<{
   (event: "open"): void;
@@ -184,12 +177,9 @@ watch(box, measureAnchor);
 
 // region 行为：姿势由 usePetBehavior 决定
 
-const behavior = usePetBehavior({
-  mood: () => props.mood,
-  beat: () => props.beat,
-  activity: () => props.activity,
-  typingBeat: () => props.typingBeat,
-});
+// eslint-disable-next-line vue/no-setup-props-destructure
+const behavior = props.behavior;
+const { flight } = useDuckFlight();
 
 const LIFTED_POSES = new Set(["grab", "drag", "fly", "dizzydrag"]);
 const lifted = computed(() => LIFTED_POSES.has(behavior.pose.value));
@@ -245,35 +235,14 @@ const trackSwing = (event: PointerEvent) => {
 
 // region 眼睛跟着鼠标；鼠标、键盘有动静就重置犯困计时
 
-const look = ref<{ x: number; y: number } | null>(null);
-let lookFrame = 0;
-let lastMove: PointerEvent | null = null;
+const look = usePetLook(buttonRef, behavior.noteUserActivity);
 
-const updateLook = () => {
-  lookFrame = 0;
-  const event = lastMove;
-  const rect = buttonRef.value?.getBoundingClientRect();
-  if (!event || !rect) return;
-  const dx = event.clientX - (rect.left + rect.width / 2);
-  const dy = event.clientY - (rect.top + rect.height * 0.4);
-  const distance = Math.hypot(dx, dy) || 1;
-  const reach = Math.min(1, distance / 260);
-  look.value = { x: (dx / distance) * reach, y: (dy / distance) * reach };
-  behavior.noteUserActivity({ x: event.clientX, y: event.clientY });
-};
-
-const onDocumentPointerMove = (event: PointerEvent) => {
-  lastMove = event;
-  if (!lookFrame) lookFrame = requestAnimationFrame(updateLook);
-};
-
-const onDocumentKeydown = () => behavior.noteUserActivity();
-
-onMounted(() => {
-  document.addEventListener("pointermove", onDocumentPointerMove, {
-    passive: true,
-  });
-  document.addEventListener("keydown", onDocumentKeydown);
+/** 飞行动画用：鸭鸭（不含留白和影子）在屏幕上的位置 */
+defineExpose({
+  rect: () =>
+    toFlightRect(
+      buttonRef.value?.querySelector("svg")?.getBoundingClientRect() ?? null
+    ),
 });
 
 // endregion
@@ -394,9 +363,6 @@ watch(
 onBeforeUnmount(() => {
   if (bubbleTimer) clearTimeout(bubbleTimer);
   if (swingFrame) cancelAnimationFrame(swingFrame);
-  if (lookFrame) cancelAnimationFrame(lookFrame);
-  document.removeEventListener("pointermove", onDocumentPointerMove);
-  document.removeEventListener("keydown", onDocumentKeydown);
   window.removeEventListener("resize", measureAnchor);
   resizeObserver?.disconnect();
   removeGestureListeners();
@@ -418,6 +384,11 @@ onBeforeUnmount(() => {
 
 .companion-pet.placed {
   visibility: visible;
+}
+
+/* 正在飞进 / 飞出陪练面板时，只显示飞着的那只 */
+.companion-pet.placed.in-flight {
+  visibility: hidden;
 }
 
 .pet-button {

@@ -311,6 +311,12 @@ export const usePetBehavior = (options: PetBehaviorOptions) => {
     play([{ pose: "land", ms: PET_TIMING.land }]);
   };
 
+  /** 飞到新位置后落地 */
+  const land = () => {
+    touch();
+    play([{ pose: "land", ms: PET_TIMING.land }]);
+  };
+
   const hover = () => {
     const t = now();
     touch();
@@ -354,9 +360,12 @@ export const usePetBehavior = (options: PetBehaviorOptions) => {
     resizeStart,
     resizeEnd,
     hover,
+    land,
     noteUserActivity,
     dispose,
     /** 测试用：立刻按当前时间推进一次 */
     tick,
   };
 };
+
+export type PetBehavior = ReturnType<typeof usePetBehavior>;
