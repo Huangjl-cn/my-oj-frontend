@@ -223,10 +223,12 @@ const tagsOf = (question: QuestionListRecord): string[] => {
 const topicTags = (question: QuestionListRecord) =>
   getTopicTags(tagsOf(question)).slice(0, 3);
 
-const getQuestionUserId = (question: QuestionListRecord) =>
-  "userId" in question
-    ? question.userId
-    : question.userVO?.id ?? question.userid;
+const getQuestionUserId = (question: QuestionListRecord) => {
+  if ("userId" in question) return question.userId;
+  // 没有 userId 的是 QuestionVO：作者 id 在 userVO 里，或者是小写的 userid
+  const vo = question as QuestionVO;
+  return vo.userVO?.id ?? vo.userid;
+};
 
 const getAdminQuestion = (question: QuestionListRecord) => question as Question;
 

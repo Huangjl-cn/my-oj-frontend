@@ -57,12 +57,6 @@ const router = useRouter();
 const route = useRoute();
 const store = useStore();
 
-const goToRegister = () => {
-  router.push({
-    path: "/user/register",
-  });
-};
-
 const submitting = ref(false);
 
 const handleSubmit = async () => {
