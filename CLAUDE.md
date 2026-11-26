@@ -280,7 +280,14 @@ const ProblemView = () => import("@/views/problem/ProblemView.vue");
 
 ### Docker & Nginx Configuration
 
-This repo only ships `deploy/oj-frontend/`. The compose file that runs MySQL, the backend and this nginx lives in the backend repository (its `deploy/docker-compose.yml`, secrets from its `deploy/.env`). At deploy time this directory is placed under the backend's `deploy/`, and the `my-oj-frontend` nginx container (ports 80/443, healthcheck on `/healthz`) mounts `nginx.conf`, `dist/`, `certs/` and `acme-challenge/` from it. Do not add a compose file or any credentials to this repo.
+This repo only ships `deploy/oj-frontend/`. The compose file that runs MySQL, the backend and this nginx lives in the backend repository (its `deploy/docker-compose.yml`, secrets in the server's `.env`). Do not add a compose file or any credentials to this repo.
 
-- `deploy/oj-frontend/nginx.conf` — nginx config with `gzip_static on`, immutable cache headers for hashed assets, `/api/` proxy to backend (`my-oj-backend:8101` upstream), and SPA `try_files` fallback
-- `deploy/oj-frontend/dist/` — production build output (`vite.config.mts` `build.outDir`, gitignored), mounted read-only into the nginx container
+- `deploy/oj-frontend/nginx.conf` — nginx config with `gzip_static on`, immutable cache headers for hashed assets, `/api/` proxy to backend (`my-oj-backend:8101` upstream), `/api/actuator/` blocked from outside, and SPA `try_files` fallback. Its `root` is `/usr/share/nginx/www/current`
+- `deploy/oj-frontend/dist/` — production build output (`vite.config.mts` `build.outDir`, gitignored)
+- On the server the `my-oj-frontend` container mounts `oj-frontend/www/` (not a single release): each release lives in `www/releases/<time>-<commit>/` and `www/current` is a symlink to the live one, so switching releases needs no nginx restart. Certificates and `acme-challenge/` stay on the server only
+
+### CI / CD (`.github/workflows/`)
+
+- `ci.yml` runs on every push and PR: `npm ci`, lint, `prettier --check`, unit tests, `npm run build`
+- `deploy.yml` runs on pushes to master (or manually with a commit to redeploy): builds, then — after approval in the GitHub `production` environment — streams `dist/` + `nginx.conf` over SSH to the server's `deploy.sh frontend <commit>` (script lives in the backend repo, `deploy/server/deploy.sh`). It tests the new nginx.conf with `nginx -t`, keeps the previous release's own `js/` and `assets/` files in the new release (tabs still open on the old version can lazy-load their chunks), switches `current` atomically and rolls back if the check fails. The last 5 releases are kept
+- The repo is public, so Actions logs are public: never print secrets or server details in workflow steps
