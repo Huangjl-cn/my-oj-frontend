@@ -20,12 +20,12 @@ const createStorageKey = (key: {
 
 describe("question draft local cache", () => {
   beforeEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     localStorage.clear();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("separates drafts by user, question and language", () => {
@@ -72,13 +72,13 @@ describe("question draft local cache", () => {
   });
 
   it("expires drafts older than 7 days", () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
 
     const key = { userId: "7", questionId: "42", language: "java" };
     saveQuestionDraft(key, "stale draft");
 
-    jest.setSystemTime(new Date("2026-01-08T00:00:01.000Z"));
+    vi.setSystemTime(new Date("2026-01-08T00:00:01.000Z"));
 
     // 纯读：getter 不再顺手删除，过期清理由 sweepExpiredQuestionDrafts 负责
     expect(getQuestionDraft(key)).toBeUndefined();
@@ -89,18 +89,18 @@ describe("question draft local cache", () => {
   });
 
   it("sweepExpiredQuestionDrafts removes expired drafts and keeps fresh ones", () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
 
     const staleKey = { userId: "7", questionId: "42", language: "java" };
     const freshKey = { userId: "7", questionId: "43", language: "java" };
     saveQuestionDraft(staleKey, "stale");
     saveQuestionDraft(freshKey, "fresh");
 
-    jest.setSystemTime(new Date("2026-01-05T00:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-01-05T00:00:00.000Z"));
     saveQuestionDraft(freshKey, "fresh");
 
-    jest.setSystemTime(new Date("2026-01-08T00:00:01.000Z"));
+    vi.setSystemTime(new Date("2026-01-08T00:00:01.000Z"));
     sweepExpiredQuestionDrafts();
 
     expect(getQuestionDraft(staleKey)).toBeUndefined();
@@ -122,14 +122,14 @@ describe("question draft local cache", () => {
   });
 
   it("finds the user's most recently saved draft", () => {
-    jest.useFakeTimers().setSystemTime(new Date("2026-11-25T10:00:00Z"));
+    vi.useFakeTimers().setSystemTime(new Date("2026-11-25T10:00:00Z"));
     saveQuestionDraft(
       { userId: "1", questionId: "100", language: "java" },
       "a"
     );
-    jest.setSystemTime(new Date("2026-11-25T10:05:00Z"));
+    vi.setSystemTime(new Date("2026-11-25T10:05:00Z"));
     saveQuestionDraft({ userId: "1", questionId: "200", language: "cpp" }, "b");
-    jest.setSystemTime(new Date("2026-11-25T10:09:00Z"));
+    vi.setSystemTime(new Date("2026-11-25T10:09:00Z"));
     saveQuestionDraft({ userId: "2", questionId: "300", language: "go" }, "c");
 
     expect(getLatestQuestionDraft("1")).toEqual({

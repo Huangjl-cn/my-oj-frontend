@@ -13,16 +13,16 @@ const flushPromises = async () => {
 
 const resolvedRequest = (submission: QuestionSubmitVO) => ({
   promise: Promise.resolve(submission),
-  cancel: jest.fn(),
+  cancel: vi.fn(),
 });
 
 describe("question submit polling", () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("covers the backend 60 second sandbox timeout", () => {
@@ -31,13 +31,13 @@ describe("question submit polling", () => {
 
   it("passes a Long submission ID to the request without numeric coercion", () => {
     const submitId = "2013621883695575042";
-    const request = jest.fn<QuestionSubmitRequest, [ApiId]>(() => ({
+    const request = vi.fn<(submitId: ApiId) => QuestionSubmitRequest>(() => ({
       promise: new Promise<QuestionSubmitVO | undefined>(() => undefined),
-      cancel: jest.fn(),
+      cancel: vi.fn(),
     }));
     const polling = createQuestionSubmitPoller({
       request,
-      onUpdate: jest.fn(),
+      onUpdate: vi.fn(),
     });
 
     polling.start(submitId);
@@ -47,8 +47,8 @@ describe("question submit polling", () => {
   });
 
   it("polls through statuses 0 and 1, then stops on status 2 Wrong Answer", async () => {
-    const request = jest
-      .fn<QuestionSubmitRequest, [ApiId]>()
+    const request = vi
+      .fn<(submitId: ApiId) => QuestionSubmitRequest>()
       .mockReturnValueOnce(resolvedRequest({ status: 0 }))
       .mockReturnValueOnce(resolvedRequest({ status: 1 }))
       .mockReturnValueOnce(
@@ -57,7 +57,7 @@ describe("question submit polling", () => {
           judgeInfo: { message: "Wrong Answer\n用例: 1" },
         })
       );
-    const onUpdate = jest.fn();
+    const onUpdate = vi.fn();
     const polling = createQuestionSubmitPoller({
       request,
       onUpdate,
@@ -66,11 +66,11 @@ describe("question submit polling", () => {
 
     polling.start(42);
     await flushPromises();
-    jest.advanceTimersByTime(10);
+    vi.advanceTimersByTime(10);
     await flushPromises();
-    jest.advanceTimersByTime(10);
+    vi.advanceTimersByTime(10);
     await flushPromises();
-    jest.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
 
     expect(request).toHaveBeenCalledTimes(3);
     expect(onUpdate).toHaveBeenLastCalledWith(
@@ -79,44 +79,44 @@ describe("question submit polling", () => {
   });
 
   it("stops immediately on status 3", async () => {
-    const request = jest.fn(() => resolvedRequest({ status: 3 }));
+    const request = vi.fn(() => resolvedRequest({ status: 3 }));
     const polling = createQuestionSubmitPoller({
       request,
-      onUpdate: jest.fn(),
+      onUpdate: vi.fn(),
       interval: 10,
     });
 
     polling.start(42);
     await flushPromises();
-    jest.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
 
     expect(request).toHaveBeenCalledTimes(1);
   });
 
   it("does not keep polling an unknown submission status", async () => {
-    const request = jest.fn(() => resolvedRequest({ status: 4 }));
+    const request = vi.fn(() => resolvedRequest({ status: 4 }));
     const polling = createQuestionSubmitPoller({
       request,
-      onUpdate: jest.fn(),
+      onUpdate: vi.fn(),
       interval: 10,
     });
 
     polling.start(42);
     await flushPromises();
-    jest.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
 
     expect(request).toHaveBeenCalledTimes(1);
   });
 
   it("cancels the active request when stopped", () => {
-    const cancel = jest.fn();
-    const request = jest.fn(() => ({
+    const cancel = vi.fn();
+    const request = vi.fn(() => ({
       promise: new Promise<QuestionSubmitVO | undefined>(() => undefined),
       cancel,
     }));
     const polling = createQuestionSubmitPoller({
       request,
-      onUpdate: jest.fn(),
+      onUpdate: vi.fn(),
     });
 
     polling.start(42);
@@ -126,11 +126,11 @@ describe("question submit polling", () => {
   });
 
   it("stops at the overall timeout after a pending result", async () => {
-    const request = jest.fn(() => resolvedRequest({ status: 0 }));
-    const onTimeout = jest.fn();
+    const request = vi.fn(() => resolvedRequest({ status: 0 }));
+    const onTimeout = vi.fn();
     const polling = createQuestionSubmitPoller({
       request,
-      onUpdate: jest.fn(),
+      onUpdate: vi.fn(),
       onTimeout,
       interval: 10,
       timeout: 5,
@@ -138,7 +138,7 @@ describe("question submit polling", () => {
 
     polling.start(42);
     await flushPromises();
-    jest.advanceTimersByTime(10);
+    vi.advanceTimersByTime(10);
     await flushPromises();
 
     expect(request).toHaveBeenCalledTimes(1);

@@ -7,7 +7,7 @@ import {
   streamCompanion,
 } from "@/services/companionStream";
 
-jest.mock("../../generated", () => ({ OpenAPI: { BASE: "/api" } }));
+vi.mock("../../generated", () => ({ OpenAPI: { BASE: "/api" } }));
 
 const globals = globalThis as unknown as Record<string, unknown>;
 
@@ -86,7 +86,7 @@ describe("streamCompanion", () => {
   });
 
   it("dispatches thinking, delta and edits, then resolves with done", async () => {
-    globals.fetch = jest
+    globals.fetch = vi
       .fn()
       .mockResolvedValue(
         streamResponse([
@@ -99,7 +99,7 @@ describe("streamCompanion", () => {
       );
     const thinking: string[] = [];
     const deltas: string[] = [];
-    const edits = jest.fn();
+    const edits = vi.fn();
 
     const done = await streamCompanion("/companion/chat", body, {
       onThinking: (text) => thinking.push(text),
@@ -120,7 +120,7 @@ describe("streamCompanion", () => {
   });
 
   it("throws the business error when the server answers with JSON", async () => {
-    globals.fetch = jest
+    globals.fetch = vi
       .fn()
       .mockResolvedValue(jsonResponse({ code: 42900, message: "忙" }));
 
@@ -130,7 +130,7 @@ describe("streamCompanion", () => {
   });
 
   it("throws the error event sent in the middle of the stream", async () => {
-    globals.fetch = jest
+    globals.fetch = vi
       .fn()
       .mockResolvedValue(
         streamResponse([
@@ -146,7 +146,7 @@ describe("streamCompanion", () => {
   });
 
   it("treats a stream that ends without done as interrupted", async () => {
-    globals.fetch = jest
+    globals.fetch = vi
       .fn()
       .mockResolvedValue(
         streamResponse(['event:delta\ndata:{"text":"a"}\n\n'])

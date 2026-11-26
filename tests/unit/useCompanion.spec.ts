@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { ref } from "vue";
 
 import { useCompanion } from "@/composables/useCompanion";
@@ -14,28 +15,28 @@ import {
 import { streamCompanion } from "@/services/companionStream";
 import { ApiId } from "@/services/apiId";
 
-jest.mock("../../generated", () => ({ OpenAPI: { BASE: "/api" } }));
-jest.mock("@/services/companionStream", () => ({ streamCompanion: jest.fn() }));
-jest.mock("@/services/companion", () => ({
-  ...jest.requireActual("@/services/companion"),
-  getCompanionSession: jest.fn(),
-  listCompanionMessages: jest.fn(),
-  listCompanionConversations: jest.fn(),
-  startCompanionConversation: jest.fn(),
-  switchCompanionConversation: jest.fn(),
-  reactToSubmission: jest.fn(),
-  requestHint: jest.fn(),
-  setHintLevel: jest.fn(),
-  compactCompanionMemory: jest.fn(),
+vi.mock("../../generated", () => ({ OpenAPI: { BASE: "/api" } }));
+vi.mock("@/services/companionStream", () => ({ streamCompanion: vi.fn() }));
+vi.mock("@/services/companion", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/companion")>()),
+  getCompanionSession: vi.fn(),
+  listCompanionMessages: vi.fn(),
+  listCompanionConversations: vi.fn(),
+  startCompanionConversation: vi.fn(),
+  switchCompanionConversation: vi.fn(),
+  reactToSubmission: vi.fn(),
+  requestHint: vi.fn(),
+  setHintLevel: vi.fn(),
+  compactCompanionMemory: vi.fn(),
 }));
 
-const mockedSession = getCompanionSession as jest.Mock;
-const mockedStream = streamCompanion as jest.Mock;
-const mockedReact = reactToSubmission as jest.Mock;
-const mockedHint = requestHint as jest.Mock;
-const mockedSetLevel = setHintLevel as jest.Mock;
-const mockedStart = startCompanionConversation as jest.Mock;
-const mockedSwitch = switchCompanionConversation as jest.Mock;
+const mockedSession = getCompanionSession as Mock;
+const mockedStream = streamCompanion as Mock;
+const mockedReact = reactToSubmission as Mock;
+const mockedHint = requestHint as Mock;
+const mockedSetLevel = setHintLevel as Mock;
+const mockedStart = startCompanionConversation as Mock;
+const mockedSwitch = switchCompanionConversation as Mock;
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -72,7 +73,7 @@ const code = "int a = 1\n";
 const setup = (questionId: ApiId | null = "7") => {
   const id = ref<ApiId | null>(questionId);
   const enabled = ref(true);
-  const applyCode = jest.fn().mockReturnValue(true);
+  const applyCode = vi.fn().mockReturnValue(true);
   const companion = useCompanion({
     questionId: id,
     enabled,
@@ -84,7 +85,7 @@ const setup = (questionId: ApiId | null = "7") => {
 
 describe("useCompanion", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     mockedSession.mockResolvedValue(session());
   });
 

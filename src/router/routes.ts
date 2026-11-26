@@ -1,44 +1,19 @@
 import { RouteRecordRaw } from "vue-router";
 import ACCESS_ENUM from "@/access/accessEnum";
 
-const UserLayout = () =>
-  import(/* webpackChunkName: "page-auth" */ "@/layouts/UserLayout.vue");
-const UserLoginView = () =>
-  import(/* webpackChunkName: "page-auth" */ "@/views/user/UserLoginView.vue");
-const UserRegisterView = () =>
-  import(
-    /* webpackChunkName: "page-auth" */ "@/views/user/UserRegisterView.vue"
-  );
-const NoAuthView = () =>
-  import(/* webpackChunkName: "page-no-auth" */ "@/views/NoAuthView.vue");
-const AddQuestionView = () =>
-  import(
-    /* webpackChunkName: "page-question-editor" */ "@/views/question/AddQuestionView.vue"
-  );
+const UserLayout = () => import("@/layouts/UserLayout.vue");
+const UserLoginView = () => import("@/views/user/UserLoginView.vue");
+const UserRegisterView = () => import("@/views/user/UserRegisterView.vue");
+const NoAuthView = () => import("@/views/NoAuthView.vue");
+const AddQuestionView = () => import("@/views/question/AddQuestionView.vue");
 const ManageQuestionView = () =>
-  import(
-    /* webpackChunkName: "page-question-manage" */ "@/views/question/ManageQuestionView.vue"
-  );
-const ProblemView = () =>
-  import(
-    /* webpackChunkName: "page-problem" */ "@/views/problem/ProblemView.vue"
-  );
-const ProblemsView = () =>
-  import(
-    /* webpackChunkName: "page-problems" */ "@/views/problem/ProblemsView.vue"
-  );
+  import("@/views/question/ManageQuestionView.vue");
+const ProblemView = () => import("@/views/problem/ProblemView.vue");
+const ProblemsView = () => import("@/views/problem/ProblemsView.vue");
 const QuestionSubmitView = () =>
-  import(
-    /* webpackChunkName: "page-submissions" */ "@/views/question/QuestionSubmitView.vue"
-  );
-const UserManageView = () =>
-  import(
-    /* webpackChunkName: "page-user-manage" */ "@/views/user/UserManageView.vue"
-  );
-const UserProfileView = () =>
-  import(
-    /* webpackChunkName: "page-user-profile" */ "@/views/user/UserProfileView.vue"
-  );
+  import("@/views/question/QuestionSubmitView.vue");
+const UserManageView = () => import("@/views/user/UserManageView.vue");
+const UserProfileView = () => import("@/views/user/UserProfileView.vue");
 
 export const routes: Array<RouteRecordRaw> = [
   {

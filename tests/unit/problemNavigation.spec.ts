@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import {
   getNeighbors,
   getProblemListContext,
@@ -8,11 +9,11 @@ import {
 } from "@/services/problemNavigation";
 import { QuestionControllerService } from "../../generated";
 
-jest.mock("../../generated", () => ({
-  QuestionControllerService: { listQuestionVoByPage: jest.fn() },
+vi.mock("../../generated", () => ({
+  QuestionControllerService: { listQuestionVoByPage: vi.fn() },
 }));
 
-const mockedList = QuestionControllerService.listQuestionVoByPage as jest.Mock;
+const mockedList = QuestionControllerService.listQuestionVoByPage as Mock;
 
 const page = (ids: string[]) => ids.map((id) => ({ id, title: `题 ${id}` }));
 

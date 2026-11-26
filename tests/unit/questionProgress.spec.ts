@@ -3,8 +3,8 @@ import {
   getQuestionProgressState,
 } from "@/services/questionProgress";
 
-jest.mock("@/services/questionSubmit", () => ({
-  getJudgeResultPresentation: jest.fn((submission) => {
+vi.mock("@/services/questionSubmit", () => ({
+  getJudgeResultPresentation: vi.fn((submission) => {
     if (submission?.status === 0 || submission?.status === 1) {
       return { tone: "pending" };
     }

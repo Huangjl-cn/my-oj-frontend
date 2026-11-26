@@ -5,37 +5,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run serve              # Start dev server (vue-cli-service serve, port 8080)
-npm run build              # Production build (sourcemaps disabled, outputs to deploy/oj-frontend/dist)
-npm run lint:fix           # Lint and auto-fix (shorthand for lint -- --fix)
+npm run serve              # Vite dev server on port 8080
+npm run build              # vue-tsc type check, then vite build (no sourcemaps, outputs to deploy/oj-frontend/dist)
+npm run type-check         # vue-tsc only (checks templates too)
+npm run lint               # ESLint (src, tests, vite.config.mts); lint:fix to auto-fix
 npm run format             # Prettier format all src/**/*.{ts,vue,css}
-npm run test:unit          # Jest unit tests (tests/unit/*.spec.ts, @vue/cli-plugin-unit-jest)
+npm run test:unit          # Vitest unit tests (tests/unit/*.spec.ts, jsdom, globals on)
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
 - **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
-- The dev server proxies `/api` to `http://localhost:8102` (configured in `vue.config.js`).
+- The dev server proxies `/api` to `http://127.0.0.1:8102` (configured in `vite.config.mts`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
-- ESLint cache can cause stale lint errors — clear `node_modules/.cache/eslint/` if needed.
+- Env values come from `import.meta.env` (e.g. `BASE_URL`); there is no `process.env` in app code.
+- Tests use Vitest's `vi.*` API (`vi.fn`, `vi.mock`, fake timers). A mock factory for a module with a default export must return `{ default: ... }`; use `importOriginal` instead of `requireActual`.
 
 ## Package Manager
 
-npm only: `package-lock.json` is the lockfile (`npm ci` to install). Do not add a `yarn.lock` — Vue CLI sees it and refuses to start `serve` when yarn is not installed.
+npm only: `package-lock.json` is the lockfile (`npm ci` to install). Do not add a `yarn.lock` or `pnpm-lock.yaml`.
 
 ## Tech Stack
 
 - **Framework:** Vue 3 (Composition API, `<script setup lang="ts">`)
-- **Build:** Vue CLI 5 + Babel + TypeScript ~4.5
+- **Build:** Vite 6 (`@vitejs/plugin-vue`) + TypeScript ~5.6, type-checked by `vue-tsc`
 - **UI Library:** own components in `src/components/ui/` (`AppIcon`, `UiInput`, `UiSelect`, `UiNumberInput`, `UiTagInput`, `UiSwitch`, `UiSegmented`, `UiPagination`). Arco Design Vue is only used for `message` toasts (styled by `src/styles/arco.css`); no Arco components are registered
 - **Fonts:** Geist / Geist Mono (`@fontsource-variable/*`, self-hosted); Chinese falls back to system fonts
 - **State:** Vuex 4 (namespaced `user` module)
 - **Router:** Vue Router 4 (`createWebHistory`)
 - **HTTP:** Axios (`withCredentials: true`, interceptors in `src/plugins/axios.ts`)
-- **Editor:** Monaco Editor via `monaco-editor-webpack-plugin` (java, javascript, typescript, python, cpp, go)
+- **Editor:** Monaco Editor, assembled on demand in `src/components/editor/monaco.ts` (java, javascript, typescript, python, cpp, go)
 - **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight
 - **Syntax highlighting:** `highlight.js` (direct dependency) — used by `CodeBlock.vue` and ByteMD's plugin-highlight; colors come from `styles/code.css`
 - **Codegen:** `openapi-typescript-codegen` generates API client from OpenAPI spec into `generated/`
-- **Tests:** Jest 27 via `@vue/cli-plugin-unit-jest` (vue3-jest + ts-jest)
+- **Tests:** Vitest 3 (jsdom), configured in `vite.config.mts`
 
 ## Project Structure
 
@@ -53,6 +55,7 @@ src/
 │   ├── editor/
 │   │   ├── CodeBlock.vue        # Read-only highlighted code (highlight.js, 6 languages)
 │   │   ├── CodeEditor.vue       # Monaco wrapper (format / getCursorInfo / collapseSelection / replaceAll, diff preview, selection events)
+│   │   ├── monaco.ts            # Loads only the Monaco parts we use + sets up its workers (lazy-imported by CodeEditor)
 │   │   ├── monacoThemes.ts      # myoj-light / myoj-dark editor themes (same colors as styles/code.css)
 │   │   ├── MdEditor.vue / MdViewer.vue
 │   ├── layout/
@@ -94,7 +97,7 @@ src/
 │   ├── user/                      # Login, Register, Profile, UserManage
 │   └── NoAuthView.vue
 ├── App.vue               # AppLayout, or UserLayout for /user/*
-└── main.ts               # Fonts, styles, ArcoVue components, router, store, access guard
+└── main.ts               # Fonts, styles, Arco message CSS, router, store, access guard
 
 generated/               # Auto-generated API client — DO NOT EDIT (npm run generate:api)
 ```
@@ -218,9 +221,9 @@ Components: `JudgeValueEditor.vue` renders the full config editor (parameters + 
 
 `useMyProgress` fetches `GET /question/progress/my` once per user: totals and solved counts per difficulty plus `statuses` (questionId → `passed` / `failed` / `judging`). State is module-level, so the list page, the list drawer and the problem page share it; the problem page calls `markStatus` as judging progresses instead of refetching. `services/questionProgress.ts` only keeps `getQuestionProgressState(submission)` and `formatAcceptanceRate`. Difficulty is read from tags in either spelling (`easy` / `简单`), see `utils/difficulty.ts` (mirrors the backend's `QuestionDifficultyEnum`).
 
-### ArcoVue On-Demand Import
+### Arco Message
 
-`main.ts` imports ArcoVue components individually (not full `ArcoVue` plugin). Only 18 components are registered: `Button, Col, Form, FormItem, Input, InputNumber, InputPassword, InputTag, Layout, LayoutContent, LayoutFooter, LayoutHeader, Option, Pagination, Row, Select, Switch, Table`. Each component's CSS is imported separately via `@arco-design/web-vue/es/<component>/style/css.js`.
+Only Arco's `message` is used: components import `@arco-design/web-vue/es/message`, and `main.ts` imports its CSS (`es/message/style/css.js`). No Arco components are registered.
 
 ### ResizeObserver Error Suppression
 
@@ -257,22 +260,18 @@ Backend contract: `docs/frontend/ai-companion.md` in the backend repo. `generate
 
 ### Route Lazy Loading
 
-All page-level routes use dynamic imports with webpack chunk names for code splitting:
+All page-level routes in `src/router/routes.ts` are dynamic imports, so each page is its own chunk (Rollup names chunks after the file, e.g. `js/ProblemView.<hash>.js`):
 
 ```typescript
-const ProblemView = () =>
-  import(/* webpackChunkName: "page-problem" */ "@/views/problem/ProblemView.vue");
+const ProblemView = () => import("@/views/problem/ProblemView.vue");
 ```
-
-Named chunks: `page-auth` (login/register), `page-problems`, `page-problem`, `page-question-editor`, `page-question-manage`, `page-submissions`, `page-user-manage`, `page-user-profile`, `page-no-auth`.
 
 ## Build & Deployment
 
 ### Build Optimization
-- `compression-webpack-plugin` generates `.gz` files for all JS/CSS/HTML/SVG during build
-- `image-webpack-loader` compresses images (mozjpeg quality 65, pngquant 0.65-0.9) during build
-- `vue.config.js` splits node_modules into 4 chunks: `chunk-vue` (Vue core), `chunk-arco` (Arco Design), `chunk-vendors` (rest), `chunk-common` (shared); prefetch/preload are disabled
-- Monaco is configured with only `["coreCommands", "find"]` features (plus the 6 languages listed above)
+- `vite.config.mts` has a small plugin that writes `.gz` next to every JS/CSS/HTML/SVG file over 8KB (kept only when it saves at least 20%), for nginx's `gzip_static`
+- Output names are `js/[name].[hash].js` and `assets/[name].[hash][ext]` with an 8-character hex hash (`hashCharacters: "hex"`, also for workers) — this is what nginx's immutable-cache rule `\.[0-9a-f]{8}\.` matches, so keep them in sync
+- `monaco.ts` imports `editor.api` plus only the `coreCommands` and `find` features and the 6 languages; JavaScript / TypeScript use Monaco's TypeScript worker, everything else the editor worker (`?worker` imports). Importing `monaco-editor` directly would pull in every language and feature
 - Monaco Editor is lazy-loaded via `defineAsyncComponent` in ProblemView; MdViewer and CodeBlock are lazy-loaded too
 
 ### Docker & Nginx Configuration
@@ -280,4 +279,4 @@ Named chunks: `page-auth` (login/register), `page-problems`, `page-problem`, `pa
 This repo only ships `deploy/oj-frontend/`. The compose file that runs MySQL, the backend and this nginx lives in the backend repository (its `deploy/docker-compose.yml`, secrets from its `deploy/.env`). At deploy time this directory is placed under the backend's `deploy/`, and the `my-oj-frontend` nginx container (ports 80/443, healthcheck on `/healthz`) mounts `nginx.conf`, `dist/`, `certs/` and `acme-challenge/` from it. Do not add a compose file or any credentials to this repo.
 
 - `deploy/oj-frontend/nginx.conf` — nginx config with `gzip_static on`, immutable cache headers for hashed assets, `/api/` proxy to backend (`my-oj-backend:8101` upstream), and SPA `try_files` fallback
-- `deploy/oj-frontend/dist/` — production build output (`vue.config.js` `outputDir`, gitignored), mounted read-only into the nginx container
+- `deploy/oj-frontend/dist/` — production build output (`vite.config.mts` `build.outDir`, gitignored), mounted read-only into the nginx container

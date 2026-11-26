@@ -5,7 +5,7 @@ import {
 } from "@/services/codeEditProposal";
 import { CodeEditProposal } from "@/services/companion";
 
-jest.mock("../../generated", () => ({ OpenAPI: { BASE: "/api" } }));
+vi.mock("../../generated", () => ({ OpenAPI: { BASE: "/api" } }));
 
 const original = "int a = in.nextInt();\nint b = in.nextInt();\nprint(a + b)\n";
 

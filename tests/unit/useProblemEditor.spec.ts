@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { ref } from "vue";
 
 import { useProblemEditor } from "@/composables/problem/useProblemEditor";
@@ -8,16 +9,18 @@ import {
   getSupportedLanguageOptions,
 } from "@/services/questionStarterCode";
 
-jest.mock("@arco-design/web-vue/es/message", () => ({ error: jest.fn() }));
-jest.mock("../../generated", () => ({}));
-jest.mock("@/services/questionStarterCode", () => ({
-  ...jest.requireActual("@/services/questionStarterCode"),
-  getQuestionStarterCode: jest.fn(),
-  getSupportedLanguageOptions: jest.fn(),
+vi.mock("@arco-design/web-vue/es/message", () => ({
+  default: { error: vi.fn() },
+}));
+vi.mock("../../generated", () => ({}));
+vi.mock("@/services/questionStarterCode", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/questionStarterCode")>()),
+  getQuestionStarterCode: vi.fn(),
+  getSupportedLanguageOptions: vi.fn(),
 }));
 
-const mockedStarter = getQuestionStarterCode as jest.Mock;
-const mockedLanguages = getSupportedLanguageOptions as jest.Mock;
+const mockedStarter = getQuestionStarterCode as Mock;
+const mockedLanguages = getSupportedLanguageOptions as Mock;
 const key = (language: string) => ({
   userId: "7",
   questionId: "100",
@@ -35,7 +38,7 @@ const setup = async () => {
 
 describe("problem editor", () => {
   beforeEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     localStorage.clear();
     clearQuestionStarterCodeCache("100");
     mockedLanguages.mockResolvedValue([
@@ -66,17 +69,17 @@ describe("problem editor", () => {
   });
 
   it("saves the draft 300ms after typing and drops it when back to the template", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const editor = await setup();
     await editor.activateLanguage("java");
 
     editor.changeCode("edited");
     expect(getQuestionDraft(key("java"))).toBeUndefined();
-    jest.advanceTimersByTime(300);
+    vi.advanceTimersByTime(300);
     expect(getQuestionDraft(key("java"))).toBe("edited");
 
     editor.changeCode("// java template");
-    jest.advanceTimersByTime(300);
+    vi.advanceTimersByTime(300);
     expect(getQuestionDraft(key("java"))).toBeUndefined();
   });
 

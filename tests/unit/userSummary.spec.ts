@@ -1,13 +1,14 @@
+import type { Mock } from "vitest";
 import { UserControllerService } from "../../generated";
 import { clearUserSummaryCache, getUserSummary } from "@/services/userSummary";
 
-jest.mock("../../generated", () => ({
+vi.mock("../../generated", () => ({
   UserControllerService: {
-    getUserVoById: jest.fn(),
+    getUserVoById: vi.fn(),
   },
 }));
 
-const getUserVoById = UserControllerService.getUserVoById as jest.Mock;
+const getUserVoById = UserControllerService.getUserVoById as Mock;
 
 describe("user summary cache", () => {
   beforeEach(() => {

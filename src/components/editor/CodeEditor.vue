@@ -229,7 +229,7 @@ onMounted(async () => {
   if (!codeEditorRef.value) {
     return;
   }
-  monaco = await import("monaco-editor");
+  monaco = (await import("@/components/editor/monaco")).default;
   defineMonacoThemes(monaco);
   codeEditor.value = monaco.editor.create(codeEditorRef.value, {
     value: props.value,
