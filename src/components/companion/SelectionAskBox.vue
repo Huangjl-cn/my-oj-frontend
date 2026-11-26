@@ -58,7 +58,7 @@ const GAP = 6;
 
 const props = defineProps({
   selection: { type: Object as PropType<EditorSelection>, required: true },
-  name: { type: String, default: "栗子" },
+  name: { type: String, default: "鸭鸭" },
   /** 有请求在进行 */
   busy: { type: Boolean, default: false },
   /** 没配 Key：点了直接去设置 */

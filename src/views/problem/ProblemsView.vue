@@ -21,7 +21,7 @@
           <CompanionAvatar :size="36" mood="playful" class="resume-mascot" />
           <div class="resume-text">
             <b>还没开始做题</b>
-            <span>挑一道，或者让栗子帮你选</span>
+            <span>挑一道，或者让鸭鸭帮你选</span>
           </div>
           <button
             class="btn sm"

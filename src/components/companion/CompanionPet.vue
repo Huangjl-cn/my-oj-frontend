@@ -31,19 +31,29 @@
         </Transition>
 
         <button
+          ref="buttonRef"
           class="pet-button"
           type="button"
           :title="`和${name}聊聊（按住可以拖动）`"
           :aria-label="`打开${name}的陪练面板`"
           @pointerdown="startGesture($event, 'move')"
+          @pointerenter="behavior.hover()"
           @click="onClick"
         >
-          <span class="pet-breath">
-            <span :key="beat" :class="['pet-motion', `motion-${displayMood}`]">
-              <CompanionAvatar :mood="displayMood" :size="placement.size" />
-            </span>
+          <span
+            :class="['pet-body', { lifted }]"
+            :style="{ transform: `rotate(${tilt.toFixed(2)}deg)` }"
+          >
+            <CompanionAvatar
+              :pose="behavior.pose.value"
+              :replay="behavior.poseKey.value"
+              :size="placement.size"
+              :amp="intensity"
+              :look="look"
+              lively
+            />
           </span>
-          <span class="pet-shadow" aria-hidden="true"></span>
+          <span :class="['pet-shadow', { lifted }]" aria-hidden="true"></span>
         </button>
         <span
           class="pet-resize"
@@ -71,6 +81,7 @@ import {
 
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import { PetMood } from "@/constants/companionMoods";
+import { PetActivity, usePetBehavior } from "@/composables/usePetBehavior";
 import {
   clampPetPosition,
   PetPosition,
@@ -85,8 +96,19 @@ const props = withDefaults(
     beat?: number;
     bubble?: string;
     name?: string;
+    /** 正在回答（流式输出中）或等判题结果 */
+    activity?: PetActivity;
+    /** 编辑器里每打一次字加一，鸭鸭会盯着代码看 */
+    typingBeat?: number;
   }>(),
-  { intensity: 1, beat: 0, bubble: "", name: "栗子" }
+  {
+    intensity: 1,
+    beat: 0,
+    bubble: "",
+    name: "鸭鸭",
+    activity: null,
+    typingBeat: 0,
+  }
 );
 
 const emit = defineEmits<{
@@ -94,8 +116,6 @@ const emit = defineEmits<{
   (event: "dismiss"): void;
 }>();
 
-/** 心情表情保持一会儿后回到待机，思考状态由调用方结束 */
-const MOOD_HOLD_MS = 12000;
 const BUBBLE_MS = 10000;
 /** 移动超过这么多像素才算拖动，否则算点击 */
 const DRAG_THRESHOLD_PX = 4;
@@ -105,14 +125,13 @@ const PET_PADDING_PX = 4;
 const { placement, moveTo, resizeTo, resetSize, save } = usePetPlacement();
 
 const anchorRef = ref<HTMLElement | null>(null);
-const displayMood = ref<PetMood>(props.mood);
+const buttonRef = ref<HTMLElement | null>(null);
 const hovering = ref(false);
 const dragging = ref(false);
 /** 默认位置算出来之前先不显示，避免闪一下 */
 const ready = ref(false);
 const anchorPosition = ref<PetPosition>({ x: 0, y: 0 });
 const viewport = ref({ width: window.innerWidth, height: window.innerHeight });
-let moodTimer: ReturnType<typeof setTimeout> | undefined;
 let bubbleTimer: ReturnType<typeof setTimeout> | undefined;
 let resizeObserver: ResizeObserver | undefined;
 
@@ -127,14 +146,13 @@ const position = computed(() =>
 );
 
 const petStyle = computed(() => ({
-  "--amp": props.intensity,
   left: `${position.value.x}px`,
   top: `${position.value.y}px`,
   width: `${box.value}px`,
   height: `${box.value}px`,
 }));
 
-/** 栗子在屏幕左半边时，气泡出在右边 */
+/** 鸭鸭在屏幕左半边时，气泡出在右边 */
 const bubbleOnRight = computed(
   () => position.value.x + box.value / 2 < viewport.value.width / 2
 );
@@ -164,6 +182,102 @@ watch(box, measureAnchor);
 
 // endregion
 
+// region 行为：姿势由 usePetBehavior 决定
+
+const behavior = usePetBehavior({
+  mood: () => props.mood,
+  beat: () => props.beat,
+  activity: () => props.activity,
+  typingBeat: () => props.typingBeat,
+});
+
+const LIFTED_POSES = new Set(["grab", "drag", "fly", "dizzydrag"]);
+const lifted = computed(() => LIFTED_POSES.has(behavior.pose.value));
+
+// endregion
+
+// region 拖着走时像钟摆：往左拖身体往右甩，松手后自己晃两下停住
+
+const tilt = ref(0);
+let tiltVelocity = 0;
+let tiltTarget = 0;
+let swingFrame = 0;
+let lastSwing = 0;
+let dragVelocity = 0;
+let lastPointer: { x: number; t: number } | null = null;
+
+const swing = (time: number) => {
+  const dt = Math.min(48, time - (lastSwing || time));
+  lastSwing = time;
+  tiltVelocity =
+    (tiltVelocity + (tiltTarget - tilt.value) * 0.012 * dt) *
+    Math.pow(0.86, dt / 16);
+  tilt.value += tiltVelocity * (dt / 16);
+  if (!gesture) tiltTarget *= 0.9;
+  const settled =
+    !gesture && Math.abs(tilt.value) < 0.1 && Math.abs(tiltVelocity) < 0.01;
+  if (settled) {
+    tilt.value = 0;
+    swingFrame = 0;
+    lastSwing = 0;
+    return;
+  }
+  swingFrame = requestAnimationFrame(swing);
+};
+
+const startSwing = () => {
+  if (!swingFrame) swingFrame = requestAnimationFrame(swing);
+};
+
+const trackSwing = (event: PointerEvent) => {
+  const t = event.timeStamp;
+  if (lastPointer) {
+    const dt = Math.max(1, t - lastPointer.t);
+    const vx = (event.clientX - lastPointer.x) / dt;
+    dragVelocity = dragVelocity * 0.7 + vx * 0.3;
+    tiltTarget = Math.max(-38, Math.min(38, -dragVelocity * 22));
+  }
+  lastPointer = { x: event.clientX, t };
+  startSwing();
+};
+
+// endregion
+
+// region 眼睛跟着鼠标；鼠标、键盘有动静就重置犯困计时
+
+const look = ref<{ x: number; y: number } | null>(null);
+let lookFrame = 0;
+let lastMove: PointerEvent | null = null;
+
+const updateLook = () => {
+  lookFrame = 0;
+  const event = lastMove;
+  const rect = buttonRef.value?.getBoundingClientRect();
+  if (!event || !rect) return;
+  const dx = event.clientX - (rect.left + rect.width / 2);
+  const dy = event.clientY - (rect.top + rect.height * 0.4);
+  const distance = Math.hypot(dx, dy) || 1;
+  const reach = Math.min(1, distance / 260);
+  look.value = { x: (dx / distance) * reach, y: (dy / distance) * reach };
+  behavior.noteUserActivity({ x: event.clientX, y: event.clientY });
+};
+
+const onDocumentPointerMove = (event: PointerEvent) => {
+  lastMove = event;
+  if (!lookFrame) lookFrame = requestAnimationFrame(updateLook);
+};
+
+const onDocumentKeydown = () => behavior.noteUserActivity();
+
+onMounted(() => {
+  document.addEventListener("pointermove", onDocumentPointerMove, {
+    passive: true,
+  });
+  document.addEventListener("keydown", onDocumentKeydown);
+});
+
+// endregion
+
 // region 拖动与缩放
 
 type Gesture = {
@@ -184,7 +298,7 @@ const startGesture = (event: PointerEvent, kind: Gesture["kind"]) => {
   if (event.button !== 0) return;
   // 不让浏览器开始选中文字；click 照常触发
   event.preventDefault();
-  // 上次拖动松手时如果不在栗子上，浏览器不会补发 click，这里清掉标记
+  // 上次拖动松手时如果不在鸭鸭身上，浏览器不会补发 click，这里清掉标记
   suppressClick = false;
   gesture = {
     kind,
@@ -195,6 +309,10 @@ const startGesture = (event: PointerEvent, kind: Gesture["kind"]) => {
     originSize: placement.size,
     moved: false,
   };
+  if (kind === "move") behavior.pressStart();
+  else behavior.resizeStart();
+  lastPointer = null;
+  dragVelocity = 0;
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", endGesture);
   window.addEventListener("pointercancel", endGesture);
@@ -210,6 +328,8 @@ const onPointerMove = (event: PointerEvent) => {
   event.preventDefault();
   if (gesture.kind === "move") {
     moveTo({ x: gesture.origin.x + dx, y: gesture.origin.y + dy });
+    behavior.dragMove(event.clientX, event.clientY);
+    trackSwing(event);
   } else {
     // 右下角手柄：以左上角为原点放大缩小
     resizeTo(gesture.originSize + Math.max(dx, dy));
@@ -224,6 +344,9 @@ const endGesture = (event: PointerEvent) => {
     save();
     suppressClick = gesture.kind === "move";
   }
+  if (gesture.kind === "move") behavior.release(gesture.moved);
+  else behavior.resizeEnd();
+  tiltTarget = 0;
   gesture = null;
   dragging.value = false;
   removeGestureListeners();
@@ -245,20 +368,7 @@ const onClick = () => {
 
 // endregion
 
-// region 心情与气泡
-
-watch(
-  () => [props.mood, props.beat] as const,
-  ([mood]) => {
-    displayMood.value = mood;
-    if (moodTimer) clearTimeout(moodTimer);
-    if (mood !== "idle" && mood !== "thinking") {
-      moodTimer = setTimeout(() => {
-        displayMood.value = "idle";
-      }, MOOD_HOLD_MS);
-    }
-  }
-);
+// region 气泡
 
 const scheduleBubbleHide = () => {
   if (bubbleTimer) clearTimeout(bubbleTimer);
@@ -282,8 +392,11 @@ watch(
 // endregion
 
 onBeforeUnmount(() => {
-  if (moodTimer) clearTimeout(moodTimer);
   if (bubbleTimer) clearTimeout(bubbleTimer);
+  if (swingFrame) cancelAnimationFrame(swingFrame);
+  if (lookFrame) cancelAnimationFrame(lookFrame);
+  document.removeEventListener("pointermove", onDocumentPointerMove);
+  document.removeEventListener("keydown", onDocumentKeydown);
   window.removeEventListener("resize", measureAnchor);
   resizeObserver?.disconnect();
   removeGestureListeners();
@@ -298,7 +411,6 @@ onBeforeUnmount(() => {
 }
 
 .companion-pet {
-  --amp: 1;
   position: fixed;
   z-index: 1500;
   visibility: hidden;
@@ -360,24 +472,34 @@ onBeforeUnmount(() => {
   box-shadow: var(--focus-ring);
 }
 
-.pet-breath {
+/* 钟摆的支点在头顶附近：像被拎着 */
+.pet-body {
   display: block;
-  animation: pet-breathe 3.2s ease-in-out infinite;
-  transform-origin: 50% 100%;
+  transform-origin: 50% 12%;
+  will-change: transform;
 }
 
-.pet-motion {
-  display: block;
-  transform-origin: 50% 90%;
+.pet-body > :deep(svg) {
+  transition: translate 0.18s var(--ease-out);
+}
+
+.pet-body.lifted > :deep(svg) {
+  translate: 0 -6px;
 }
 
 .pet-shadow {
   width: 60%;
   height: 6px;
   margin-top: -2px;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.22);
   border-radius: 50%;
   filter: blur(2px);
+  transition: opacity 0.18s ease, transform 0.18s var(--ease-out);
+}
+
+.pet-shadow.lifted {
+  opacity: 0.5;
+  transform: scale(0.7);
 }
 
 .pet-bubble {
@@ -460,169 +582,11 @@ onBeforeUnmount(() => {
   transform: translateX(8px) scale(0.96);
 }
 
-/* ===== 动作：幅度随 --amp（1-3）变化 ===== */
-.motion-thinking {
-  animation: pet-sway 2.4s ease-in-out infinite;
-}
-
-.motion-excited {
-  animation: pet-hop 0.5s var(--ease-out) 3;
-}
-
-.motion-proud {
-  animation: pet-puff 1.2s var(--ease-out) 1 forwards;
-}
-
-.motion-surprised {
-  animation: pet-jump 0.6s var(--ease-out) 1;
-}
-
-.motion-thoughtful {
-  animation: pet-tilt 1.6s var(--ease-out) 1 forwards;
-}
-
-.motion-sympathetic {
-  animation: pet-droop 1.4s var(--ease-out) 1 forwards;
-}
-
-.motion-encouraging {
-  animation: pet-nod 0.6s ease-in-out 2;
-}
-
-.motion-playful {
-  animation: pet-wiggle 0.45s ease-in-out 3;
-}
-
-.motion-nervous {
-  animation: pet-shake 0.12s linear 8;
-}
-
-.motion-confused {
-  animation: pet-tilt-both 1.4s ease-in-out 1;
-}
-
-@keyframes pet-breathe {
-  0%,
-  100% {
-    transform: scale(1, 1);
-  }
-  50% {
-    transform: scale(1.015, 0.975);
-  }
-}
-
-@keyframes pet-sway {
-  0%,
-  100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(3deg);
-  }
-}
-
-@keyframes pet-hop {
-  0%,
-  100% {
-    transform: translateY(0) scale(1, 1);
-  }
-  15% {
-    transform: translateY(0) scale(1.08, 0.9);
-  }
-  50% {
-    transform: translateY(calc(var(--amp) * -7px)) scale(0.95, 1.06);
-  }
-}
-
-@keyframes pet-puff {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(calc(1 + var(--amp) * 0.05));
-  }
-  100% {
-    transform: scale(calc(1 + var(--amp) * 0.025));
-  }
-}
-
-@keyframes pet-jump {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(calc(var(--amp) * -9px)) scale(1.06);
-  }
-}
-
-@keyframes pet-tilt {
-  to {
-    transform: rotate(calc(var(--amp) * -5deg));
-  }
-}
-
-@keyframes pet-droop {
-  to {
-    transform: translateY(calc(var(--amp) * 1.5px))
-      scale(1, calc(1 - var(--amp) * 0.025));
-  }
-}
-
-@keyframes pet-nod {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  50% {
-    transform: translateY(calc(var(--amp) * 1.5px))
-      rotate(calc(var(--amp) * 4deg));
-  }
-}
-
-@keyframes pet-wiggle {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  25% {
-    transform: rotate(calc(var(--amp) * -6deg));
-  }
-  75% {
-    transform: rotate(calc(var(--amp) * 6deg));
-  }
-}
-
-@keyframes pet-shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(calc(var(--amp) * -1.2px));
-  }
-  75% {
-    transform: translateX(calc(var(--amp) * 1.2px));
-  }
-}
-
-@keyframes pet-tilt-both {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  30% {
-    transform: rotate(calc(var(--amp) * -7deg));
-  }
-  70% {
-    transform: rotate(calc(var(--amp) * 7deg));
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .pet-breath,
-  .pet-motion {
-    animation: none !important;
+  .pet-body,
+  .pet-body > :deep(svg),
+  .pet-shadow {
+    transition: none;
   }
 }
 </style>

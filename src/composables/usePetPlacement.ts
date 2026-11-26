@@ -1,8 +1,8 @@
 import { reactive, readonly } from "vue";
 
 /**
- * 栗子在屏幕上的位置和大小：用户拖过、缩放过之后记在 localStorage，换题、刷新都保留。
- * 位置是栗子左上角在视口里的坐标；没有位置时由组件放在默认锚点上（编辑器右上角）。
+ * 鸭鸭在屏幕上的位置和大小：用户拖过、缩放过之后记在 localStorage，换题、刷新都保留。
+ * 位置是鸭鸭左上角在视口里的坐标；没有位置时由组件放在默认锚点上（编辑器右上角）。
  */
 
 export interface PetPosition {
@@ -28,7 +28,7 @@ const clamp = (value: number, min: number, max: number) =>
 export const clampPetSize = (size: number) =>
   Math.round(clamp(size, PET_SIZE.min, PET_SIZE.max));
 
-/** 保证整个栗子（边长 box）都在视口内 */
+/** 保证整个鸭鸭（边长 box）都在视口内 */
 export const clampPetPosition = (
   position: PetPosition,
   box: number,

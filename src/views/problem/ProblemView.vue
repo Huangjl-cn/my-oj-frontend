@@ -231,7 +231,7 @@
           ref="codeEditorRef"
           :value="editor.code"
           :language="editor.language"
-          :handle-change="editor.changeCode"
+          :handle-change="onCodeChange"
           :on-format="onFormatted"
           :preview-code="companion.preview?.resolution.code ?? null"
           @selection-change="editorSelection = $event"
@@ -264,6 +264,8 @@
         :beat="companion.pet.beat"
         :bubble="companion.pet.bubble"
         :name="companionName"
+        :activity="petActivity"
+        :typing-beat="typingBeat"
         @open="companion.openPanel()"
         @dismiss="companion.dismissBubble()"
       />
@@ -313,6 +315,7 @@ import CodeEditPreviewBar from "@/components/companion/CodeEditPreviewBar.vue";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import CompanionPanel from "@/components/companion/CompanionPanel.vue";
 import CompanionPet from "@/components/companion/CompanionPet.vue";
+import { PetActivity } from "@/composables/usePetBehavior";
 import SelectionAskBox from "@/components/companion/SelectionAskBox.vue";
 import MySubmissionList from "@/components/problem/MySubmissionList.vue";
 import PaneResizer from "@/components/problem/PaneResizer.vue";
@@ -457,7 +460,7 @@ const companion = reactive(
     applyCode: (code) => codeEditorRef.value?.replaceAll(code) ?? false,
   })
 );
-const companionName = computed(() => companion.session?.personaName || "栗子");
+const companionName = computed(() => companion.session?.personaName || "鸭鸭");
 const companionOpen = computed(
   () => companionEnabled.value && !!question.value && companion.panelOpen
 );
@@ -607,6 +610,20 @@ const judge = reactive(
     },
   })
 );
+
+/** 鸭鸭此刻在忙什么：回答一段段出来时在打字，提交后在等结果 */
+const petActivity = computed<PetActivity>(() => {
+  if (companion.streaming?.text) return "talking";
+  if (judge.submitting) return "judging";
+  return null;
+});
+
+/** 编辑器里每打一次字加一，鸭鸭会盯着代码看一会儿 */
+const typingBeat = ref(0);
+const onCodeChange = (value: string) => {
+  editor.changeCode(value);
+  typingBeat.value += 1;
+};
 
 const goLogin = () => {
   void router.push({

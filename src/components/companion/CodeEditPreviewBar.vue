@@ -41,7 +41,7 @@ const props = withDefaults(
     preview: CodePreview;
     name?: string;
   }>(),
-  { name: "栗子" }
+  { name: "鸭鸭" }
 );
 
 const emit = defineEmits<{

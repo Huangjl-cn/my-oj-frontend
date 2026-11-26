@@ -1,334 +1,341 @@
 <template>
   <svg
-    class="companion-avatar"
+    :class="[
+      'companion-avatar',
+      `move-${spec.move ?? 'breathe'}`,
+      `arms-${spec.arms}`,
+      spec.head && `head-${spec.head}`,
+      spec.tuft && `tuft-${spec.tuft}`,
+      {
+        lively,
+        restart: restarting,
+        blink: blinking,
+        dangle: spec.dangle,
+        'look-around': spec.look === 'around',
+      },
+    ]"
+    :style="rootStyle"
     :width="size"
     :height="size"
-    viewBox="0 0 64 64"
+    viewBox="2 12 116 116"
     role="img"
     :aria-label="ariaLabel"
   >
-    <!-- 身体：单色线条，跟着文字颜色走 -->
-    <g
-      class="line"
-      stroke="currentColor"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <ellipse
-        class="fill"
-        cx="25"
-        cy="58.4"
-        rx="3.8"
-        ry="2.3"
-        stroke-width="2.2"
-      />
-      <ellipse
-        class="fill"
-        cx="39"
-        cy="58.4"
-        rx="3.8"
-        ry="2.3"
-        stroke-width="2.2"
-      />
-      <path class="fill" :d="SHELL" stroke="none" />
-      <path class="tint" :d="BASE" stroke="none" />
-      <path
-        d="M10.9 41.5 C18 47 46 47 53.1 41.5"
-        fill="none"
-        stroke-width="2.4"
-      />
-      <path :d="SHELL" fill="none" stroke-width="2.8" />
-      <!-- 顶上的叶子 -->
-      <path
-        class="tint"
-        d="M32 7 C32.6 3.4 36.4 .9 41 1.8 C39.8 5.6 36.2 7.8 32 7 Z"
-        stroke-width="1.9"
-      />
-      <path d="M33.2 6.2 L38.4 3.2" fill="none" stroke-width="1.4" />
-      <!-- 高光 -->
-      <path
-        class="shine"
-        d="M19.5 22.5 C17.2 25.5 16 28.8 15.7 32"
-        fill="none"
-        stroke-width="2.2"
-      />
-      <!-- 圆框眼镜 -->
-      <circle cx="24.5" cy="33.6" r="6" fill="none" stroke-width="2" />
-      <circle cx="39.5" cy="33.6" r="6" fill="none" stroke-width="2" />
-      <path
-        d="M30.5 32.6 Q32 31.4 33.5 32.6 M18.5 32.6 L13.6 30.8 M45.5 32.6 L50.4 30.8"
-        fill="none"
-        stroke-width="2"
-      />
-    </g>
-    <!-- 栗底的麻点 -->
-    <g class="dots" fill="currentColor">
-      <circle
-        v-for="([cx, cy], index) in BASE_DOTS"
-        :key="index"
-        :cx="cx"
-        :cy="cy"
-        r=".95"
-      />
-    </g>
+    <!-- 线条跟着文字色，填充跟着所在面板（外面可以用 --mascot-fill 覆盖） -->
+    <g class="rig">
+      <g class="feet">
+        <ellipse class="o" cx="48" cy="122" rx="9" ry="4" />
+        <ellipse class="o" cx="72" cy="122" rx="9" ry="4" />
+      </g>
+      <ellipse class="o" cx="60" cy="98" rx="31" ry="23" />
 
-    <!-- 腮红：几道细斜线 -->
-    <path
-      class="blush"
-      d="M13.8 42.6 l1.4-2 M16.4 42.6 l1.4-2 M46.2 42.6 l1.4-2 M48.8 42.6 l1.4-2"
-      stroke="currentColor"
-      stroke-width="1.3"
-      stroke-linecap="round"
-    />
-
-    <!-- 眉毛 -->
-    <g
-      v-if="face.brows"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      fill="none"
-    >
-      <path :d="face.brows[0]" />
-      <path :d="face.brows[1]" />
-    </g>
-
-    <!-- 眼睛 -->
-    <template v-for="(eye, index) in face.eyes" :key="index">
-      <path
-        v-if="eye.arc"
-        :d="eye.arc"
-        stroke="currentColor"
-        stroke-width="2.2"
-        stroke-linecap="round"
-        fill="none"
-      />
-      <g v-else>
-        <ellipse
-          :cx="eye.cx"
-          :cy="eye.cy"
-          :rx="eye.r"
-          :ry="(eye.r ?? 0) * 1.18"
-          fill="currentColor"
+      <g class="head">
+        <g class="tuft">
+          <path class="l" d="M57 31 Q51 22 56 16 M62 30 Q62 21 68 18" />
+        </g>
+        <circle class="o" cx="60" cy="53" r="25" />
+        <g class="track">
+          <path
+            v-for="(shape, index) in trackedEyes"
+            :key="`t${index}`"
+            :d="shape.d"
+            :class="[shape.cls, { 'e-open': shape.blink }]"
+          />
+        </g>
+        <path
+          v-for="(shape, index) in fixedEyes"
+          :key="`e${index}`"
+          :d="shape.d"
+          :class="shape.cls"
         />
-        <circle
-          class="fill"
-          :cx="(eye.cx ?? 0) + (eye.r ?? 0) * 0.36"
-          :cy="(eye.cy ?? 0) - (eye.r ?? 0) * 0.46"
-          :r="(eye.r ?? 0) * 0.38"
+        <template v-if="spec.mouth === 'talk'">
+          <g class="talk-a">
+            <path
+              v-for="(shape, index) in calmBeak"
+              :key="`a${index}`"
+              :d="shape.d"
+              :class="shape.cls"
+            />
+          </g>
+          <g class="talk-b">
+            <path
+              v-for="(shape, index) in openBeak"
+              :key="`b${index}`"
+              :d="shape.d"
+              :class="shape.cls"
+            />
+          </g>
+        </template>
+        <path
+          v-for="(shape, index) in beak"
+          v-else
+          :key="`m${index}`"
+          :d="shape.d"
+          :class="shape.cls"
         />
       </g>
-    </template>
 
-    <!-- 嘴 -->
-    <path
-      v-if="face.mouth === 'open'"
-      d="M28.8 38.8 Q32 44.4 35.2 38.8 Z"
-      fill="currentColor"
-      stroke="currentColor"
-      stroke-width="1.6"
-      stroke-linejoin="round"
-    />
-    <circle
-      v-else-if="face.mouth === 'o'"
-      cx="32"
-      cy="41"
-      r="2"
-      fill="currentColor"
-    />
-    <path
-      v-else
-      :d="MOUTHS[face.mouth]"
-      stroke="currentColor"
-      stroke-width="2.1"
-      stroke-linecap="round"
-      fill="none"
-    />
+      <g class="arm arm-l">
+        <ellipse
+          class="o"
+          :cx="SHOULDERS[0][0]"
+          :cy="WING_CY"
+          :rx="DUCK_WING.width"
+          :ry="WING_RY"
+        />
+      </g>
+      <g class="arm arm-r">
+        <ellipse
+          class="o"
+          :cx="SHOULDERS[1][0]"
+          :cy="WING_CY"
+          :rx="DUCK_WING.width"
+          :ry="WING_RY"
+        />
+      </g>
 
-    <!-- 点缀 -->
-    <path
-      v-if="face.extra === 'sparkle'"
-      d="M52 6.5 l1.3 3.2 3.2 1.3 -3.2 1.3 -1.3 3.2 -1.3 -3.2 -3.2 -1.3 3.2 -1.3 z"
-      class="fill"
-      stroke="currentColor"
-      stroke-width="1.4"
-      stroke-linejoin="round"
-    />
-    <path
-      v-else-if="face.extra === 'sweat'"
-      d="M50 17.5 C48.1 20.9 48.3 23.1 50 23.9 C51.7 23.1 51.9 20.9 50 17.5 Z"
-      class="fill"
-      stroke="currentColor"
-      stroke-width="1.6"
-      stroke-linejoin="round"
-    />
-    <text
-      v-else-if="face.extra === 'question'"
-      x="48"
-      y="19"
-      font-size="13"
-      font-weight="700"
-      fill="currentColor"
-    >
-      ?
-    </text>
-    <g
-      v-else-if="face.extra === 'dots'"
-      class="thinking-dots"
-      fill="currentColor"
-    >
-      <circle cx="48" cy="17" r="1.3" />
-      <circle cx="52" cy="13.6" r="1.6" />
-      <circle cx="56.6" cy="10.8" r="1.9" />
+      <path
+        v-if="spec.hold === 'heart'"
+        class="o"
+        d="M60 105 C48 97 53 88 60 94 C67 88 72 97 60 105 Z"
+      />
+      <g v-if="spec.hold === 'keyboard'">
+        <rect class="o" x="37" y="112" width="46" height="12" rx="3" />
+        <path
+          class="t"
+          d="M45 118 L47 118 M54 118 L56 118 M63 118 L65 118 M72 118 L74 118"
+        />
+      </g>
+    </g>
+
+    <!-- 头顶上的特效 -->
+    <g v-if="has('sparkle')" class="fx-sparkle">
+      <path class="f" :d="star(14, 30, 7)" />
+      <path class="f" :d="star(108, 24, 8)" />
+      <path class="f" :d="star(112, 62, 5.5)" />
+    </g>
+    <g v-if="has('confetti')" class="fx-confetti">
+      <template v-for="(piece, index) in CONFETTI" :key="index">
+        <rect
+          v-if="index % 2"
+          class="f"
+          :x="piece[0]"
+          :y="piece[1]"
+          width="4"
+          height="7"
+          rx="1"
+          :style="{ animationDelay: `${piece[2]}s` }"
+        />
+        <path
+          v-else
+          class="t"
+          :d="`M${piece[0]} ${piece[1]} q3 3 0 6`"
+          :style="{ animationDelay: `${piece[2]}s` }"
+        />
+      </template>
+    </g>
+    <g v-if="has('zzz')" class="fx-zzz">
+      <text x="90" y="28" font-size="12">z</text>
+      <text x="99" y="16" font-size="15">z</text>
+      <text x="108" y="2" font-size="19">Z</text>
+    </g>
+    <g v-if="has('question')" class="fx-question">
+      <text x="96" y="28" font-size="26">?</text>
+      <text x="112" y="16" font-size="15">?</text>
+    </g>
+    <g v-if="has('exclaim')" class="fx-exclaim">
+      <text x="96" y="28" font-size="28">!</text>
+    </g>
+    <g v-if="has('thought')" class="fx-thought">
+      <circle class="o thin" cx="88" cy="24" r="2.6" />
+      <circle class="o thin" cx="96" cy="15" r="4" />
+      <path
+        class="o thin"
+        d="M98 0 q-2 -12 10 -12 q4 -8 13 -2 q11 -2 10 9 q6 8 -3 12 q-4 6 -12 2 q-8 5 -13 -1 q-8 0 -5 -8 Z"
+      />
+      <g class="dots">
+        <circle class="f" cx="106" cy="-1" r="2" />
+        <circle class="f" cx="113" cy="-1" r="2" />
+        <circle class="f" cx="120" cy="-1" r="2" />
+      </g>
+    </g>
+    <g v-if="has('dots')" class="fx-dots">
+      <circle class="f" cx="92" cy="24" r="2.4" />
+      <circle class="f" cx="100" cy="20" r="2.4" />
+      <circle class="f" cx="108" cy="16" r="2.4" />
     </g>
     <path
-      v-else-if="face.extra === 'heart'"
-      d="M51.5 10.5 c-1.8-2.7-5.4-1.3-4.5 1.4 c0.6 1.6 4.5 4.3 4.5 4.3 s3.9-2.7 4.5-4.3 c0.9-2.7-2.7-4.1-4.5-1.4 z"
-      class="fill"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linejoin="round"
+      v-if="has('sweat')"
+      class="o thin fx-sweat"
+      d="M90 34 q5 7 0 11 q-5 -4 0 -11 Z"
     />
+    <!-- 三颗星绕着头顶转：左右来回、近大远小 -->
+    <g v-if="has('dizzy')" class="fx-dizzy">
+      <path class="f" :d="star(60, 22, 5)" />
+      <path class="f" :d="star(60, 22, 5)" />
+      <path class="f" :d="star(60, 22, 5)" />
+    </g>
+    <path
+      v-if="has('blush')"
+      class="t blush"
+      d="M33 56 l3 -3 M37 57 l3 -3 M80 56 l3 -3 M84 57 l3 -3"
+    />
+    <g v-if="has('dust')" class="fx-dust">
+      <circle class="o thin" cx="30" cy="121" r="5" />
+      <circle class="o thin" cx="22" cy="117" r="3.5" />
+      <circle class="o thin" cx="90" cy="121" r="5" />
+      <circle class="o thin" cx="98" cy="117" r="3.5" />
+    </g>
   </svg>
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps, withDefaults } from "vue";
+import {
+  computed,
+  defineProps,
+  onBeforeUnmount,
+  onMounted,
+  PropType,
+  ref,
+  watch,
+} from "vue";
 
-import { COMPANION_MOOD_LABELS, PetMood } from "@/constants/companionMoods";
+import {
+  DUCK_SHOULDERS,
+  DUCK_WING,
+  DuckFx,
+  DuckPose,
+  duckWingAngles,
+  getDuckPose,
+} from "@/components/companion/duck/duckPoses";
+import {
+  duckBeakShapes,
+  duckEyeShapes,
+} from "@/components/companion/duck/duckShapes";
+import { PetMood } from "@/constants/companionMoods";
 
-type Eye = { cx?: number; cy?: number; r?: number; arc?: string };
-type Mouth = "smile" | "grin" | "flat" | "wavy" | "frown" | "open" | "o";
-type Face = {
-  eyes: [Eye, Eye];
-  mouth: Mouth;
-  brows?: [string, string];
-  extra?: "sparkle" | "sweat" | "question" | "dots" | "heart";
-};
+/**
+ * 陪练的形象：线稿小鸭子「鸭鸭」。
+ * 静态用法只传 mood；桌宠传 pose（拖拽、睡觉等动作）、lively（身体动起来）和 look（看哪儿）。
+ */
+const props = defineProps({
+  mood: { type: String as PropType<PetMood>, default: "idle" },
+  /** 比 mood 优先 */
+  pose: { type: String as PropType<DuckPose>, default: undefined },
+  size: { type: Number, default: 56 },
+  /** 身体动作（跳、晃、压扁）；静态的图标不开 */
+  lively: { type: Boolean, default: false },
+  /** 眼睛看的方向，-1 到 1；只在待机这类「跟着鼠标」的姿势里生效 */
+  look: {
+    type: Object as PropType<{ x: number; y: number } | null>,
+    default: null,
+  },
+  /** 动作幅度 1-3 */
+  amp: { type: Number, default: 1 },
+  /** 变化时重播一次性的动作（跳一下、落地压扁），同一个心情连着来也能再播 */
+  replay: { type: Number, default: 0 },
+});
 
-const props = withDefaults(
-  defineProps<{
-    mood?: PetMood;
-    size?: number;
-  }>(),
-  { mood: "idle", size: 56 }
+const SHOULDERS = DUCK_SHOULDERS;
+/** 翅膀是从肩膀垂下来的椭圆，顶端比肩膀高 3 */
+const WING_RY = DUCK_WING.length / 2 + 1;
+const WING_CY = SHOULDERS[0][1] + DUCK_WING.length / 2 - 2;
+
+const CONFETTI: Array<[number, number, number]> = [
+  [18, 8, 0],
+  [34, 0, 0.3],
+  [52, 10, 0.7],
+  [70, 2, 0.15],
+  [88, 12, 0.5],
+  [104, 4, 0.9],
+  [26, 18, 1.1],
+  [96, 20, 1.3],
+];
+
+const spec = computed(() => getDuckPose(props.pose ?? props.mood));
+
+const eyeShapes = computed(() => duckEyeShapes(spec.value.eyes));
+const trackedEyes = computed(() => eyeShapes.value.filter((s) => s.track));
+const fixedEyes = computed(() => eyeShapes.value.filter((s) => !s.track));
+const calmBeak = duckBeakShapes("calm");
+const openBeak = duckBeakShapes("open");
+const beak = computed(() =>
+  spec.value.mouth === "talk" ? [] : duckBeakShapes(spec.value.mouth)
 );
 
-const SHELL =
-  "M32 7 C26 11 13 20.5 10.5 34 C8.5 46 16 56.5 32 56.5 C48 56.5 55.5 46 53.5 34 C51 20.5 38 11 32 7 Z";
-const BASE =
-  "M10.9 41.5 C18 47 46 47 53.1 41.5 C52.6 50.5 45 56.5 32 56.5 C19 56.5 11.4 50.5 10.9 41.5 Z";
-const BASE_DOTS: Array<[number, number]> = [
-  [19.5, 49],
-  [25, 51.6],
-  [31, 49.6],
-  [37, 51.8],
-  [43.5, 49.2],
-  [28, 54],
-  [35, 54.2],
-];
+const has = (fx: DuckFx) => !!spec.value.fx?.includes(fx);
 
-const MOUTHS: Record<Exclude<Mouth, "open" | "o">, string> = {
-  smile: "M29.6 39.8 Q32 42.2 34.4 39.8",
-  grin: "M28.4 39.4 Q32 43.6 35.6 39.4",
-  flat: "M30 40.8 H34.4",
-  wavy: "M28.4 41 q1.8 -1.6 3.6 0 t3.6 0",
-  frown: "M29.4 41.6 Q32 39.2 34.6 41.6",
+/** 四角星 */
+const star = (x: number, y: number, r: number) => {
+  const k = r * 0.18;
+  return `M${x} ${y - r} Q${x + k} ${y - k} ${x + r} ${y} Q${x + k} ${
+    y + k
+  } ${x} ${y + r} Q${x - k} ${y + k} ${x - r} ${y} Q${x - k} ${y - k} ${x} ${
+    y - r
+  } Z`;
 };
 
-/** 眼睛都在眼镜框里：左框中心 (24.5, 33.6)，右框中心 (39.5, 33.6)，半径 6 */
-const OPEN_EYES: [Eye, Eye] = [
-  { cx: 24.5, cy: 33.6, r: 2.4 },
-  { cx: 39.5, cy: 33.6, r: 2.4 },
-];
-const HAPPY_EYES: [Eye, Eye] = [
-  { arc: "M21.8 34.6 Q24.5 30.8 27.2 34.6" },
-  { arc: "M36.8 34.6 Q39.5 30.8 42.2 34.6" },
-];
-/** 内侧高、外侧低：担心 */
-const WORRIED_BROWS: [string, string] = [
-  "M19.6 26 L26.4 24.2",
-  "M44.4 26 L37.6 24.2",
-];
-const RAISED_BROWS: [string, string] = [
-  "M19.8 25 Q23.6 22.8 27.4 24.8",
-  "M36.6 24.8 Q40.4 22.8 44.2 25",
-];
-
-const FACES: Record<PetMood, Face> = {
-  idle: { eyes: OPEN_EYES, mouth: "smile" },
-  thinking: {
-    eyes: [
-      { cx: 25.6, cy: 32.4, r: 2.2 },
-      { cx: 40.6, cy: 32.4, r: 2.2 },
-    ],
-    mouth: "flat",
-    extra: "dots",
-  },
-  excited: { eyes: HAPPY_EYES, mouth: "open", extra: "sparkle" },
-  proud: {
-    eyes: HAPPY_EYES,
-    mouth: "grin",
-    brows: RAISED_BROWS,
-    extra: "sparkle",
-  },
-  surprised: {
-    eyes: [
-      { cx: 24.5, cy: 33.6, r: 3 },
-      { cx: 39.5, cy: 33.6, r: 3 },
-    ],
-    mouth: "o",
-    brows: [
-      "M19.6 23.6 Q23.6 21.2 27.6 23.4",
-      "M36.4 23.4 Q40.4 21.2 44.4 23.6",
-    ],
-  },
-  thoughtful: {
-    eyes: [
-      { cx: 23.4, cy: 33, r: 2.2 },
-      { cx: 38.4, cy: 33, r: 2.2 },
-    ],
-    mouth: "flat",
-    brows: ["M19.8 25.6 L27 25.2", "M36.6 25 Q40.2 22.8 43.8 25.2"],
-  },
-  sympathetic: {
-    eyes: OPEN_EYES,
-    mouth: "frown",
-    brows: WORRIED_BROWS,
-    extra: "heart",
-  },
-  encouraging: { eyes: OPEN_EYES, mouth: "grin", brows: RAISED_BROWS },
-  playful: {
-    eyes: [
-      { cx: 24.5, cy: 33.6, r: 2.4 },
-      { arc: "M36.8 34.2 Q39.5 31.6 42.2 34.2" },
-    ],
-    mouth: "grin",
-  },
-  nervous: {
-    eyes: OPEN_EYES,
-    mouth: "wavy",
-    brows: WORRIED_BROWS,
-    extra: "sweat",
-  },
-  confused: {
-    eyes: [
-      { cx: 24.5, cy: 33.8, r: 1.9 },
-      { cx: 39.5, cy: 33.4, r: 2.8 },
-    ],
-    mouth: "wavy",
-    brows: ["M20 25.6 L27 25.6", "M36.6 23.8 Q40.4 22 44.2 24.2"],
-    extra: "question",
-  },
-};
-
-const face = computed(() => FACES[props.mood] ?? FACES.idle);
-
-const ariaLabel = computed(() => {
-  if (props.mood === "idle") return "陪练";
-  if (props.mood === "thinking") return "陪练正在思考";
-  return `陪练：${COMPANION_MOOD_LABELS[props.mood]}`;
+const rootStyle = computed(() => {
+  const [left, right] = duckWingAngles(spec.value.arms);
+  const fixed = Array.isArray(spec.value.look) ? spec.value.look : null;
+  const follow = spec.value.track && props.look ? props.look : null;
+  const look = fixed ?? (follow ? [follow.x, follow.y] : [0, 0]);
+  return {
+    "--al": `${left}deg`,
+    "--ar": `${right}deg`,
+    "--lx": look[0].toFixed(2),
+    "--ly": look[1].toFixed(2),
+    "--amp": Math.min(3, Math.max(1, props.amp)),
+  };
 });
+
+const ariaLabel = computed(() =>
+  spec.value.label === "待机" ? "陪练鸭鸭" : `陪练鸭鸭：${spec.value.label}`
+);
+
+// 重播：先去掉动画，下一帧再加回来
+const restarting = ref(false);
+watch(
+  () => props.replay,
+  () => {
+    restarting.value = true;
+    requestAnimationFrame(() => {
+      restarting.value = false;
+    });
+  }
+);
+
+// region 眨眼：每只鸭鸭自己随机眨，偶尔连眨两下
+
+const blinking = ref(false);
+let blinkTimer: ReturnType<typeof setTimeout> | undefined;
+
+const blinkOnce = (then: () => void) => {
+  blinking.value = true;
+  blinkTimer = setTimeout(() => {
+    blinking.value = false;
+    then();
+  }, 130);
+};
+
+const scheduleBlink = () => {
+  blinkTimer = setTimeout(() => {
+    blinkOnce(() => {
+      if (Math.random() < 0.2) {
+        blinkTimer = setTimeout(() => blinkOnce(scheduleBlink), 140);
+      } else {
+        scheduleBlink();
+      }
+    });
+  }, 2200 + Math.random() * 3800);
+};
+
+onMounted(scheduleBlink);
+onBeforeUnmount(() => {
+  if (blinkTimer) clearTimeout(blinkTimer);
+});
+
+// endregion
 </script>
 
 <style scoped>
@@ -336,55 +343,690 @@ const ariaLabel = computed(() => {
   display: block;
   overflow: visible;
   color: var(--ink);
+  --pet-fill: var(--mascot-fill, var(--panel));
 }
 
-/* 身体和眼睛高光的填充色跟着所在面板走，外面可以用 --mascot-fill 覆盖 */
-.fill {
-  fill: var(--mascot-fill, var(--panel));
+.o {
+  fill: var(--pet-fill);
+  stroke: currentColor;
+  stroke-width: 4.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
-.tint {
+.o.thin {
+  stroke-width: 3.2;
+}
+
+.l,
+.t {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.l {
+  stroke-width: 4.6;
+}
+
+.t {
+  stroke-width: 3;
+}
+
+.f {
   fill: currentColor;
-  fill-opacity: 0.12;
 }
 
-.shine {
-  opacity: 0.35;
+.fs {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
 
-.dots {
-  opacity: 0.45;
+.w {
+  fill: var(--pet-fill);
+}
+
+text {
+  fill: currentColor;
+  font-weight: 800;
 }
 
 .blush {
-  opacity: 0.5;
+  stroke-width: 2.4;
 }
 
-.thinking-dots circle {
-  animation: companion-dot 1.2s ease-in-out infinite;
+/* ---------- 部件的转轴 ---------- */
+.rig,
+.head,
+.tuft,
+.feet,
+.arm,
+.e-open,
+.fx-sparkle > *,
+.fx-dust > *,
+.fx-exclaim,
+.fx-question {
+  transform-box: fill-box;
 }
 
-.thinking-dots circle:nth-child(2) {
+.rig {
+  transform-origin: 50% 100%;
+}
+
+.head {
+  transform-origin: 50% 100%;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.tuft {
+  transform-origin: 30% 100%;
+  transition: transform 0.26s var(--ease-out);
+}
+
+.feet {
+  transform-origin: 50% 0;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.arm {
+  /* 椭圆顶端往下 3 就是肩膀 */
+  transform-origin: 50% 3px;
+  transition: transform 0.22s var(--ease-out);
+}
+
+.arm-l {
+  transform: rotate(var(--al));
+}
+
+.arm-r {
+  transform: rotate(var(--ar));
+}
+
+.track {
+  transform: translate(calc(var(--lx) * 2.6px), calc(var(--ly) * 2.1px));
+  transition: transform 0.14s linear;
+}
+
+.e-open {
+  transform-origin: center;
+  transition: transform 0.07s linear;
+}
+
+.blink .e-open {
+  transform: scaleY(0.12);
+}
+
+/* ---------- 姿势 ---------- */
+.head-tilt .head {
+  transform: rotate(-11deg);
+}
+
+.head-tilt-r .head {
+  transform: rotate(9deg);
+}
+
+.tuft-perk .tuft {
+  transform: scale(1.1, 1.25);
+}
+
+.tuft-back .tuft {
+  transform: rotate(-34deg);
+}
+
+.tuft-droop .tuft {
+  transform: rotate(28deg) translateY(2px);
+}
+
+.tuft-tilt .tuft {
+  transform: rotate(22deg);
+}
+
+.look-around .track {
+  animation: duck-look 2.4s ease-in-out infinite;
+}
+
+.talk-a {
+  animation: duck-talk-a 0.28s steps(1) infinite;
+}
+
+.talk-b {
+  animation: duck-talk-b 0.28s steps(1) infinite;
+}
+
+/* 翅膀的循环动作：挥手、打字、挥拳、扑腾 */
+.arms-wave .arm-r {
+  animation: duck-wave 0.5s ease-in-out infinite;
+}
+
+.arms-type .arm-l {
+  animation: duck-type-l 0.26s linear infinite;
+}
+
+.arms-type .arm-r {
+  animation: duck-type-r 0.26s linear infinite;
+}
+
+.arms-fist .arm-r {
+  animation: duck-pump 0.6s ease-in-out infinite;
+}
+
+.arms-flap .arm-l {
+  animation: duck-flap-l 0.24s ease-in-out infinite;
+}
+
+.arms-flap .arm-r {
+  animation: duck-flap-r 0.24s ease-in-out infinite;
+}
+
+/* ---------- 身体动作：只有桌宠（lively）才动 ---------- */
+.lively .rig {
+  animation: duck-breathe 3.4s ease-in-out infinite;
+}
+
+.lively.move-none .rig {
+  animation: none;
+}
+
+.lively.move-sleep .rig {
+  animation: duck-breathe-slow 4.6s ease-in-out infinite;
+}
+
+.lively.move-hop .rig {
+  animation: duck-hop 0.5s var(--ease-out) 1;
+}
+
+.lively.move-jump .rig {
+  animation: duck-jump 1s ease-in-out 3;
+}
+
+.lively.move-squash .rig {
+  animation: duck-squash 0.5s var(--ease-out) 1;
+}
+
+.lively.move-tremble .rig {
+  animation: duck-tremble 0.14s linear infinite;
+}
+
+.lively.move-sway .rig {
+  animation: duck-sway 2.6s ease-in-out infinite;
+}
+
+.lively.move-wobble .rig {
+  animation: duck-wobble 0.5s ease-in-out infinite;
+}
+
+.lively.move-stretch .rig {
+  animation: duck-stretch 1.6s ease-in-out infinite;
+}
+
+.lively.move-bounce .rig {
+  animation: duck-bounce 0.7s ease-in-out 4;
+}
+
+.lively.move-puff .rig {
+  animation: duck-puff 1.4s ease-in-out infinite;
+}
+
+.lively.head-nod .head {
+  animation: duck-nod 0.9s ease-in-out infinite;
+}
+
+.lively.head-nod-slow .head {
+  animation: duck-nod-slow 2.4s ease-in-out infinite;
+}
+
+.lively.dangle .feet {
+  animation: duck-swing 0.9s ease-in-out infinite;
+}
+
+.restart .rig,
+.restart .fx-exclaim,
+.restart .fx-dust > * {
+  animation: none !important;
+}
+
+/* ---------- 特效 ---------- */
+.fx-sparkle > * {
+  transform-origin: center;
+  animation: duck-twinkle 1.4s ease-in-out infinite;
+}
+
+.fx-sparkle > :nth-child(2) {
+  animation-delay: 0.45s;
+}
+
+.fx-sparkle > :nth-child(3) {
+  animation-delay: 0.9s;
+}
+
+.fx-confetti > * {
+  animation: duck-fall 1.6s linear infinite;
+}
+
+.fx-zzz > * {
+  animation: duck-rise 2.4s ease-out infinite;
+}
+
+.fx-zzz > :nth-child(2) {
+  animation-delay: 0.8s;
+}
+
+.fx-zzz > :nth-child(3) {
+  animation-delay: 1.6s;
+}
+
+.fx-question {
+  transform-origin: 30% 100%;
+  animation: duck-bob 1s ease-in-out infinite;
+}
+
+.fx-exclaim {
+  transform-origin: 50% 100%;
+  animation: duck-pop 0.35s var(--ease-out) 1 both;
+}
+
+.fx-thought .dots > *,
+.fx-dots > * {
+  animation: duck-dot 1.2s ease-in-out infinite;
+}
+
+.fx-thought .dots > :nth-child(2),
+.fx-dots > :nth-child(2) {
   animation-delay: 0.2s;
 }
 
-.thinking-dots circle:nth-child(3) {
+.fx-thought .dots > :nth-child(3),
+.fx-dots > :nth-child(3) {
   animation-delay: 0.4s;
 }
 
-@keyframes companion-dot {
+.fx-sweat {
+  animation: duck-tremble 0.4s linear infinite;
+}
+
+.fx-dizzy > * {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: duck-orbit 1.1s linear infinite;
+}
+
+.fx-dizzy > :nth-child(2) {
+  animation-delay: -0.37s;
+}
+
+.fx-dizzy > :nth-child(3) {
+  animation-delay: -0.73s;
+}
+
+.fx-dust > * {
+  transform-origin: center;
+  animation: duck-puff-out 0.55s var(--ease-out) 1 both;
+}
+
+@keyframes duck-breathe {
   0%,
   100% {
-    opacity: 0.25;
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.012, 1.028);
+  }
+}
+
+@keyframes duck-breathe-slow {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+
+@keyframes duck-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(calc(var(--amp) * -8px)) scale(0.98, 1.04);
+  }
+  70% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+}
+
+@keyframes duck-jump {
+  0%,
+  50%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  10%,
+  60% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+  25%,
+  75% {
+    transform: translateY(calc(var(--amp) * -9px)) scale(0.95, 1.06);
+  }
+}
+
+@keyframes duck-squash {
+  0% {
+    transform: translateY(-6px) scale(0.94, 1.08);
+  }
+  30% {
+    transform: translateY(0) scale(1.16, 0.82);
+  }
+  60% {
+    transform: scale(0.97, 1.05);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes duck-tremble {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-0.9px);
+  }
+  75% {
+    transform: translateX(0.9px);
+  }
+}
+
+@keyframes duck-sway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+
+@keyframes duck-wobble {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+@keyframes duck-stretch {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  45%,
+  60% {
+    transform: scale(0.95, 1.09);
+  }
+}
+
+@keyframes duck-bounce {
+  0%,
+  100% {
+    transform: translateX(-3px) rotate(-5deg);
+  }
+  50% {
+    transform: translateX(3px) rotate(5deg);
+  }
+}
+
+@keyframes duck-puff {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.05, 1.05) translateY(-1px);
+  }
+}
+
+@keyframes duck-nod {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(7deg) translateY(1px);
+  }
+}
+
+@keyframes duck-nod-slow {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  70% {
+    transform: rotate(14deg) translateY(3px);
+  }
+  80% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes duck-swing {
+  0%,
+  100% {
+    transform: translateY(7px) rotate(-7deg);
+  }
+  50% {
+    transform: translateY(7px) rotate(7deg);
+  }
+}
+
+@keyframes duck-look {
+  0%,
+  100% {
+    transform: translate(-2.6px, 0);
+  }
+  45%,
+  55% {
+    transform: translate(2.6px, -0.6px);
+  }
+}
+
+@keyframes duck-talk-a {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes duck-talk-b {
+  0%,
+  49% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes duck-wave {
+  0%,
+  100% {
+    transform: rotate(var(--ar));
+  }
+  50% {
+    transform: rotate(calc(var(--ar) + 34deg));
+  }
+}
+
+@keyframes duck-type-l {
+  0%,
+  100% {
+    transform: rotate(var(--al));
+  }
+  50% {
+    transform: rotate(calc(var(--al) - 12deg));
+  }
+}
+
+@keyframes duck-type-r {
+  0%,
+  100% {
+    transform: rotate(calc(var(--ar) + 12deg));
+  }
+  50% {
+    transform: rotate(var(--ar));
+  }
+}
+
+@keyframes duck-pump {
+  0%,
+  100% {
+    transform: rotate(var(--ar));
+  }
+  50% {
+    transform: rotate(calc(var(--ar) + 26deg));
+  }
+}
+
+@keyframes duck-flap-l {
+  0%,
+  100% {
+    transform: rotate(var(--al));
+  }
+  50% {
+    transform: rotate(calc(var(--al) + 38deg));
+  }
+}
+
+@keyframes duck-flap-r {
+  0%,
+  100% {
+    transform: rotate(var(--ar));
+  }
+  50% {
+    transform: rotate(calc(var(--ar) - 38deg));
+  }
+}
+
+@keyframes duck-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  40%,
+  60% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes duck-fall {
+  0% {
+    transform: translateY(-26px) rotate(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(46px) rotate(260deg);
+    opacity: 0;
+  }
+}
+
+@keyframes duck-rise {
+  0% {
+    transform: translate(0, 6px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(6px, -16px);
+    opacity: 0;
+  }
+}
+
+@keyframes duck-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(6deg);
+  }
+}
+
+@keyframes duck-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes duck-dot {
+  0%,
+  100% {
+    opacity: 0.2;
   }
   50% {
     opacity: 1;
   }
 }
 
+@keyframes duck-orbit {
+  0%,
+  100% {
+    transform: translate(-24px, 0) scale(0.75);
+  }
+  25% {
+    transform: translate(0, 6px) scale(1);
+  }
+  50% {
+    transform: translate(24px, 0) scale(0.75);
+  }
+  75% {
+    transform: translate(0, -5px) scale(0.5);
+  }
+}
+
+@keyframes duck-puff-out {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.4) translateY(-4px);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .thinking-dots circle {
-    animation: none;
+  .companion-avatar *,
+  .companion-avatar {
+    animation: none !important;
+    transition: none !important;
   }
 }
 </style>

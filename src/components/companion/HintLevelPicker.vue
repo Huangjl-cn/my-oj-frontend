@@ -85,7 +85,7 @@ const props = defineProps({
   direct: { type: Boolean, default: false },
   /** 有请求在进行，或者没配 Key */
   disabled: { type: Boolean, default: false },
-  name: { type: String, default: "栗子" },
+  name: { type: String, default: "鸭鸭" },
 });
 
 const emit = defineEmits<{

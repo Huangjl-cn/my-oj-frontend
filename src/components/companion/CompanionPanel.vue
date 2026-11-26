@@ -216,7 +216,7 @@ const measureBottom = () => {
 };
 
 const session = computed(() => props.companion.session);
-const name = computed(() => session.value?.personaName || "栗子");
+const name = computed(() => session.value?.personaName || "鸭鸭");
 const canAsk = computed(
   () => !!session.value?.canCallModel && !props.companion.busy
 );
