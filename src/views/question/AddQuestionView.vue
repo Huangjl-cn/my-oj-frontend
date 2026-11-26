@@ -958,8 +958,8 @@ div.page.question-editor {
 }
 
 .parameter-row :deep(.ui-input),
-.parameter-row :deep(.ui-select select),
-.io-block :deep(.ui-select select) {
+.parameter-row :deep(.ui-select-trigger),
+.io-block :deep(.ui-select-trigger) {
   background: var(--panel);
 }
 

@@ -47,7 +47,7 @@
             <AppIcon name="close" :size="17" />
           </button>
           <button
-            class="icon-btn tip-up"
+            class="icon-btn tip-down tip-end"
             type="button"
             data-tip="刷新"
             aria-label="刷新"
@@ -91,7 +91,7 @@
               <AppIcon name="edit" :size="16" />
             </button>
             <button
-              class="icon-btn danger tip-up"
+              class="icon-btn danger tip-up tip-end"
               type="button"
               :data-tip="isCurrentUser(user) ? '不能删除自己' : '删除'"
               aria-label="删除用户"

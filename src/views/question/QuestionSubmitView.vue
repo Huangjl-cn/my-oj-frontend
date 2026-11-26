@@ -186,7 +186,7 @@
         </template>
         <div class="toolbar-end">
           <button
-            class="icon-btn tip-up"
+            class="icon-btn tip-down tip-end"
             type="button"
             data-tip="刷新"
             aria-label="刷新"

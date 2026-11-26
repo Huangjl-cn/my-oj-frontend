@@ -166,7 +166,7 @@
               提示
             </button>
             <button
-              class="send-btn tip-up"
+              class="send-btn tip-up tip-end"
               type="button"
               data-tip="发送 (Enter)，Shift+Enter 换行"
               aria-label="发送"

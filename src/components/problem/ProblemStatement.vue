@@ -7,7 +7,7 @@
         :difficulty="getDifficulty(question.tags)"
       />
       <span
-        class="fact tip-down"
+        class="fact tip-down tip-start"
         :data-tip="`通过 ${question.acceptedNum ?? 0} / 提交 ${
           question.submitNum ?? 0
         }`"
@@ -17,12 +17,12 @@
           formatAcceptanceRate(question.acceptedNum, question.submitNum)
         }}</span>
       </span>
-      <span class="fact tip-down" data-tip="时间限制">
+      <span class="fact tip-down tip-start" data-tip="时间限制">
         <AppIcon name="clock" :size="15" />
         <span class="num">{{ question.judgeConfig?.timeLimit ?? 0 }} ms</span>
       </span>
       <span
-        class="fact tip-down"
+        class="fact tip-down tip-start"
         :data-tip="`内存限制，栈 ${formatJudgeMemory(
           question.judgeConfig?.stackLimit
         )}`"

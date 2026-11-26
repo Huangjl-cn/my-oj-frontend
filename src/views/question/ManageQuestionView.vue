@@ -23,7 +23,7 @@
         />
         <div class="toolbar-end">
           <button
-            class="icon-btn tip-up"
+            class="icon-btn tip-down tip-end"
             type="button"
             data-tip="刷新"
             aria-label="刷新"
@@ -107,7 +107,7 @@
                 <AppIcon name="edit" :size="16" />
               </button>
               <button
-                class="icon-btn danger tip-up"
+                class="icon-btn danger tip-up tip-end"
                 type="button"
                 data-tip="删除"
                 aria-label="删除题目"

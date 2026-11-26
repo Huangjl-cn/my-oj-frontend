@@ -140,6 +140,7 @@
               :class="[
                 'icon-btn',
                 'tip-up',
+                'tip-end',
                 { on: filters.sort !== 'default' },
               ]"
               type="button"

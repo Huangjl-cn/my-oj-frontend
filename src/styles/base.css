@@ -228,3 +228,17 @@ textarea {
   top: calc(100% + 8px);
   transform: translateX(-50%);
 }
+
+/* 靠边的按钮：提示和按钮的右边（tip-end）或左边（tip-start）对齐，不超出面板 */
+[data-tip].tip-end:hover::after,
+[data-tip].tip-end:focus-visible::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+[data-tip].tip-start:hover::after,
+[data-tip].tip-start:focus-visible::after {
+  left: 0;
+  transform: none;
+}

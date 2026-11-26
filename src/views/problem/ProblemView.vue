@@ -29,39 +29,26 @@
           <button
             type="button"
             role="tab"
-            :aria-selected="tab === 'mine'"
-            :class="{ on: tab === 'mine' }"
+            :aria-selected="tab === 'mine' || !!activeDetailTab"
+            :class="{ on: tab === 'mine' || !!activeDetailTab }"
             @click="openMine"
           >
             我的提交
+            <span
+              v-if="submissions.tabs.length"
+              class="tab-count num"
+              :aria-label="`打开了 ${submissions.tabs.length} 条提交`"
+            >
+              {{ submissions.tabs.length }}
+            </span>
           </button>
           <button
-            class="tip-down"
             type="button"
-            data-tip="在新标签页打开"
+            aria-label="公开提交（在新标签页打开）"
             @click="openPublicSubmissions"
           >
             公开提交
             <AppIcon name="external-link" :size="13" />
-          </button>
-          <button
-            v-for="detailTab in submissions.tabs"
-            :key="detailTab.key"
-            type="button"
-            role="tab"
-            :aria-selected="tab === detailTab.key"
-            :class="['detail-tab', { on: tab === detailTab.key }]"
-            @click="tab = detailTab.key"
-          >
-            <span class="num">{{ detailTab.label }}</span>
-            <span
-              class="tab-close"
-              role="button"
-              :aria-label="`关闭提交 ${detailTab.label}`"
-              @click.stop="closeDetail(detailTab.key)"
-            >
-              <AppIcon name="close" :size="12" />
-            </span>
           </button>
         </nav>
         <div class="end">
@@ -96,6 +83,49 @@
             <AppIcon name="chevron-right" :size="18" />
           </button>
         </div>
+      </div>
+
+      <!-- 打开的提交详情：在「我的提交」下面单独一排，多了就换行 -->
+      <div
+        v-if="showDetailStrip"
+        class="detail-strip"
+        role="tablist"
+        aria-label="打开的提交"
+      >
+        <button
+          v-for="detailTab in submissions.tabs"
+          :key="detailTab.key"
+          type="button"
+          role="tab"
+          :aria-selected="tab === detailTab.key"
+          :class="[
+            'detail-chip',
+            'tip-down',
+            'tip-start',
+            { on: tab === detailTab.key },
+          ]"
+          :data-tip="describeDetail(detailTab)"
+          @click="tab = detailTab.key"
+        >
+          <span :class="['chip-dot', detailTone(detailTab)]" />
+          <span class="num">{{ detailTab.label }}</span>
+          <span
+            class="tab-close"
+            role="button"
+            :aria-label="`关闭提交 ${detailTab.label}`"
+            @click.stop="closeDetail(detailTab.key)"
+          >
+            <AppIcon name="close" :size="12" />
+          </span>
+        </button>
+        <button
+          v-if="submissions.tabs.length > 1"
+          type="button"
+          class="strip-clear"
+          @click="closeAllDetails"
+        >
+          全部关闭
+        </button>
       </div>
 
       <div class="pane-body">
@@ -156,25 +186,16 @@
     <!-- ===== 中：代码 ===== -->
     <section class="panel pane editor-pane">
       <div class="pane-head">
-        <label class="lang">
-          <select
-            :value="editor.language"
-            aria-label="编程语言"
-            :disabled="
-              !question || editor.languageLoading || editor.templateLoading
-            "
-            @change="onLanguageChange"
-          >
-            <option
-              v-for="option in editor.languageOptions"
-              :key="option.value"
-              :value="option.value"
-            >
-              {{ option.text }}
-            </option>
-          </select>
-          <AppIcon name="chevron-down" :size="14" />
-        </label>
+        <UiSelect
+          size="sm"
+          :model-value="editor.language"
+          :options="languageSelectOptions"
+          aria-label="编程语言"
+          :disabled="
+            !question || editor.languageLoading || editor.templateLoading
+          "
+          @update:model-value="onLanguageChange"
+        />
         <div class="end">
           <span
             :class="['saved', 'tip-down', { on: editor.draftSaved }]"
@@ -328,8 +349,10 @@ import ProblemStatement from "@/components/problem/ProblemStatement.vue";
 import SubmissionDetail from "@/components/problem/SubmissionDetail.vue";
 import VerdictDock from "@/components/problem/VerdictDock.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { useJudge } from "@/composables/problem/useJudge";
 import {
+  SubmissionTab,
   SubmissionTabKey,
   useMySubmissions,
 } from "@/composables/problem/useMySubmissions";
@@ -348,6 +371,7 @@ import {
   getJudgeResultPresentation,
   isJudging,
 } from "@/services/questionSubmit";
+import { formatDateTime } from "@/utils/dateTime";
 import { getDifficulty } from "@/utils/difficulty";
 import { EditorSelection } from "@/utils/editorSelection";
 import {
@@ -420,8 +444,14 @@ const editor = reactive(
   })
 );
 
-const onLanguageChange = (event: Event) => {
-  const language = (event.target as HTMLSelectElement).value;
+const languageSelectOptions = computed(() =>
+  editor.languageOptions.map((option) => ({
+    value: option.value,
+    label: option.text,
+  }))
+);
+
+const onLanguageChange = (language: string) => {
   rememberLanguage(language);
   editor.changeLanguage(language);
 };
@@ -527,6 +557,30 @@ const openDetail = (submission: QuestionSubmitSummaryVO) => {
 const closeDetail = (key: string) => {
   submissions.closeTab(key);
   if (tab.value === key) tab.value = "mine";
+};
+
+const closeAllDetails = () => {
+  for (const { key } of [...submissions.tabs]) submissions.closeTab(key);
+  tab.value = "mine";
+};
+
+/** 看提交列表或某条详情时，下面列出所有打开的提交 */
+const showDetailStrip = computed(
+  () =>
+    submissions.tabs.length > 0 &&
+    (tab.value === "mine" || !!activeDetailTab.value)
+);
+
+const detailTone = (detailTab: SubmissionTab) =>
+  detailTab.detail
+    ? getJudgeResultPresentation(detailTab.detail).tone
+    : "pending";
+
+const describeDetail = (detailTab: SubmissionTab) => {
+  if (!detailTab.detail) return detailTab.loading ? "加载中" : "提交详情";
+  const verdict = getJudgeResultPresentation(detailTab.detail).label;
+  const time = formatDateTime(detailTab.detail.createTime).slice(5, 16);
+  return time ? `${verdict} · ${time}` : verdict;
 };
 
 const openPublicSubmissions = () => {
@@ -867,8 +921,87 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
-.detail-tab {
-  padding-right: 6px !important;
+.tab-count {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--fill-strong);
+  color: var(--body);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.detail-strip {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-chip {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 5px 0 10px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.detail-chip:hover {
+  color: var(--ink);
+}
+
+.detail-chip.on {
+  background: var(--fill);
+  box-shadow: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chip-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.chip-dot.passed {
+  background: var(--success);
+}
+
+.chip-dot.failed {
+  background: var(--danger);
+}
+
+.strip-clear {
+  margin-left: auto;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.strip-clear:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .tab-close {
@@ -940,39 +1073,6 @@ onBeforeUnmount(() => {
 }
 
 /* ===== 编辑器 ===== */
-.lang {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  color: var(--ink);
-}
-
-.lang select {
-  height: 34px;
-  padding: 0 32px 0 14px;
-  border: none;
-  border-radius: var(--radius-pill);
-  background: var(--fill);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 500;
-  appearance: none;
-  cursor: pointer;
-}
-
-.lang select:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.lang :deep(svg) {
-  position: absolute;
-  right: 12px;
-  pointer-events: none;
-  color: var(--muted);
-}
-
 .saved {
   width: 30px;
   display: grid;
