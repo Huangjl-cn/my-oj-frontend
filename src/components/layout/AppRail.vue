@@ -377,10 +377,6 @@ const confirmLogout = async () => {
     display: none;
   }
 
-  .rail :deep([data-tip]:hover::after) {
-    display: none;
-  }
-
   .rail :deep(.rail-btn:hover),
   .rail :deep(.rail-btn:focus-visible) {
     color: var(--muted);

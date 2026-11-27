@@ -48,8 +48,9 @@
             :key="cell.date"
             :class="[
               'cell',
+              'tip-up',
               `l${cell.level}`,
-              { future: cell.future, edge: column >= weekCount - 4 },
+              { future: cell.future },
             ]"
             :data-tip="cell.future ? undefined : describe(cell)"
           />
@@ -250,20 +251,6 @@ h2 {
 .grid .cell:not(.future):hover {
   outline: 1.5px solid var(--ink);
   outline-offset: 1px;
-}
-
-/* 悬停说明默认在右边；靠右的几列放到上面，不超出面板 */
-.grid .cell[data-tip]:hover::after {
-  left: 50%;
-  top: auto;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-}
-
-.grid .cell.edge[data-tip]:hover::after {
-  left: auto;
-  right: -4px;
-  transform: none;
 }
 
 .legend {

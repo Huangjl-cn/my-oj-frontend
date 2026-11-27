@@ -192,53 +192,41 @@ textarea {
   }
 }
 
-/* === 悬停提示：图标按钮上写 data-tip，默认显示在右侧 === */
+/*
+ * === 悬停提示：元素上写 data-tip ===
+ * 提示由 utils/floatingTip.ts 画在 body 下的浮层里，不会被面板的 overflow: hidden 截掉；
+ * 方向：默认右边，.tip-up 上面，.tip-down 下面，.tip-end / .tip-start 对齐右边 / 左边，放不下会自动换边。
+ * position: relative 是原来伪元素提示留下的，有的组件可能借用了这个定位上下文，先保留
+ */
 [data-tip] {
   position: relative;
 }
 
-[data-tip]:hover::after,
-[data-tip]:focus-visible::after {
-  content: attr(data-tip);
-  position: absolute;
-  z-index: 60;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
+.floating-tip {
+  position: fixed;
+  z-index: 4000;
+  max-width: min(360px, calc(100vw - 16px));
   padding: 5px 10px;
   border-radius: var(--radius-sm);
   background: var(--primary);
   color: var(--on-primary);
   font: 500 12.5px/1.4 var(--font-sans);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--motion-fast) ease;
 }
 
-[data-tip].tip-up:hover::after,
-[data-tip].tip-up:focus-visible::after {
-  left: 50%;
-  top: auto;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
+.floating-tip.on {
+  opacity: 1;
+  visibility: visible;
 }
 
-[data-tip].tip-down:hover::after,
-[data-tip].tip-down:focus-visible::after {
-  left: 50%;
-  top: calc(100% + 8px);
-  transform: translateX(-50%);
-}
-
-/* 靠边的按钮：提示和按钮的右边（tip-end）或左边（tip-start）对齐，不超出面板 */
-[data-tip].tip-end:hover::after,
-[data-tip].tip-end:focus-visible::after {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-
-[data-tip].tip-start:hover::after,
-[data-tip].tip-start:focus-visible::after {
-  left: 0;
-  transform: none;
+@media (prefers-reduced-motion: reduce) {
+  .floating-tip {
+    transition: none;
+  }
 }
