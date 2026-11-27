@@ -17,6 +17,9 @@ export type ProblemListContext = {
   total: number;
   /** 这一页题目的 id、标题和标签，按列表顺序（id 实际是字符串，见 apiId.ts） */
   items: Array<{ id?: ApiId; title?: string; tags?: string[] }>;
+  /** 从题单进来时：题单 id 和名字（整个题单就是一页，不翻页） */
+  listId?: string;
+  listTitle?: string;
 };
 
 const STORAGE_KEY = "myoj:problem-list";
@@ -43,6 +46,10 @@ export const setProblemListContext = (context: ProblemListContext) => {
     ...context,
     items: context.items.map(({ id, title, tags }) => ({ id, title, tags })),
   };
+  if (!context.listId) {
+    delete current.listId;
+    delete current.listTitle;
+  }
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(current));
   } catch {
@@ -125,6 +132,22 @@ export const loadNeighborAcrossPage = async (
     ? loaded.items[loaded.items.length - 1].id
     : loaded.items[0].id;
 };
+
+/** 从题单进入做题页：整个题单作为一页记下来，上一题 / 下一题和题目抽屉都按题单走 */
+export const setListContext = (
+  listId: string,
+  listTitle: string,
+  items: ProblemListContext["items"]
+) =>
+  setProblemListContext({
+    query: {},
+    page: 1,
+    pageSize: Math.max(1, items.length),
+    total: items.length,
+    items,
+    listId,
+    listTitle,
+  });
 
 /** 只在测试里用 */
 export const resetProblemListContextForTest = () => {

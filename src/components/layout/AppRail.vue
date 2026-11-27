@@ -14,6 +14,16 @@
       <AppIcon name="book" :size="21" />
     </router-link>
     <router-link
+      v-if="isLoggedIn"
+      to="/lists"
+      :class="['rail-btn', { on: section === 'lists' }]"
+      style="--tint: var(--tint-yellow)"
+      data-tip="题单"
+      aria-label="题单"
+    >
+      <AppIcon name="layers" :size="21" />
+    </router-link>
+    <router-link
       to="/question_submit"
       :class="['rail-btn', { on: section === 'submissions' }]"
       style="--tint: var(--tint-green)"
@@ -195,6 +205,7 @@ const section = computed(() => {
   }
   if (path.startsWith("/question_submit")) return "submissions";
   if (path.startsWith("/stats")) return "stats";
+  if (path.startsWith("/lists")) return "lists";
   if (["/add/question", "/update/question", "/my/question"].includes(path)) {
     return "authoring";
   }

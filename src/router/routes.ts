@@ -14,6 +14,8 @@ const QuestionSubmitView = () =>
   import("@/views/question/QuestionSubmitView.vue");
 const UserManageView = () => import("@/views/user/UserManageView.vue");
 const LearningStatsView = () => import("@/views/user/LearningStatsView.vue");
+const QuestionListsView = () => import("@/views/list/QuestionListsView.vue");
+const QuestionListView = () => import("@/views/list/QuestionListView.vue");
 const UserProfileView = () => import("@/views/user/UserProfileView.vue");
 
 export const routes: Array<RouteRecordRaw> = [
@@ -67,6 +69,24 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/question_submit",
     name: "浏览题目提交",
     component: QuestionSubmitView,
+  },
+  {
+    path: "/lists",
+    name: "题单",
+    component: QuestionListsView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
+  },
+  {
+    path: "/lists/:id",
+    name: "题单详情",
+    component: QuestionListView,
+    props: (route) => ({ id: String(route.params.id) }),
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
   },
   {
     path: "/stats",

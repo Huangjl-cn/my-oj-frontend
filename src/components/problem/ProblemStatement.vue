@@ -1,6 +1,11 @@
 <template>
   <article class="statement">
-    <h1>{{ question.title }}</h1>
+    <div class="title-row">
+      <h1>{{ question.title }}</h1>
+      <div v-if="$slots.actions" class="title-actions">
+        <slot name="actions" />
+      </div>
+    </div>
     <div class="facts">
       <DifficultyLabel
         v-if="getDifficulty(question.tags)"
@@ -83,7 +88,22 @@ const topicTags = computed(() => getTopicTags(props.question.tags));
   padding: 26px 26px 34px;
 }
 
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  margin-top: 1px;
+}
+
 h1 {
+  min-width: 0;
   margin: 0;
   color: var(--ink);
   font-size: 28px;

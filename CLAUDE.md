@@ -14,7 +14,7 @@ npm run test:unit          # Vitest unit tests (tests/unit/*.spec.ts, jsdom, glo
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`, `learningStats.spec.ts` (stats normalization, bar widths, attempt wording). Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`, `learningStats.spec.ts` (stats normalization, bar widths, attempt wording), `questionList.spec.ts` (list normalization, move up / down, form checks), `useFavorites.spec.ts` (optimistic star, rollback on failure). Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://127.0.0.1:8102` (configured in `vite.config.mts`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - Env values come from `import.meta.env` (e.g. `BASE_URL`); there is no `process.env` in app code.
@@ -61,7 +61,7 @@ src/
 │   │   ├── monacoThemes.ts      # myoj-light / myoj-dark editor themes (same colors as styles/code.css)
 │   │   ├── MdEditor.vue / MdViewer.vue
 │   ├── layout/
-│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 提交记录, 学习统计 (logged in), 出题 / 管理 menus, theme, account
+│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 题单 / 学习统计 (logged in), 提交记录, 出题 / 管理 menus, theme, account
 │   │   ├── RailMenu.vue + railMenu.ts  # Rail popover menu
 │   ├── problem/             # 题库页和做题页（PaneResizer：做题页面板之间的拖动条）
 │   │   ├── ProblemStatement.vue   # Title, facts (difficulty, rate, limits), tags, content, author
@@ -70,6 +70,7 @@ src/
 │   │   ├── ProblemListDrawer.vue  # List drawer over the statement panel
 │   │   ├── DifficultyLabel.vue / ProblemStatusIcon.vue
 │   ├── question/            # Judge value editors, SubmissionRankRings, SubmissionDiagnosticPanel, admin details
+│   ├── questionList/        # FavoriteButton (star), AddToListMenu (problem page), ListFormDialog (new / edit list)
 │   ├── ui/                  # AppIcon + icons.ts, UiInput, UiSelect, UiNumberInput, UiTagInput, UiSwitch, UiSegmented, UiPagination
 │   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity,
 │                            # SubmitCalendar (props weeks / showStats), DifficultyBars (per-difficulty solved bars)
@@ -79,11 +80,12 @@ src/
 │   ├── problem/useMySubmissions.ts   # My submissions page + detail tabs with pollers
 │   ├── problem/useProblemLayout.ts   # Draggable panel widths on the problem page (localStorage["myoj:problem-layout"])
 │   ├── useMyProgress.ts   # Whole-library progress (GET /question/progress/my), shared by list and problem pages
+│   ├── useFavorites.ts    # My favorite question ids (one shared set), optimistic toggle with rollback
 │   ├── useCompanion.ts / usePetPlacement.ts / usePetBehavior.ts (which pose the duck shows) / usePetLook.ts (eyes follow the mouse) / useDuckFlight.ts / useDismissable.ts / useTheme.ts
 ├── layouts/
 │   ├── AppLayout.vue     # Rail + main area + ICP footer
 │   └── UserLayout.vue    # Login / register
-├── services/             # apiId, companion(+Stream), codeEditProposal, learningStats, problemNavigation, questionDraft,
+├── services/             # apiId, companion(+Stream), codeEditProposal, learningStats, problemNavigation, questionDraft, questionList,
 │                         # questionJudgeCase, questionJudgeConfig, questionProgress, questionStarterCode,
 │                         # questionSubmit, questionSubmitPolling, userSummary
 ├── styles/
@@ -97,6 +99,7 @@ src/
 │   ├── problem/ProblemsView.vue   # 题库 (/ and /questions)
 │   ├── problem/ProblemView.vue    # 做题页 (/problem/:id)
 │   ├── question/                  # AddQuestionView, ManageQuestionView (also /my/question with scope=mine), QuestionSubmitView
+│   ├── list/                      # QuestionListsView (/lists), QuestionListView (/lists/:id)
 │   ├── user/                      # Login, Register, Profile, UserManage, LearningStats (/stats)
 │   └── NoAuthView.vue
 ├── App.vue               # AppLayout, or UserLayout for /user/*
@@ -107,7 +110,7 @@ generated/               # Auto-generated API client — DO NOT EDIT (npm run ge
 
 ## Design System
 
-Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). The one decorative exception is the icon rail: each item has its own `--tint-*` color (blue 题库, green 提交记录, orange 学习统计, pink 出题, teal 管理, indigo / amber theme toggle; light and dark values in `tokens.css`), set as `--tint` on the button and shown only on hover / keyboard focus (not on the ≤720px bottom bar, so a tap doesn't leave it colored; no scale with reduced motion). A new rail item gets a new tint. Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
+Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). The one decorative exception is the icon rail: each item has its own `--tint-*` color (blue 题库, yellow 题单, green 提交记录, orange 学习统计, pink 出题, teal 管理, indigo / amber theme toggle; light and dark values in `tokens.css`), set as `--tint` on the button and shown only on hover / keyboard focus (not on the ≤720px bottom bar, so a tap doesn't leave it colored; no scale with reduced motion). A new rail item gets a new tint. Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
 
 - **Tokens** live in `src/styles/tokens.css` for light and `:root[data-theme="dark"]`: surfaces `--bg` (canvas), `--panel`, `--fill`, `--fill-strong`; lines `--line`, `--line-strong`; text `--ink`, `--body`, `--muted`, `--faint`; `--primary` is black in light mode and near-white in dark mode (`--on-primary` flips with it); radii `--radius-sm` 8 / `md` 12 / `lg` 18 / `xl` 22 / `pill`; `--shadow-panel`, `--shadow-float`, `--focus-ring`; motion `--motion-fast|standard|layout`, `--ease-out|in-out|drawer`.
 - The bottom of `tokens.css` keeps **legacy aliases** (`--canvas`, `--hairline`, `--surface-soft`, `--surface-dark`, `--font-display`, `--error`, …) that a few companion components still use. New code uses the new names.
@@ -219,6 +222,10 @@ The 题解 tab requires login; whether the user may see it (admin, or after an A
 - Judge values support 0D scalars, 1D arrays, and 2D arrays based on `dimensions`; each type (BOOLEAN, INTEGER, LONG, DOUBLE, STRING) has its own default value and validation
 
 Components: `JudgeValueEditor.vue` renders the full config editor (parameters + cases), `JudgeScalarInput.vue` renders individual scalar input fields.
+
+### 题单和收藏 (/lists, /lists/:id)
+
+Logged-in only. Backend `/question_list/*` (generated `QuestionListControllerService`, wrapped by `services/questionList.ts`). Three kinds: `favorite` (「我的收藏」, one per user, created on first use, can't be renamed or deleted), `custom` (private to the owner) and `official` (admins create and edit, everyone sees). `/lists` shows my lists (favorite first) and official ones as cards with solved / total; `/lists/:id` lists the questions in order with status, and — when `editable` — move up / down / remove, edit and delete. Clicking a question there calls `setListContext` (`problemNavigation.ts`), so the problem page's prev / next and list drawer follow the list (the drawer shows the list name and no pager). Stars: `FavoriteButton` in the 题库 rows (last column, logged in) and next to the problem title (`ProblemStatement`'s `actions` slot, together with `AddToListMenu`, which ticks my own lists — not the favorite — and can create a list). `useFavorites` keeps one shared set, flips the star before the request and puts it back if it fails. The star color is `--favorite`.
 
 ### 学习统计 (LearningStatsView, /stats)
 

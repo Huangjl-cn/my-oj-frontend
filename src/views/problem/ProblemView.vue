@@ -130,7 +130,12 @@
 
       <div class="pane-body">
         <template v-if="question">
-          <ProblemStatement v-if="tab === 'question'" :question="question" />
+          <ProblemStatement v-if="tab === 'question'" :question="question">
+            <template v-if="isLoggedIn && questionId != null" #actions>
+              <FavoriteButton :question-id="questionId" />
+              <AddToListMenu :question-id="questionId" />
+            </template>
+          </ProblemStatement>
           <div v-else-if="tab === 'solution'" class="solution">
             <MdViewer v-if="solution.text" :value="solution.text" />
             <p v-else class="hint">
@@ -346,6 +351,8 @@ import MySubmissionList from "@/components/problem/MySubmissionList.vue";
 import PaneResizer from "@/components/problem/PaneResizer.vue";
 import ProblemListDrawer from "@/components/problem/ProblemListDrawer.vue";
 import ProblemStatement from "@/components/problem/ProblemStatement.vue";
+import AddToListMenu from "@/components/questionList/AddToListMenu.vue";
+import FavoriteButton from "@/components/questionList/FavoriteButton.vue";
 import SubmissionDetail from "@/components/problem/SubmissionDetail.vue";
 import VerdictDock from "@/components/problem/VerdictDock.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
@@ -359,6 +366,7 @@ import {
 import { useProblemEditor } from "@/composables/problem/useProblemEditor";
 import { useProblemLayout } from "@/composables/problem/useProblemLayout";
 import { useCompanion } from "@/composables/useCompanion";
+import { useFavorites } from "@/composables/useFavorites";
 import { useMyProgress } from "@/composables/useMyProgress";
 import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
 import {
@@ -408,6 +416,7 @@ const route = useRoute();
 const router = useRouter();
 const { userId, markStatus, load: loadProgress } = useMyProgress();
 const isLoggedIn = computed(() => userId.value != null);
+const favorites = useFavorites();
 
 const routeId = parseRouteApiId(route.params.id);
 const question = ref<QuestionVO | null>(null);
@@ -809,6 +818,7 @@ const loadQuestion = async () => {
   void editor.activateLanguage(language);
   if (isLoggedIn.value) {
     void loadProgress();
+    void favorites.load();
     const page = await submissions.load();
     const pending = page.find((item) => isJudging(item.status));
     if (pending) judge.resume(pending);

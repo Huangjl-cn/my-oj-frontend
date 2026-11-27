@@ -52,6 +52,13 @@ export const ICONS = {
   shuffle: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
   "arrow-up": '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  "arrow-down": '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.25 4.1 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.7l5.9-.9z"/>',
+  "star-filled":
+    '<path fill="currentColor" d="m12 3.5 2.6 5.3 5.9.9-4.25 4.1 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.7l5.9-.9z"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  "list-plus":
+    '<path d="M4 6h11M4 12h11M4 18h7"/><path d="M18 14v7M14.5 17.5h7"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
   "external-link":
     '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',

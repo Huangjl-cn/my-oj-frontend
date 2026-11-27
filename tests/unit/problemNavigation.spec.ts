@@ -5,6 +5,7 @@ import {
   hasNeighborPage,
   loadNeighborAcrossPage,
   resetProblemListContextForTest,
+  setListContext,
   setProblemListContext,
 } from "@/services/problemNavigation";
 import { QuestionControllerService } from "../../generated";
@@ -66,5 +67,27 @@ describe("problem list navigation", () => {
       "5",
       "6",
     ]);
+  });
+
+  it("follows a question list as one page, then forgets it on the library page", () => {
+    setListContext("9", "动态规划入门", page(["a", "b", "c"]));
+
+    expect(getNeighbors("b")).toEqual({ prev: "a", next: "c" });
+    expect(hasNeighborPage("c", "next")).toBe(false);
+    expect(getProblemListContext()).toMatchObject({
+      listId: "9",
+      listTitle: "动态规划入门",
+      total: 3,
+    });
+
+    setProblemListContext({
+      query: {},
+      page: 1,
+      pageSize: 15,
+      total: 1,
+      items: page(["x"]),
+    });
+    expect(getProblemListContext()?.listId).toBeUndefined();
+    expect(getProblemListContext()?.listTitle).toBeUndefined();
   });
 });
