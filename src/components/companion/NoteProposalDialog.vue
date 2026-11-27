@@ -31,7 +31,7 @@
             </button>
           </header>
 
-          <p v-if="loading" class="dialog-state">正在对一下笔记现在的样子…</p>
+          <p v-if="loading" class="dialog-state">加载中…</p>
           <p v-else-if="loadError" class="dialog-state error">
             {{ loadError }}
             <button class="link" type="button" @click="load">重试</button>
@@ -82,9 +82,7 @@
                       class="diff add"
                       >{{ change.newText }}</pre
                     >
-                    <p v-else class="change-note">
-                      整篇换成新的内容，切到「改完的全文」看看。
-                    </p>
+                    <p v-else class="change-note">整篇重写，看「改完的全文」</p>
                   </li>
                 </ol>
               </template>

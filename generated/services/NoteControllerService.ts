@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
+import type { BaseResponseNoteOverviewVO } from '../models/BaseResponseNoteOverviewVO';
 import type { BaseResponseNoteVO } from '../models/BaseResponseNoteVO';
 import type { BaseResponsePageNoteSummaryVO } from '../models/BaseResponsePageNoteSummaryVO';
 import type { DeleteRequest } from '../models/DeleteRequest';
@@ -77,6 +78,17 @@ requestBody: NoteAddRequest,
             url: '/note/add',
             body: requestBody,
             mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * @returns BaseResponseNoteOverviewVO OK
+     * @throws ApiError
+     */
+    public static getMyNoteOverview(): CancelablePromise<BaseResponseNoteOverviewVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/note/overview',
         });
     }
 

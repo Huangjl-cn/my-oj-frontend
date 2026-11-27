@@ -61,13 +61,13 @@ const reasons = computed(() =>
 const warning = computed(() => {
   const { resolution, proposal } = props.preview;
   if (resolution.applied === 0) {
-    return "代码在这期间变过，这些修改都对不上了，重新问一次吧";
+    return "代码改过了，修改对不上，重新问一次";
   }
   if (resolution.needsOverwriteConfirm) {
-    return "你在这期间改过代码，应用后会整体覆盖当前代码（可以 Ctrl+Z 撤回）";
+    return "代码改过了，应用会整体覆盖（Ctrl+Z 可撤回）";
   }
   if (resolution.failed.length) {
-    return `代码在这期间变过，${proposal.edits.length} 处里有 ${resolution.failed.length} 处对不上，已跳过`;
+    return `代码改过了，${resolution.failed.length} 处对不上，已跳过`;
   }
   return "";
 });

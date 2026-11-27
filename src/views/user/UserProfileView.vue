@@ -91,7 +91,7 @@
 
         <section class="panel form-panel">
           <h2>AI 陪练</h2>
-          <p class="form-hint">做题时陪你的鸭鸭，用你自己的 DeepSeek Key。</p>
+          <p class="form-hint">鸭鸭用你自己的 DeepSeek Key</p>
           <AiSettingForm />
         </section>
 

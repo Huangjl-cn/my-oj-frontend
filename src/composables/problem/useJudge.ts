@@ -93,7 +93,7 @@ export const useJudge = (options: {
     },
     onTimeout: () => {
       submitting.value = false;
-      message.warning("判题等待超时，请稍后在提交记录中查看结果");
+      message.warning("判题太久了，稍后到提交记录看结果");
     },
     onError: () => undefined,
   });

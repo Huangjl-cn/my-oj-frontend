@@ -4,7 +4,7 @@
 /* eslint-disable */
 
 /**
- * 最近第一次通过的题，最近的在前，最多 10 道
+ * 一道通过了的题：第一次通过的时间、语言、第几次提交
  */
 export type SolvedQuestionVO = {
     questionId?: number;

@@ -42,9 +42,7 @@
         {{ error }}
         <button class="link" type="button" @click="load">重试</button>
       </p>
-      <p v-else-if="!loading && !items.length" class="hint">
-        这道题还没有笔记。思路、易错点、复杂度都可以记下来，以后复习时回来看。
-      </p>
+      <p v-else-if="!loading && !items.length" class="hint">还没有笔记</p>
       <button
         v-for="item in items"
         :key="item.id"
@@ -72,8 +70,8 @@ import {
   createNote,
   loadNotes,
   Note,
-  noteSnippet,
   NoteSummary,
+  toNoteSummary,
 } from "@/services/note";
 import { formatRelativeTime } from "@/utils/dateTime";
 
@@ -116,15 +114,7 @@ const create = async () => {
   }
 };
 
-const toSummary = (note: Note): NoteSummary => ({
-  id: note.id,
-  title: note.title,
-  snippet: noteSnippet(note.content),
-  questionId: note.questionId,
-  questionTitle: note.questionTitle,
-  questionTags: note.questionTags,
-  updateTime: note.updateTime,
-});
+const toSummary = toNoteSummary;
 
 const onSaved = (note: Note) => {
   items.value = [

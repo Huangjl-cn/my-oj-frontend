@@ -35,10 +35,7 @@
           usage?.estimated ? "（估算）" : ""
         }}
       </p>
-      <p class="usage-note">
-        到 {{ compactPercent }}%
-        时会自动整理记忆：较早的对话变成一份笔记，最近几轮原样保留。
-      </p>
+      <p class="usage-note">到 {{ compactPercent }}% 自动整理记忆</p>
       <button
         class="compact-btn"
         type="button"

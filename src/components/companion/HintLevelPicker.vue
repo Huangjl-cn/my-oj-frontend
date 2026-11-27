@@ -18,11 +18,9 @@
 
     <div v-if="open" class="level-popover">
       <p class="popover-title">{{ name }}最多说到哪一步</p>
-      <p v-if="direct" class="popover-note">
-        已开启「有问必答」，不限档位。想循序渐进就在设置里关掉它。
-      </p>
+      <p v-if="direct" class="popover-note">已开「有问必答」，不限档位</p>
       <p v-else-if="level > MAX_HINT_LEVEL" class="popover-note">
-        已经看过答案了。选一档，之后的提示就按这一档来。
+        看过答案了，之后按选的档位提示
       </p>
       <ul class="level-list" role="listbox" aria-label="提示档位">
         <li v-for="step in adjustableSteps" :key="step.level">

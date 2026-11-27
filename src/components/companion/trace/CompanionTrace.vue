@@ -55,7 +55,7 @@
       {{ error }}
       <button class="link" type="button" @click="load()">重试</button>
     </p>
-    <p v-else-if="!trace" class="state">正在翻{{ name }}的轨迹…</p>
+    <p v-else-if="!trace" class="state">加载中…</p>
     <template v-else>
       <p v-if="notice" class="notice">{{ notice }}</p>
       <TraceTimeline
@@ -68,11 +68,7 @@
       <div :class="['trace-body', { 'with-detail': !!selectedRow }]">
         <ol ref="listRef" class="rows" aria-label="每一步">
           <li v-if="!visibleRows.length" class="empty">
-            {{
-              keyword.trim()
-                ? "没有找到相关的内容"
-                : `这段对话还没有轨迹。和${name}说句话，或者要一条提示，这里就会记下来。`
-            }}
+            {{ keyword.trim() ? "没找到" : "还没有轨迹" }}
           </li>
           <li
             v-for="item in visibleRows"
@@ -254,10 +250,10 @@ const bars = computed(() => (trace.value ? layoutTimeline(trace.value) : []));
 const notice = computed(() => {
   if (!trace.value) return "";
   if (trace.value.fromMemory) {
-    return `这段对话开始于记录轨迹之前，下面是从${props.name}的记忆还原的：没有时间和 token，整理过记忆的部分只剩那份整理笔记。`;
+    return `没有记录，从${props.name}的记忆还原（没有耗时）`;
   }
   if (!trace.value.recordedFromStart) {
-    return "这段对话开始于记录轨迹之前，更早的部分没有记录。";
+    return "更早的部分没有记录";
   }
   return "";
 });

@@ -198,15 +198,15 @@ export const CHANGE_LABELS: Record<NoteChangeKind, string> = {
 export const describePreviewStatus = (preview: NotePreview) => {
   switch (preview.status) {
     case "rebased":
-      return "这篇笔记在这之后改过，修改都重新对上了。";
+      return "笔记之后改过，已重新对上";
     case "partial":
-      return `这篇笔记在这之后改过，有 ${preview.skipped} 处对不上了，应用时会跳过。`;
+      return `笔记之后改过，${preview.skipped} 处对不上，会跳过`;
     case "overwrite":
-      return "这篇笔记在这之后改过，应用会整篇覆盖那些改动。";
+      return "笔记之后改过，应用会整篇覆盖";
     case "stale":
-      return "这篇笔记在这之后改过，这些修改都对不上了，让鸭鸭重新改一次吧。";
+      return "笔记之后改过，修改都对不上了";
     case "missing":
-      return "这篇笔记已经删除了。";
+      return "笔记已删除";
     default:
       return "";
   }

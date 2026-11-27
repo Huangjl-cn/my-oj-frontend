@@ -41,9 +41,7 @@
           systemPrompt || "（没有记录）"
         }}</pre>
         <template v-else>
-          <p v-if="!tools.length" class="muted">
-            这一轮没有给模型工具（提示、提交后反应、整理记忆都不带工具）。
-          </p>
+          <p v-if="!tools.length" class="muted">这一轮没有工具</p>
           <details v-for="tool in tools" :key="tool.name" class="tool">
             <summary>
               <code class="tool-name">{{ tool.name }}</code>

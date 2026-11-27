@@ -86,11 +86,9 @@
       </button>
     </div>
     <template v-else-if="session">
-      <p v-if="session.mockMode" class="notice">
-        模拟模式：不会真正调用模型，回复是固定话术
-      </p>
+      <p v-if="session.mockMode" class="notice">模拟模式，回复是固定的</p>
       <p v-if="!session.canCallModel" class="notice action">
-        还没配置 DeepSeek API Key。提交后的反应照常有，聊天和提示要先配置。
+        聊天和提示要先配置 DeepSeek Key
         <button
           class="link-btn"
           type="button"
@@ -115,11 +113,7 @@
             v-if="!companion.messages.length && !companion.streaming"
             class="empty"
           >
-            嗨，我是{{
-              name
-            }}。卡住了就点下面的「给点提示」，想让我多说一点就把档位调高；也可以直接问我，或者在代码里选中一段再「问{{
-              name
-            }}」。想记笔记就跟我说一声，我写好给你看过再存。
+            嗨，我是{{ name }}。卡住了点「提示」，或者直接问我。
           </p>
           <CompanionMessageItem
             v-for="item in companion.messages"
@@ -206,14 +200,14 @@
     <ConfirmDialog
       v-model:visible="solutionConfirmVisible"
       :title="`确定要${solutionTitle}吗？`"
-      message="会给出完整的参考代码和讲解，并作为修改建议放进编辑器预览。自己再想想也许就差一步。"
+      message="会给出完整代码和讲解。再想想？也许就差一步"
       :confirm-text="solutionTitle"
       @confirm="confirmSolution"
     />
     <ConfirmDialog
       v-model:visible="deleteTarget.visible"
       title="删除这段对话？"
-      :message="`「${deleteTarget.title}」里的消息、${name}的记忆和轨迹会一起删掉，删了找不回来。已经存进笔记的内容不受影响。`"
+      :message="`「${deleteTarget.title}」的消息、记忆和轨迹会一起删掉，找不回来`"
       confirm-text="删除"
       tone="danger"
       @confirm="confirmDelete"

@@ -1,5 +1,8 @@
 <template>
-  <section class="panel calendar" :style="{ '--weeks': weekCount }">
+  <section
+    :class="['panel', 'calendar', { fill }]"
+    :style="{ '--weeks': weekCount }"
+  >
     <header class="calendar-head">
       <h2>做题日历</h2>
       <span class="range">最近 {{ weekCount }} 周</span>
@@ -65,6 +68,10 @@
         </span>
       </footer>
     </template>
+    <!-- 铺满模式下贴在底部的内容（学习统计页的一排概况） -->
+    <div v-if="$slots.footer" class="calendar-footer">
+      <slot name="footer" />
+    </div>
   </section>
 </template>
 
@@ -84,6 +91,8 @@ const props = defineProps({
   weeks: { type: Number, default: 20 },
   /** 顶上那排数字（提交次数、通过率、连续天数）；学习统计页上面已经有了，就不重复 */
   showStats: { type: Boolean, default: true },
+  /** 格子按宽度铺满（不限制最大宽度），高度跟着面板拉伸，footer 贴底 */
+  fill: { type: Boolean, default: false },
 });
 
 const weekCount = computed(() =>
@@ -274,6 +283,22 @@ h2 {
 
 .scale .cell {
   width: 10px;
+}
+
+/* 铺满：格子按面板宽度排，面板被网格拉高时 footer 贴到底部 */
+.calendar.fill {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar.fill .months,
+.calendar.fill .grid,
+.calendar.fill .legend {
+  max-width: none;
+}
+
+.calendar-footer {
+  margin-top: auto;
 }
 
 .failed {

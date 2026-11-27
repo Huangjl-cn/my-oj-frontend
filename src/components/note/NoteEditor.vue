@@ -62,9 +62,7 @@
         class="conflict"
         role="alert"
       >
-        <span
-          >这篇笔记在别处改过了（另一个标签页，或者鸭鸭）。你的改动还在编辑框里，没有存。</span
-        >
+        <span>这篇在别处改过了，你的改动还没存</span>
         <span class="conflict-actions">
           <button class="btn sm" type="button" @click="resolve('reload')">
             用别处的版本

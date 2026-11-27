@@ -25,6 +25,8 @@ export type NoteSummary = {
   id: string;
   title: string;
   snippet: string;
+  /** 正文开头一段（Markdown），卡片墙上渲染着看 */
+  excerpt: string;
   questionId: string | null;
   questionTitle: string | null;
   questionTags: string[];
@@ -73,6 +75,7 @@ export const normalizeNoteSummary = (
     id: String(vo.id),
     title: vo.title || "未命名笔记",
     snippet: vo.snippet ?? "",
+    excerpt: vo.excerpt ?? "",
     questionId: vo.questionId == null ? null : String(vo.questionId),
     questionTitle: vo.questionTitle ?? null,
     questionTags: vo.questionTags ?? [],
@@ -92,6 +95,10 @@ export const loadNotes = async (options: {
   page: number;
   keyword?: string;
   questionId?: ApiId | null;
+  /** true 只看挂在题上的，false 只看自由笔记 */
+  linked?: boolean;
+  /** 只看挂在带这个标签的题上的 */
+  tag?: string;
 }) => {
   const data = unwrap(
     await NoteControllerService.listMyNotes({
@@ -102,6 +109,8 @@ export const loadNotes = async (options: {
         options.questionId == null
           ? undefined
           : toGeneratedApiId(options.questionId),
+      linked: options.linked,
+      tag: options.tag || undefined,
     }),
     "笔记没加载出来"
   );
@@ -194,6 +203,40 @@ export const appendToNote = async (id: ApiId, text: string): Promise<Note> => {
   }
 };
 
+export type NoteOverview = {
+  total: number;
+  linked: number;
+  free: number;
+  /** 笔记最多的几个标签（按挂的题的标签算） */
+  tags: { tag: string; count: number }[];
+};
+
+export const loadNoteOverview = async (): Promise<NoteOverview> => {
+  const data = unwrap(
+    await NoteControllerService.getMyNoteOverview(),
+    "笔记没加载出来"
+  );
+  return {
+    total: data?.total ?? 0,
+    linked: data?.linked ?? 0,
+    free: data?.free ?? 0,
+    tags: (data?.tags ?? [])
+      .filter((item) => item.tag)
+      .map((item) => ({ tag: item.tag as string, count: item.count ?? 0 })),
+  };
+};
+
+/**
+ * 卡片墙：按顺序轮流放进各列（第 i 篇放第 i % 列数 列），最新的几篇排在第一行；
+ * 每列各自往下排，卡片长短不一也不留空。
+ */
+export const distributeColumns = <T>(items: T[], columns: number): T[][] => {
+  const count = Math.max(1, Math.floor(columns));
+  const result: T[][] = Array.from({ length: count }, () => []);
+  items.forEach((item, index) => result[index % count].push(item));
+  return result;
+};
+
 /** 列表里的摘要：在前端粗略去掉 Markdown 符号（和后端 NoteSnippets 一个意思），保存后不用重新拉列表 */
 export const noteSnippet = (markdown: string, maxLength = 90) => {
   const text = markdown
@@ -213,6 +256,38 @@ export const noteSnippet = (markdown: string, maxLength = 90) => {
     ? text
     : `${chars.slice(0, maxLength).join("").trimEnd()}…`;
 };
+
+/** 卡片墙上的正文片段：和后端 NoteSnippets.excerpt 一样，整行截断，截进代码块就补上结尾，后面加「…」 */
+export const noteExcerpt = (markdown: string, maxLength = 600) => {
+  const text = markdown.replace(/\r\n/g, "\n").trim();
+  const chars = Array.from(text);
+  if (chars.length <= maxLength) return text;
+  let cut = chars.slice(0, maxLength).join("");
+  const lineEnd = cut.lastIndexOf("\n");
+  if (lineEnd > cut.length / 2) cut = cut.slice(0, lineEnd);
+  cut = cut.trimEnd();
+  if ((cut.match(/```/g) ?? []).length % 2 === 1) cut += "\n```";
+  return `${cut}\n\n…`;
+};
+
+/** 片段开头那行标题和笔记标题一样时去掉（卡片上已经有标题了） */
+export const stripTitleHeading = (excerpt: string, title: string) => {
+  const match = /^#{1,6}\s+(.+?)\s*(?:\n|$)/.exec(excerpt);
+  if (!match || match[1].trim() !== title.trim()) return excerpt;
+  return excerpt.slice(match[0].length).trimStart();
+};
+
+/** 存好、新建后的笔记换成列表里的一条（不用重新拉列表） */
+export const toNoteSummary = (note: Note): NoteSummary => ({
+  id: note.id,
+  title: note.title,
+  snippet: noteSnippet(note.content),
+  excerpt: noteExcerpt(note.content),
+  questionId: note.questionId,
+  questionTitle: note.questionTitle,
+  questionTags: note.questionTags,
+  updateTime: note.updateTime,
+});
 
 // region 导出到 Obsidian
 

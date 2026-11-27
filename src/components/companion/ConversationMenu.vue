@@ -52,7 +52,7 @@
           role="menuitem"
           class="menu-action"
           :disabled="!canSummarize"
-          :title="canSummarize ? undefined : '先聊几句、并且配好 Key，才能整理'"
+          :title="canSummarize ? undefined : '先聊几句才能整理'"
           @click="summarize"
         >
           <AppIcon name="notebook" :size="15" />

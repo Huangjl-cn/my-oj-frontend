@@ -33,7 +33,7 @@
         导出到 Obsidian
       </p>
       <label class="field">
-        <span class="field-label">库名（空着就用 Obsidian 当前打开的库）</span>
+        <span class="field-label">库名（空着用当前打开的库）</span>
         <input
           v-model="settings.vault"
           class="pop-input"
@@ -58,11 +58,7 @@
         />
         <span>同名笔记已存在时覆盖它</span>
       </label>
-      <p class="pop-hint">
-        需要装 Obsidian
-        桌面版；第一次点浏览器会问要不要打开它。只会从这里发过去，在 Obsidian
-        里改的不会同步回来。
-      </p>
+      <p class="pop-hint">需要 Obsidian 桌面版，只单向发送</p>
       <button class="btn sm" type="button" :disabled="!note" @click="download">
         <AppIcon name="arrow-down" :size="15" />
         下载 .md 文件
@@ -112,12 +108,10 @@ const send = async () => {
   if (!note) return;
   const copied = await copyText(markdown());
   if (!copied) {
-    message.error("没能复制到剪贴板，可以改用「下载 .md 文件」");
+    message.error("复制失败，试试「下载 .md」");
     return;
   }
-  message.info(
-    "已复制，正在打开 Obsidian…没反应的话，检查是否装了 Obsidian 桌面版"
-  );
+  message.info("正在打开 Obsidian…");
   window.location.href = buildObsidianUri(note.title, settings);
 };
 

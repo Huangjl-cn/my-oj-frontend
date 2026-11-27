@@ -5,6 +5,9 @@ import {
   appendMarkdown,
   appendToNote,
   buildObsidianMarkdown,
+  distributeColumns,
+  noteExcerpt,
+  stripTitleHeading,
   buildObsidianUri,
   DEFAULT_OBSIDIAN_SETTINGS,
   Note,
@@ -189,5 +192,30 @@ describe("appending to a note", () => {
 
     await expect(appendToNote("9", "x")).rejects.toMatchObject({ code: 40900 });
     expect(mockedUpdate).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("note card wall", () => {
+  it("cuts an excerpt at whole lines and closes code blocks", () => {
+    expect(noteExcerpt("## 思路\r\n双指针\n")).toBe("## 思路\n双指针");
+    const markdown = "说明\n```java\nint a = 1;\nint b = 2;\nint c = 3;\n```";
+    expect(noteExcerpt(markdown, 34)).toBe(
+      "说明\n```java\nint a = 1;\nint b = 2;\n```\n\n…"
+    );
+  });
+
+  it("drops a first heading that repeats the title", () => {
+    expect(stripTitleHeading("# 复盘\n\n内容", "复盘")).toBe("内容");
+    expect(stripTitleHeading("## 思路\n内容", "复盘")).toBe("## 思路\n内容");
+    expect(stripTitleHeading("复盘", "复盘")).toBe("复盘");
+  });
+
+  it("deals cards into columns so the newest fill the first row", () => {
+    expect(distributeColumns([1, 2, 3, 4, 5], 3)).toEqual([
+      [1, 4],
+      [2, 5],
+      [3],
+    ]);
+    expect(distributeColumns([1, 2], 0)).toEqual([[1, 2]]);
   });
 });
