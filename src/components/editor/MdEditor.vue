@@ -125,4 +125,18 @@ withDefaults(defineProps<Props>(), {
 .bytemd-toolbar-icon.bytemd-tippy.bytemd-tippy-right:last-child {
   display: none;
 }
+
+/*
+ * 全屏：ByteMD 只给了 position: fixed，没给层级，做题页里排在后面的代码面板、陪练面板会盖在它上面。
+ * 层级比陪练面板（2000）高、比弹窗（3000）低，删除确认这类弹窗照样出现在上面
+ */
+.bytemd.bytemd-fullscreen {
+  z-index: 2500;
+  border-radius: 0 !important;
+}
+
+.bytemd.bytemd-fullscreen .bytemd-toolbar,
+.bytemd.bytemd-fullscreen .bytemd-status {
+  border-radius: 0 !important;
+}
 </style>
