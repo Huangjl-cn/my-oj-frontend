@@ -3,6 +3,7 @@
     :value="value"
     :mode="mode"
     :plugins="plugins"
+    :locale="zhHans"
     @change="handleChange"
   />
 </template>
@@ -11,7 +12,9 @@
 import gfm from "@bytemd/plugin-gfm";
 import highlight from "@bytemd/plugin-highlight";
 import { Editor } from "@bytemd/vue-next";
+import gfmZhHans from "@bytemd/plugin-gfm/locales/zh_Hans.json";
 import "bytemd/dist/index.css";
+import zhHans from "bytemd/locales/zh_Hans.json";
 import { withDefaults, defineProps } from "vue";
 
 interface Props {
@@ -20,7 +23,8 @@ interface Props {
   handleChange: (v: string) => void;
 }
 
-const plugins = [gfm(), highlight()];
+// 编辑器和 gfm 插件的按钮、提示都用中文
+const plugins = [gfm({ locale: gfmZhHans }), highlight()];
 
 withDefaults(defineProps<Props>(), {
   value: () => "",

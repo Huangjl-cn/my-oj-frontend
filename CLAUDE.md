@@ -14,7 +14,7 @@ npm run test:unit          # Vitest unit tests (tests/unit/*.spec.ts, jsdom, glo
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`, `learningStats.spec.ts` (stats normalization, bar widths, attempt wording), `questionList.spec.ts` (list normalization, move up / down, form checks), `useFavorites.spec.ts` (optimistic star, rollback on failure). Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`, `learningStats.spec.ts` (stats normalization, bar widths, attempt wording), `questionList.spec.ts` (list normalization, move up / down, form checks), `useFavorites.spec.ts` (optimistic star, rollback on failure), `note.spec.ts` (Obsidian markdown / file names / URI, snippets), `useNoteEditor.spec.ts` (autosave, saving again, conflicts, retry). Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://127.0.0.1:8102` (configured in `vite.config.mts`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - Env values come from `import.meta.env` (e.g. `BASE_URL`); there is no `process.env` in app code.
@@ -34,7 +34,7 @@ npm only: `package-lock.json` is the lockfile (`npm ci` to install). Do not add 
 - **Router:** Vue Router 4 (`createWebHistory`)
 - **HTTP:** Axios (`withCredentials: true`, interceptors in `src/plugins/axios.ts`)
 - **Editor:** Monaco Editor, assembled on demand in `src/components/editor/monaco.ts` (java, javascript, typescript, python, cpp, go)
-- **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight
+- **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight; `MdEditor` uses ByteMD's and gfm's `zh_Hans` locales (JSON imports, hence `resolveJsonModule` in tsconfig)
 - **Syntax highlighting:** `highlight.js` (direct dependency) — used by `CodeBlock.vue` and ByteMD's plugin-highlight; colors come from `styles/code.css`
 - **Codegen:** `openapi-typescript-codegen` generates API client from OpenAPI spec into `generated/`
 - **Tests:** Vitest 3 (jsdom), configured in `vite.config.mts`
@@ -61,7 +61,7 @@ src/
 │   │   ├── monacoThemes.ts      # myoj-light / myoj-dark editor themes (same colors as styles/code.css)
 │   │   ├── MdEditor.vue / MdViewer.vue
 │   ├── layout/
-│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 题单 / 学习统计 (logged in), 提交记录, 出题 / 管理 menus, theme, account
+│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 题单 / 笔记 / 学习统计 (logged in), 提交记录, 出题 / 管理 menus, theme, account
 │   │   ├── RailMenu.vue + railMenu.ts  # Rail popover menu
 │   ├── problem/             # 题库页和做题页（PaneResizer：做题页面板之间的拖动条）
 │   │   ├── ProblemStatement.vue   # Title, facts (difficulty, rate, limits), tags, content, author
@@ -71,6 +71,7 @@ src/
 │   │   ├── DifficultyLabel.vue / ProblemStatusIcon.vue
 │   ├── question/            # Judge value editors, SubmissionRankRings, SubmissionDiagnosticPanel, admin details
 │   ├── questionList/        # FavoriteButton (star), AddToListMenu (problem page), ListFormDialog (new / edit list)
+│   ├── note/                # NoteEditor (autosave, conflict bar), ProblemNotes (problem page tab), ObsidianExport + ObsidianIcon
 │   ├── ui/                  # AppIcon + icons.ts, UiInput, UiSelect, UiNumberInput, UiTagInput, UiSwitch, UiSegmented, UiPagination
 │   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity,
 │                            # SubmitCalendar (props weeks / showStats), DifficultyBars (per-difficulty solved bars)
@@ -81,11 +82,12 @@ src/
 │   ├── problem/useProblemLayout.ts   # Draggable panel widths on the problem page (localStorage["myoj:problem-layout"])
 │   ├── useMyProgress.ts   # Whole-library progress (GET /question/progress/my), shared by list and problem pages
 │   ├── useFavorites.ts    # My favorite question ids (one shared set), optimistic toggle with rollback
+│   ├── useNoteEditor.ts   # One note being edited: 1s autosave, version conflicts, retry
 │   ├── useCompanion.ts / usePetPlacement.ts / usePetBehavior.ts (which pose the duck shows) / usePetLook.ts (eyes follow the mouse) / useDuckFlight.ts / useDismissable.ts / useTheme.ts
 ├── layouts/
 │   ├── AppLayout.vue     # Rail + main area + ICP footer
 │   └── UserLayout.vue    # Login / register
-├── services/             # apiId, companion(+Stream), codeEditProposal, learningStats, problemNavigation, questionDraft, questionList,
+├── services/             # apiId, companion(+Stream), codeEditProposal, learningStats, note, problemNavigation, questionDraft, questionList,
 │                         # questionJudgeCase, questionJudgeConfig, questionProgress, questionStarterCode,
 │                         # questionSubmit, questionSubmitPolling, userSummary
 ├── styles/
@@ -100,6 +102,7 @@ src/
 │   ├── problem/ProblemView.vue    # 做题页 (/problem/:id)
 │   ├── question/                  # AddQuestionView, ManageQuestionView (also /my/question with scope=mine), QuestionSubmitView
 │   ├── list/                      # QuestionListsView (/lists), QuestionListView (/lists/:id)
+│   ├── note/NotesView.vue         # 笔记 (/notes?id=)
 │   ├── user/                      # Login, Register, Profile, UserManage, LearningStats (/stats)
 │   └── NoAuthView.vue
 ├── App.vue               # AppLayout, or UserLayout for /user/*
@@ -110,7 +113,7 @@ generated/               # Auto-generated API client — DO NOT EDIT (npm run ge
 
 ## Design System
 
-Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). The one decorative exception is the icon rail: each item has its own `--tint-*` color (blue 题库, yellow 题单, green 提交记录, orange 学习统计, pink 出题, teal 管理, indigo / amber theme toggle; light and dark values in `tokens.css`), set as `--tint` on the button and shown only on hover / keyboard focus (not on the ≤720px bottom bar, so a tap doesn't leave it colored; no scale with reduced motion). A new rail item gets a new tint. Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
+Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). The one decorative exception is the icon rail: each item has its own `--tint-*` color (blue 题库, yellow 题单, violet 笔记, green 提交记录, orange 学习统计, pink 出题, teal 管理, indigo / amber theme toggle; light and dark values in `tokens.css`), set as `--tint` on the button and shown only on hover / keyboard focus (not on the ≤720px bottom bar, so a tap doesn't leave it colored; no scale with reduced motion). A new rail item gets a new tint. Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
 
 - **Tokens** live in `src/styles/tokens.css` for light and `:root[data-theme="dark"]`: surfaces `--bg` (canvas), `--panel`, `--fill`, `--fill-strong`; lines `--line`, `--line-strong`; text `--ink`, `--body`, `--muted`, `--faint`; `--primary` is black in light mode and near-white in dark mode (`--on-primary` flips with it); radii `--radius-sm` 8 / `md` 12 / `lg` 18 / `xl` 22 / `pill`; `--shadow-panel`, `--shadow-float`, `--focus-ring`; motion `--motion-fast|standard|layout`, `--ease-out|in-out|drawer`.
 - The bottom of `tokens.css` keeps **legacy aliases** (`--canvas`, `--hairline`, `--surface-soft`, `--surface-dark`, `--font-display`, `--error`, …) that a few companion components still use. New code uses the new names.
@@ -222,6 +225,10 @@ The 题解 tab requires login; whether the user may see it (admin, or after an A
 - Judge values support 0D scalars, 1D arrays, and 2D arrays based on `dimensions`; each type (BOOLEAN, INTEGER, LONG, DOUBLE, STRING) has its own default value and validation
 
 Components: `JudgeValueEditor.vue` renders the full config editor (parameters + cases), `JudgeScalarInput.vue` renders individual scalar input fields.
+
+### 笔记 (/notes, problem page 「笔记」 tab)
+
+Logged-in only. Backend `/note/*` via `services/note.ts`. A note is free or attached to a question (`questionId`), several per question. `/notes` (`meta.fullHeight` + `queryState`, selected note in `?id=`) has a searchable list on the left (300ms) and `NoteEditor` on the right; the problem page's 「笔记」 tab (`ProblemNotes`) lists this question's notes, creates attached ones and edits inline (`mode="tab"`). `NoteEditor` loads by `noteId`, flushes before switching or leaving (and warns on `beforeunload`); `useNoteEditor` saves 1s after typing stops, saves again if you typed meanwhile, keeps the text and offers 重试 on errors, and on a 40900 version conflict (another tab, later the duck) stops and asks 「用别处的版本」 / 「用我的覆盖」 (the latter reloads the version and saves yours). `ObsidianExport` (purple `ObsidianIcon`): builds Markdown with YAML properties (title, source link, problem, tags incl. `myoj`, difficulty, dates), copies it, then opens `obsidian://new?file=<folder>/<title>&clipboard=true` (+ `vault`, `overwrite=true` from settings in `localStorage["myoj:obsidian"]`); also 「下载 .md」. One-way only. The list snippet is computed on the backend (`NoteSnippets`) and mirrored by `noteSnippet` after saves.
 
 ### 题单和收藏 (/lists, /lists/:id)
 

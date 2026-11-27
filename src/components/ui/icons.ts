@@ -56,6 +56,8 @@ export const ICONS = {
   star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.25 4.1 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.7l5.9-.9z"/>',
   "star-filled":
     '<path fill="currentColor" d="m12 3.5 2.6 5.3 5.9.9-4.25 4.1 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.7l5.9-.9z"/>',
+  notebook:
+    '<path d="M6.5 3H17a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6.5z"/><path d="M4 7.5h4.5M4 12h4.5M4 16.5h4.5M11.5 8h4M11.5 11.5h4"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
   "list-plus":
     '<path d="M4 6h11M4 12h11M4 18h7"/><path d="M18 14v7M14.5 17.5h7"/>',

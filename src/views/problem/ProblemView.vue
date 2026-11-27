@@ -43,6 +43,16 @@
             </span>
           </button>
           <button
+            v-if="isLoggedIn"
+            type="button"
+            role="tab"
+            :aria-selected="tab === 'notes'"
+            :class="{ on: tab === 'notes' }"
+            @click="tab = 'notes'"
+          >
+            笔记
+          </button>
+          <button
             type="button"
             aria-label="公开提交（在新标签页打开）"
             @click="openPublicSubmissions"
@@ -154,6 +164,10 @@
             @open="openDetail"
             @refresh="submissions.load()"
             @page="submissions.changePage"
+          />
+          <ProblemNotes
+            v-else-if="tab === 'notes' && questionId != null"
+            :question-id="questionId"
           />
           <SubmissionDetail
             v-else-if="activeDetailTab"
@@ -351,6 +365,7 @@ import MySubmissionList from "@/components/problem/MySubmissionList.vue";
 import PaneResizer from "@/components/problem/PaneResizer.vue";
 import ProblemListDrawer from "@/components/problem/ProblemListDrawer.vue";
 import ProblemStatement from "@/components/problem/ProblemStatement.vue";
+import ProblemNotes from "@/components/note/ProblemNotes.vue";
 import AddToListMenu from "@/components/questionList/AddToListMenu.vue";
 import FavoriteButton from "@/components/questionList/FavoriteButton.vue";
 import SubmissionDetail from "@/components/problem/SubmissionDetail.vue";
@@ -407,7 +422,7 @@ type CodeEditorInstance = {
   replaceAll: (code: string) => boolean;
 };
 
-type Tab = "question" | "solution" | "mine" | SubmissionTabKey;
+type Tab = "question" | "solution" | "mine" | "notes" | SubmissionTabKey;
 
 /** 上次用的语言，下次打开别的题默认用它 */
 const LAST_LANGUAGE_KEY = "myoj:last-language";

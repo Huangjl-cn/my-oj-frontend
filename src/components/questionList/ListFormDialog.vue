@@ -38,11 +38,13 @@
                 placeholder="这个题单练什么、按什么顺序做"
               ></textarea>
             </label>
-            <UiSwitch
-              v-if="canCreateOfficial && !editing"
-              v-model="form.official"
-              label="官方题单（所有人都能看到）"
-            />
+            <label v-if="canCreateOfficial && !editing" class="switch-row">
+              <UiSwitch
+                v-model="form.official"
+                label="官方题单（所有人都能看到）"
+              />
+              <span>官方题单（所有人都能看到）</span>
+            </label>
 
             <p v-if="error" class="form-error">{{ error }}</p>
 
@@ -172,6 +174,15 @@ const submit = () => {
   display: grid;
   gap: 16px;
   padding: 10px 24px 22px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--body);
+  font-size: 13.5px;
+  cursor: pointer;
 }
 
 .dialog-actions {

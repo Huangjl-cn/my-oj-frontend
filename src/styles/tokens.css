@@ -50,6 +50,7 @@
   --tint-indigo: #4f46e5;
   --tint-amber: #d97706;
   --tint-yellow: #ca8a04;
+  --tint-violet: #7c3aed;
 
   /* === 字体：英文和数字用 Geist，中文用系统黑体 === */
   --font-sans: "Geist Variable", "PingFang SC", "Microsoft YaHei UI",
@@ -122,6 +123,7 @@
   --tint-indigo: #a5b4fc;
   --tint-amber: #fbbf24;
   --tint-yellow: #facc15;
+  --tint-violet: #a78bfa;
 
   --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
     0 8px 24px -12px rgba(0, 0, 0, 0.7);
