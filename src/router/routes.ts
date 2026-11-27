@@ -13,6 +13,7 @@ const ProblemsView = () => import("@/views/problem/ProblemsView.vue");
 const QuestionSubmitView = () =>
   import("@/views/question/QuestionSubmitView.vue");
 const UserManageView = () => import("@/views/user/UserManageView.vue");
+const LearningStatsView = () => import("@/views/user/LearningStatsView.vue");
 const UserProfileView = () => import("@/views/user/UserProfileView.vue");
 
 export const routes: Array<RouteRecordRaw> = [
@@ -66,6 +67,14 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/question_submit",
     name: "浏览题目提交",
     component: QuestionSubmitView,
+  },
+  {
+    path: "/stats",
+    name: "学习统计",
+    component: LearningStatsView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
   },
   {
     path: "/my/question",

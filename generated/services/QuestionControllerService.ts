@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { BaseResponseBoolean } from '../models/BaseResponseBoolean';
+import type { BaseResponseLearningStatsVO } from '../models/BaseResponseLearningStatsVO';
 import type { BaseResponseListQuestionStarterCodeVO } from '../models/BaseResponseListQuestionStarterCodeVO';
 import type { BaseResponseListQuestionTagVO } from '../models/BaseResponseListQuestionTagVO';
 import type { BaseResponseListSupportedJudgeTypeVO } from '../models/BaseResponseListSupportedJudgeTypeVO';
@@ -367,6 +368,17 @@ id: number,
             query: {
                 'id': id,
             },
+        });
+    }
+
+    /**
+     * @returns BaseResponseLearningStatsVO OK
+     * @throws ApiError
+     */
+    public static getMyLearningStats(): CancelablePromise<BaseResponseLearningStatsVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/question/progress/stats',
         });
     }
 

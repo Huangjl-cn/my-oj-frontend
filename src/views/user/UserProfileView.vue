@@ -27,22 +27,17 @@
               <b>{{ solved.all }}</b> / {{ total.all }}
             </span>
           </header>
-          <div v-for="level in LEVELS" :key="level" class="bar-row">
-            <DifficultyLabel :difficulty="level" />
-            <span class="bar">
-              <i
-                :class="level"
-                :style="{ width: percent(solved[level], total[level]) }"
-              />
-            </span>
-            <span class="bar-count num">
-              {{ solved[level] }} / {{ total[level] }}
-            </span>
+          <DifficultyBars :total="total" :solved="solved" />
+          <div class="progress-links">
+            <router-link class="btn sm" to="/">
+              <AppIcon name="book" :size="16" />
+              去题库
+            </router-link>
+            <router-link class="btn sm" to="/stats">
+              <AppIcon name="chart" :size="16" />
+              学习统计
+            </router-link>
           </div>
-          <router-link class="btn sm" to="/">
-            <AppIcon name="book" :size="16" />
-            去题库
-          </router-link>
         </section>
 
         <SubmitCalendar />
@@ -158,10 +153,10 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useStore } from "vuex";
 
 import AiSettingForm from "@/components/companion/AiSettingForm.vue";
-import DifficultyLabel from "@/components/problem/DifficultyLabel.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 import AvatarPicker from "@/components/user/AvatarPicker.vue";
+import DifficultyBars from "@/components/user/DifficultyBars.vue";
 import SubmitCalendar from "@/components/user/SubmitCalendar.vue";
 import UserAvatar from "@/components/user/UserAvatar.vue";
 import {
@@ -170,16 +165,11 @@ import {
 } from "@/constants/userAvatars";
 import { useMyProgress } from "@/composables/useMyProgress";
 import { formatDateTime } from "@/utils/dateTime";
-import { Difficulty } from "@/utils/difficulty";
 import { formatUserRole } from "@/utils/userRole";
 import { UserControllerService } from "../../../generated";
 
 const store = useStore();
-const LEVELS: Difficulty[] = ["easy", "medium", "hard"];
-
 const { total, solved, load: loadProgress } = useMyProgress();
-const percent = (part: number, whole: number) =>
-  whole ? `${Math.min(100, (part / whole) * 100)}%` : "0%";
 const profileSaving = ref(false);
 const passwordSaving = ref(false);
 const profileError = ref("");
@@ -383,46 +373,10 @@ const savePassword = async () => {
   font-weight: 700;
 }
 
-.bar-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 52px;
-  align-items: center;
-  gap: 12px;
-}
-
-.bar {
-  height: 6px;
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: var(--fill);
-}
-
-.bar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.bar i.easy {
-  background: var(--easy);
-}
-
-.bar i.medium {
-  background: var(--medium);
-}
-
-.bar i.hard {
-  background: var(--hard);
-}
-
-.bar-count {
-  color: var(--faint);
-  font-size: 12.5px;
-  text-align: right;
-}
-
-.progress .btn {
-  justify-self: start;
+.progress-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 4px;
 }
 

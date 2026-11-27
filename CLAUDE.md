@@ -14,7 +14,7 @@ npm run test:unit          # Vitest unit tests (tests/unit/*.spec.ts, jsdom, glo
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`, `learningStats.spec.ts` (stats normalization, bar widths, attempt wording). Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://127.0.0.1:8102` (configured in `vite.config.mts`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - Env values come from `import.meta.env` (e.g. `BASE_URL`); there is no `process.env` in app code.
@@ -61,7 +61,7 @@ src/
 │   │   ├── monacoThemes.ts      # myoj-light / myoj-dark editor themes (same colors as styles/code.css)
 │   │   ├── MdEditor.vue / MdViewer.vue
 │   ├── layout/
-│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 提交记录, 出题 / 管理 menus, theme, account
+│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 提交记录, 学习统计 (logged in), 出题 / 管理 menus, theme, account
 │   │   ├── RailMenu.vue + railMenu.ts  # Rail popover menu
 │   ├── problem/             # 题库页和做题页（PaneResizer：做题页面板之间的拖动条）
 │   │   ├── ProblemStatement.vue   # Title, facts (difficulty, rate, limits), tags, content, author
@@ -71,7 +71,8 @@ src/
 │   │   ├── DifficultyLabel.vue / ProblemStatusIcon.vue
 │   ├── question/            # Judge value editors, SubmissionRankRings, SubmissionDiagnosticPanel, admin details
 │   ├── ui/                  # AppIcon + icons.ts, UiInput, UiSelect, UiNumberInput, UiTagInput, UiSwitch, UiSegmented, UiPagination
-│   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity
+│   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity,
+│                            # SubmitCalendar (props weeks / showStats), DifficultyBars (per-difficulty solved bars)
 ├── composables/
 │   ├── problem/useProblemEditor.ts   # Languages, starter code, local drafts (300ms debounce)
 │   ├── problem/useJudge.ts           # Submit, queue polling, rank, verdict state
@@ -82,7 +83,7 @@ src/
 ├── layouts/
 │   ├── AppLayout.vue     # Rail + main area + ICP footer
 │   └── UserLayout.vue    # Login / register
-├── services/             # apiId, companion(+Stream), codeEditProposal, problemNavigation, questionDraft,
+├── services/             # apiId, companion(+Stream), codeEditProposal, learningStats, problemNavigation, questionDraft,
 │                         # questionJudgeCase, questionJudgeConfig, questionProgress, questionStarterCode,
 │                         # questionSubmit, questionSubmitPolling, userSummary
 ├── styles/
@@ -96,7 +97,7 @@ src/
 │   ├── problem/ProblemsView.vue   # 题库 (/ and /questions)
 │   ├── problem/ProblemView.vue    # 做题页 (/problem/:id)
 │   ├── question/                  # AddQuestionView, ManageQuestionView (also /my/question with scope=mine), QuestionSubmitView
-│   ├── user/                      # Login, Register, Profile, UserManage
+│   ├── user/                      # Login, Register, Profile, UserManage, LearningStats (/stats)
 │   └── NoAuthView.vue
 ├── App.vue               # AppLayout, or UserLayout for /user/*
 └── main.ts               # Fonts, styles, Arco message CSS, router, store, access guard
@@ -106,7 +107,7 @@ generated/               # Auto-generated API client — DO NOT EDIT (npm run ge
 
 ## Design System
 
-Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
+Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). The one decorative exception is the icon rail: each item has its own `--tint-*` color (blue 题库, green 提交记录, orange 学习统计, pink 出题, teal 管理, indigo / amber theme toggle; light and dark values in `tokens.css`), set as `--tint` on the button and shown only on hover / keyboard focus (not on the ≤720px bottom bar, so a tap doesn't leave it colored; no scale with reduced motion). A new rail item gets a new tint. Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
 
 - **Tokens** live in `src/styles/tokens.css` for light and `:root[data-theme="dark"]`: surfaces `--bg` (canvas), `--panel`, `--fill`, `--fill-strong`; lines `--line`, `--line-strong`; text `--ink`, `--body`, `--muted`, `--faint`; `--primary` is black in light mode and near-white in dark mode (`--on-primary` flips with it); radii `--radius-sm` 8 / `md` 12 / `lg` 18 / `xl` 22 / `pill`; `--shadow-panel`, `--shadow-float`, `--focus-ring`; motion `--motion-fast|standard|layout`, `--ease-out|in-out|drawer`.
 - The bottom of `tokens.css` keeps **legacy aliases** (`--canvas`, `--hairline`, `--surface-soft`, `--surface-dark`, `--font-display`, `--error`, …) that a few companion components still use. New code uses the new names.
@@ -218,6 +219,10 @@ The 题解 tab requires login; whether the user may see it (admin, or after an A
 - Judge values support 0D scalars, 1D arrays, and 2D arrays based on `dimensions`; each type (BOOLEAN, INTEGER, LONG, DOUBLE, STRING) has its own default value and validation
 
 Components: `JudgeValueEditor.vue` renders the full config editor (parameters + cases), `JudgeScalarInput.vue` renders individual scalar input fields.
+
+### 学习统计 (LearningStatsView, /stats)
+
+Logged-in only. Combines three sources: `useMyProgress` (solved / total per difficulty, `DifficultyBars`), `useSubmitCalendar` (totals, this week, streaks; `SubmitCalendar` with `:show-stats="false"` and a week count picked from the window width: 52 / 40 / 26 / 16) and `GET /question/progress/stats` via `services/learningStats.ts` (per-tag solved / attempted / total — each tag links to `/?tag=` —, per-language submits and solved, the 10 most recent first solves with how many tries it took, first-try count). The refresh button forces all three. Profile's progress panel links here.
 
 ### Question Progress Tracking
 

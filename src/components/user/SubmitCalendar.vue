@@ -1,11 +1,11 @@
 <template>
-  <section class="panel calendar">
+  <section class="panel calendar" :style="{ '--weeks': weekCount }">
     <header class="calendar-head">
       <h2>做题日历</h2>
-      <span class="range">最近 {{ WEEKS }} 周</span>
+      <span class="range">最近 {{ weekCount }} 周</span>
     </header>
 
-    <div class="stats">
+    <div v-if="showStats" class="stats">
       <div>
         <b class="num">{{ totals.submits }}</b>
         <span>次提交</span>
@@ -37,16 +37,16 @@
       <div
         :class="['grid', { loading }]"
         role="img"
-        :aria-label="`最近 ${WEEKS} 周提交了 ${recentSubmits} 次`"
+        :aria-label="`最近 ${weekCount} 周提交了 ${recentSubmits} 次`"
       >
-        <template v-for="(week, column) in weeks" :key="column">
+        <template v-for="(week, column) in columns" :key="column">
           <i
             v-for="cell in week"
             :key="cell.date"
             :class="[
               'cell',
               `l${cell.level}`,
-              { future: cell.future, edge: column >= WEEKS - 4 },
+              { future: cell.future, edge: column >= weekCount - 4 },
             ]"
             :data-tip="cell.future ? undefined : describe(cell)"
           />
@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, defineProps, onMounted } from "vue";
 
 import { useSubmitCalendar } from "@/composables/useSubmitCalendar";
 import { formatAcceptanceRate } from "@/services/questionProgress";
@@ -79,22 +79,33 @@ import {
   monthLabels,
 } from "@/utils/submitCalendar";
 
-/** 画多少周；连续天数按接口返回的一整年算 */
-const WEEKS = 20;
+const props = defineProps({
+  /** 画多少周（个人中心 20 周，学习统计页按宽度给）；连续天数总是按接口返回的一整年算 */
+  weeks: { type: Number, default: 20 },
+  /** 顶上那排数字（提交次数、通过率、连续天数）；学习统计页上面已经有了，就不重复 */
+  showStats: { type: Boolean, default: true },
+});
+
+const weekCount = computed(() =>
+  Math.max(8, Math.min(53, Math.round(props.weeks)))
+);
 
 const { days, totals, loading, failed, streaks, load } = useSubmitCalendar();
 const today = new Date();
 
-const weeks = computed(() => buildCalendarWeeks(days.value, today, WEEKS));
+// 一列一周（不能叫 weeks，会和同名的 prop 撞上）
+const columns = computed(() =>
+  buildCalendarWeeks(days.value, today, weekCount.value)
+);
 // 两个月份挨得太近（比如第一列正好是上个月最后一周）时只留后一个，免得叠在一起
 const months = computed(() =>
-  monthLabels(weeks.value).filter(
+  monthLabels(columns.value).filter(
     (month, index, labels) =>
       index === labels.length - 1 || labels[index + 1].index - month.index >= 3
   )
 );
 const recentSubmits = computed(() =>
-  weeks.value.flat().reduce((sum, cell) => sum + cell.count, 0)
+  columns.value.flat().reduce((sum, cell) => sum + cell.count, 0)
 );
 const acceptRate = computed(() =>
   formatAcceptanceRate(totals.value.accepted, totals.value.submits)
@@ -163,12 +174,13 @@ h2 {
   font-size: 12px;
 }
 
-/* 月份和格子用同一套 20 列 */
+/* 月份和格子用同一套列，一周一列；格子最大约 18px，宽面板里不会撑得太大 */
 .months,
 .grid {
   display: grid;
-  grid-template-columns: repeat(20, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--weeks, 20), minmax(0, 1fr));
   column-gap: 3px;
+  max-width: calc(var(--weeks, 20) * 21px);
 }
 
 .months {
@@ -249,6 +261,7 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  max-width: calc(var(--weeks, 20) * 21px);
   color: var(--faint);
   font-size: 12px;
 }
@@ -278,13 +291,5 @@ h2 {
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
-}
-
-@media (max-width: 900px) {
-  .months,
-  .grid,
-  .legend {
-    max-width: 420px;
-  }
 }
 </style>
