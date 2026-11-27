@@ -26,6 +26,7 @@ import {
   compactCompanionMemory,
   ContextUsage,
   describeCompanionError,
+  deleteCompanionConversation,
   getCompanionSession,
   HintStep,
   isKeyProblem,
@@ -293,6 +294,29 @@ export const useCompanion = (options: UseCompanionOptions) => {
   const switchConversation = async (id: ApiId) => {
     if (sameId(id, conversationId.value)) return true;
     return changeConversation(() => switchCompanionConversation(id));
+  };
+
+  /** 删除一段对话；删的是当前这段时换成后端选的另一段（最近的一段，或新开的） */
+  const deleteConversation = async (id: ApiId) => {
+    if (busy.value || !session.value) return false;
+    const deletingCurrent = sameId(id, conversationId.value);
+    const current = deletingCurrent ? ++generation : generation;
+    busy.value = "conversation";
+    lastError.value = "";
+    try {
+      const result = await deleteCompanionConversation(id);
+      if (current !== generation) return false;
+      if (deletingCurrent) applySession(result);
+      conversations.value = conversations.value.filter(
+        (item) => !sameId(item.id, id)
+      );
+      return true;
+    } catch (error) {
+      if (current === generation) handleFailure(error);
+      return false;
+    } finally {
+      if (current === generation) busy.value = null;
+    }
   };
 
   // endregion
@@ -597,6 +621,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
     loadConversations,
     startConversation,
     switchConversation,
+    deleteConversation,
     send,
     askHint,
     showSolution,

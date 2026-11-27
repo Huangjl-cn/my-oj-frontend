@@ -9,10 +9,12 @@ import type { BaseResponseCompanionNoteApplyVO } from '../models/BaseResponseCom
 import type { BaseResponseCompanionNotePreviewVO } from '../models/BaseResponseCompanionNotePreviewVO';
 import type { BaseResponseCompanionReactionVO } from '../models/BaseResponseCompanionReactionVO';
 import type { BaseResponseCompanionSessionVO } from '../models/BaseResponseCompanionSessionVO';
+import type { BaseResponseCompanionTraceVO } from '../models/BaseResponseCompanionTraceVO';
 import type { BaseResponseListCompanionConversationVO } from '../models/BaseResponseListCompanionConversationVO';
 import type { BaseResponseListCompanionMessageVO } from '../models/BaseResponseListCompanionMessageVO';
 import type { CompanionChatRequest } from '../models/CompanionChatRequest';
 import type { CompanionCompactRequest } from '../models/CompanionCompactRequest';
+import type { CompanionDeleteConversationRequest } from '../models/CompanionDeleteConversationRequest';
 import type { CompanionHintRequest } from '../models/CompanionHintRequest';
 import type { CompanionLevelRequest } from '../models/CompanionLevelRequest';
 import type { CompanionNewConversationRequest } from '../models/CompanionNewConversationRequest';
@@ -148,6 +150,23 @@ requestBody: CompanionNewConversationRequest,
     }
 
     /**
+     * 删除一段对话：消息、记忆、轨迹一起删，删了找不回来；删的是当前对话时换成最近的另一段，返回删完后的会话
+     * @param requestBody 
+     * @returns BaseResponseCompanionSessionVO OK
+     * @throws ApiError
+     */
+    public static deleteConversation(
+requestBody: CompanionDeleteConversationRequest,
+): CancelablePromise<BaseResponseCompanionSessionVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/companion/conversation/delete',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
      * 手动整理记忆
      * @param requestBody 
      * @returns BaseResponseCompanionCompactionVO OK
@@ -178,6 +197,24 @@ requestBody: CompanionChatRequest,
             url: '/companion/chat',
             body: requestBody,
             mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * 一段对话的轨迹：每一轮发给模型的内容、模型调用、工具调用、耗时和 token
+     * @param conversationId 
+     * @returns BaseResponseCompanionTraceVO OK
+     * @throws ApiError
+     */
+    public static getTrace(
+conversationId: number,
+): CancelablePromise<BaseResponseCompanionTraceVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/companion/trace',
+            query: {
+                'conversationId': conversationId,
+            },
         });
     }
 

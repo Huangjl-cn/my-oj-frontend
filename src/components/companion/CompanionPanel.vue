@@ -41,6 +41,7 @@
         :can-summarize="canAsk && !companion.isFreshConversation"
         @open="companion.loadConversations()"
         @select="companion.switchConversation"
+        @delete="askDelete"
         @summarize="summarizeToNote"
       />
       <button
@@ -62,6 +63,20 @@
         <AppIcon name="close" :size="18" />
       </button>
     </header>
+    <!-- 对话 / 轨迹：轨迹太宽，点开后铺满做题页（ProblemView 里的 CompanionTrace） -->
+    <nav class="panel-tabs" aria-label="鸭鸭面板">
+      <button class="panel-tab on" type="button" aria-current="true">
+        对话
+      </button>
+      <button
+        class="panel-tab"
+        type="button"
+        :disabled="!session"
+        @click="emit('open-trace')"
+      >
+        轨迹
+      </button>
+    </nav>
 
     <div v-if="companion.loading" class="panel-hint">正在叫醒{{ name }}…</div>
     <div v-else-if="companion.loadError" class="panel-hint error">
@@ -195,6 +210,14 @@
       :confirm-text="solutionTitle"
       @confirm="confirmSolution"
     />
+    <ConfirmDialog
+      v-model:visible="deleteTarget.visible"
+      title="删除这段对话？"
+      :message="`「${deleteTarget.title}」里的消息、${name}的记忆和轨迹会一起删掉，删了找不回来。已经存进笔记的内容不受影响。`"
+      confirm-text="删除"
+      tone="danger"
+      @confirm="confirmDelete"
+    />
     <NoteProposalDialog
       v-model:visible="notePreview.visible"
       :message-id="notePreview.messageId"
@@ -215,6 +238,7 @@
 import message from "@arco-design/web-vue/es/message";
 import {
   computed,
+  defineEmits,
   defineExpose,
   defineProps,
   nextTick,
@@ -239,7 +263,7 @@ import { toFlightRect, useDuckFlight } from "@/composables/useDuckFlight";
 import { PetBehavior } from "@/composables/usePetBehavior";
 import { usePetLook } from "@/composables/usePetLook";
 import { ApiId } from "@/services/apiId";
-import { CompanionMessage } from "@/services/companion";
+import { CompanionConversation, CompanionMessage } from "@/services/companion";
 import { NoteProposal } from "@/services/companionNotes";
 import { NoteProposal as NoteProposalVO } from "../../../generated";
 
@@ -286,6 +310,11 @@ const duckRect = () => {
 };
 
 defineExpose({ duckRect });
+
+const emit = defineEmits<{
+  /** 打开这段对话的轨迹 */
+  (event: "open-trace"): void;
+}>();
 
 // endregion
 
@@ -368,6 +397,31 @@ const onKeydown = (event: KeyboardEvent) => {
   event.preventDefault();
   void submit();
 };
+
+// region 删除对话
+
+const deleteTarget = reactive({
+  visible: false,
+  id: "" as ApiId,
+  title: "",
+});
+
+const askDelete = (conversation: CompanionConversation) => {
+  deleteTarget.id = conversation.id;
+  deleteTarget.title =
+    conversation.title ||
+    (conversation.messageCount ? "提示与提交记录" : "新对话");
+  deleteTarget.visible = true;
+};
+
+const confirmDelete = async () => {
+  deleteTarget.visible = false;
+  if (await props.companion.deleteConversation(deleteTarget.id)) {
+    message.success("对话删掉了");
+  }
+};
+
+// endregion
 
 // region 笔记
 
@@ -468,6 +522,44 @@ watch(
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);
   animation: panel-in var(--motion-standard) var(--ease-out);
+}
+
+/* 对话 / 轨迹 两个标签 */
+.panel-tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-tab {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.panel-tab:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.panel-tab.on {
+  background: var(--fill-strong);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: default;
+}
+
+.panel-tab:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .panel-header {

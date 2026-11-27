@@ -18,7 +18,11 @@
       <p v-if="loading && !conversations.length" class="menu-empty">加载中…</p>
       <p v-else-if="!conversations.length" class="menu-empty">还没有其他对话</p>
       <ul v-else class="menu-list">
-        <li v-for="item in conversations" :key="String(item.id)">
+        <li
+          v-for="item in conversations"
+          :key="String(item.id)"
+          class="menu-row"
+        >
           <button
             type="button"
             role="menuitem"
@@ -30,6 +34,15 @@
               {{ item.active ? "当前 · " : ""
               }}{{ formatTime(item.updateTime) }} · {{ item.messageCount }} 条
             </span>
+          </button>
+          <button
+            class="row-delete"
+            type="button"
+            :aria-label="`删除对话「${titleOf(item)}」`"
+            title="删除这段对话"
+            @click="remove(item)"
+          >
+            <AppIcon name="trash" :size="14" />
           </button>
         </li>
       </ul>
@@ -74,6 +87,7 @@ const emit = defineEmits<{
   (event: "open"): void;
   (event: "select", id: ApiId): void;
   (event: "summarize"): void;
+  (event: "delete", conversation: CompanionConversation): void;
 }>();
 
 const rootRef = ref<HTMLElement | null>(null);
@@ -88,6 +102,11 @@ const toggle = () => {
 const choose = (item: CompanionConversation) => {
   open.value = false;
   if (!item.active) emit("select", item.id);
+};
+
+const remove = (item: CompanionConversation) => {
+  open.value = false;
+  emit("delete", item);
 };
 
 const summarize = () => {
@@ -201,6 +220,50 @@ const formatTime = (value?: string) => {
 .item-meta {
   color: var(--muted);
   font-size: 11px;
+}
+
+.menu-row {
+  position: relative;
+}
+
+.menu-row .menu-item {
+  padding-right: 34px;
+}
+
+/* 删除：鼠标移到这一行上才出现（触屏一直显示） */
+.row-delete {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--faint);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.row-delete:hover,
+.row-delete:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--danger);
+}
+
+@media (hover: hover) {
+  .row-delete {
+    opacity: 0;
+  }
+
+  .menu-row:hover .row-delete,
+  .row-delete:focus-visible {
+    opacity: 1;
+  }
 }
 
 /* 列表很长时这一行贴在弹层底部 */

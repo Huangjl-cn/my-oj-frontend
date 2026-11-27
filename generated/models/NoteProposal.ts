@@ -6,7 +6,7 @@
 import type { NoteChange } from './NoteChange';
 
 /**
- * 这条消息附带的笔记提议（新建或修改），没有为 null
+ * 鸭鸭提议的一篇笔记：新建一篇，或修改已有的一篇
  */
 export type NoteProposal = {
     /**

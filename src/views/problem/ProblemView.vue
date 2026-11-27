@@ -325,6 +325,16 @@
       class="companion-pane"
       :companion="companion"
       :duck="duck"
+      @open-trace="traceOpen = true"
+    />
+    <!-- 鸭鸭的轨迹：太宽放不进鸭鸭面板，铺满做题页 -->
+    <CompanionTrace
+      v-if="companionOpen && traceOpen && companion.conversationId != null"
+      class="trace-layer"
+      :conversation-id="companion.conversationId"
+      :busy="!!companion.busy"
+      :name="companionName"
+      @close="traceOpen = false"
     />
     <DuckFlight />
 
@@ -357,6 +367,7 @@ import CodeEditPreviewBar from "@/components/companion/CodeEditPreviewBar.vue";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import CompanionPanel from "@/components/companion/CompanionPanel.vue";
 import CompanionPet from "@/components/companion/CompanionPet.vue";
+import CompanionTrace from "@/components/companion/trace/CompanionTrace.vue";
 import DuckFlight from "@/components/companion/DuckFlight.vue";
 import { useDuckFlight } from "@/composables/useDuckFlight";
 import { PetActivity, usePetBehavior } from "@/composables/usePetBehavior";
@@ -522,6 +533,11 @@ const companionName = computed(() => companion.session?.personaName || "鸭鸭")
 const companionOpen = computed(
   () => companionEnabled.value && !!question.value && companion.panelOpen
 );
+/** 鸭鸭的轨迹铺在做题页上面；收起鸭鸭面板时一起关 */
+const traceOpen = ref(false);
+watch(companionOpen, (open) => {
+  if (!open) traceOpen.value = false;
+});
 
 // 三块面板的宽度：拖中间的竖条调整，记在本机
 const ideRef = ref<HTMLElement | null>(null);
@@ -678,7 +694,7 @@ const judge = reactive(
     onUpdate: markProgress,
     onFinished: (submission: QuestionSubmitVO | QuestionSubmitSummaryVO) => {
       const tone = getJudgeResultPresentation(submission).tone;
-      // 第一次通过后题解就能看了，下次打开重新取
+      // 题解现在登录就能看（后端不检查通没通过）；万一之前没取到，通过后清掉错误，下次打开重新取
       if (tone === "passed" && !solution.text) solution.error = "";
       void submissions.load();
       void refreshQuestionStats();
@@ -1171,6 +1187,20 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
+/* 轨迹盖住三块面板（留着左边的图标栏），和面板一样的边距 */
+.ide {
+  position: relative;
+}
+
+.trace-layer {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 6px;
+  left: 0;
+  z-index: 40;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .statement-skeleton i,
   .spin {
@@ -1203,6 +1233,13 @@ onBeforeUnmount(() => {
 
   .resizer {
     display: none;
+  }
+
+  /* 窄屏时鸭鸭面板是底部弹层（层级 2000），轨迹铺满整个窗口盖在它上面 */
+  .trace-layer {
+    position: fixed;
+    inset: 8px;
+    z-index: 2100;
   }
 }
 </style>
