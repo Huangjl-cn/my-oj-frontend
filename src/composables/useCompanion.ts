@@ -8,6 +8,7 @@ import {
   watch,
 } from "vue";
 
+import { NoteProposal as NoteProposalVO } from "../../generated";
 import { ApiId } from "@/services/apiId";
 import {
   isProposalBase,
@@ -42,6 +43,9 @@ import { instantMoodForJudge, PetMood } from "@/constants/companionMoods";
 /** 用户能直接调到的最高档位，第 5 档是「看答案」，走单独的入口 */
 export const MAX_HINT_LEVEL = 4;
 export const SOLUTION_LEVEL = 5;
+
+/** 对话菜单里「整理成笔记」发给鸭鸭的话 */
+export const SUMMARIZE_TO_NOTE = "把这段对话整理成一篇笔记";
 
 export type CompanionBusy =
   | "chat"
@@ -345,6 +349,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
     streaming.value = { type, text: "", thinking: "" };
     setMood("thinking");
     let proposal: CodeEditProposal | undefined;
+    let notes: NoteProposalVO[] | undefined;
     try {
       const done = await streamCompanion(
         type === "chat" ? "/companion/chat" : "/companion/solution",
@@ -359,6 +364,9 @@ export const useCompanion = (options: UseCompanionOptions) => {
           onEdits: (edits) => {
             proposal = edits;
           },
+          onNotes: (list) => {
+            notes = list;
+          },
         },
         controller.signal
       );
@@ -371,6 +379,7 @@ export const useCompanion = (options: UseCompanionOptions) => {
         hintLevel: type === "solution" ? SOLUTION_LEVEL : null,
         content: reply?.text ?? "",
         codeEdits: proposal ?? null,
+        noteEdits: notes ?? null,
       });
       updateSession({
         hintLevel: done.hintLevel,
@@ -414,6 +423,9 @@ export const useCompanion = (options: UseCompanionOptions) => {
     }
     return ok;
   };
+
+  /** 让鸭鸭把当前对话整理成一篇笔记（就是发一句话，鸭鸭用笔记工具提议新建） */
+  const summarizeToNote = () => send(SUMMARIZE_TO_NOTE);
 
   const showSolution = async () => {
     if (busy.value) return false;
@@ -488,6 +500,24 @@ export const useCompanion = (options: UseCompanionOptions) => {
     } finally {
       if (current === generation) busy.value = null;
     }
+  };
+
+  // endregion
+
+  // region 笔记提议
+
+  /** 用户应用了某条笔记提议：换成后端标记为已应用的那条 */
+  const markNoteApplied = (
+    messageId: ApiId,
+    index: number,
+    applied: NoteProposalVO
+  ) => {
+    messages.value = messages.value.map((item) => {
+      if (!sameId(item.id, messageId) || !item.noteEdits?.[index]) return item;
+      const noteEdits = [...item.noteEdits];
+      noteEdits[index] = applied;
+      return { ...item, noteEdits };
+    });
   };
 
   // endregion
@@ -570,6 +600,8 @@ export const useCompanion = (options: UseCompanionOptions) => {
     send,
     askHint,
     showSolution,
+    summarizeToNote,
+    markNoteApplied,
     changeLevel,
     compact,
     onJudged,

@@ -8,6 +8,7 @@ import {
   CompanionStreamDone,
 } from "@/services/companion";
 import { ApiId } from "@/services/apiId";
+import { NoteProposal as NoteProposalVO } from "../../generated";
 
 /**
  * 陪练的流式接口（chat / solution）：POST 请求返回 text/event-stream，所以用 fetch 读流，不能用 EventSource。
@@ -73,6 +74,8 @@ export interface CompanionStreamHandlers {
   onThinking?: (text: string) => void;
   onDelta?: (text: string) => void;
   onEdits?: (proposal: CodeEditProposal) => void;
+  /** 笔记提议，原样交出去，由使用方解析 */
+  onNotes?: (notes: NoteProposalVO[]) => void;
 }
 
 const parseJson = <T>(data: string): T | undefined => {
@@ -143,6 +146,9 @@ export const streamCompanion = async (
     } else if (event === "edits") {
       const proposal = parseJson<CodeEditProposal>(data);
       if (proposal) handlers.onEdits?.(proposal);
+    } else if (event === "notes") {
+      const notes = parseJson<NoteProposalVO[]>(data);
+      if (Array.isArray(notes) && notes.length) handlers.onNotes?.(notes);
     } else if (event === "done") {
       done = parseJson<CompanionStreamDone>(data);
     } else if (event === "error") {

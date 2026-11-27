@@ -33,6 +33,19 @@
           </button>
         </li>
       </ul>
+      <div class="menu-actions">
+        <button
+          type="button"
+          role="menuitem"
+          class="menu-action"
+          :disabled="!canSummarize"
+          :title="canSummarize ? undefined : '先聊几句、并且配好 Key，才能整理'"
+          @click="summarize"
+        >
+          <AppIcon name="notebook" :size="15" />
+          把当前对话整理成笔记
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -53,11 +66,14 @@ defineProps({
   },
   loading: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  /** 当前对话聊过、能调模型时才能「整理成笔记」 */
+  canSummarize: { type: Boolean, default: false },
 });
 
 const emit = defineEmits<{
   (event: "open"): void;
   (event: "select", id: ApiId): void;
+  (event: "summarize"): void;
 }>();
 
 const rootRef = ref<HTMLElement | null>(null);
@@ -72,6 +88,11 @@ const toggle = () => {
 const choose = (item: CompanionConversation) => {
   open.value = false;
   if (!item.active) emit("select", item.id);
+};
+
+const summarize = () => {
+  open.value = false;
+  emit("summarize");
 };
 
 const titleOf = (item: CompanionConversation) => {
@@ -180,5 +201,44 @@ const formatTime = (value?: string) => {
 .item-meta {
   color: var(--muted);
   font-size: 11px;
+}
+
+/* 列表很长时这一行贴在弹层底部 */
+.menu-actions {
+  position: sticky;
+  bottom: -8px;
+  margin: 6px -8px -8px;
+  padding: 6px 8px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.menu-action {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--body);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-action:hover:not(:disabled),
+.menu-action:focus-visible {
+  outline: none;
+  background: var(--fill);
+  color: var(--tint-violet);
+}
+
+.menu-action:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 </style>

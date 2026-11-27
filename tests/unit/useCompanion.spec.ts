@@ -1,7 +1,7 @@
 import type { Mock } from "vitest";
 import { ref } from "vue";
 
-import { useCompanion } from "@/composables/useCompanion";
+import { SUMMARIZE_TO_NOTE, useCompanion } from "@/composables/useCompanion";
 import {
   CompanionApiError,
   CompanionSession,
@@ -147,6 +147,43 @@ describe("useCompanion", () => {
     expect(companion.applyPreview()).toBe(true);
     expect(applyCode).toHaveBeenCalledWith("int a = 1;\n");
     expect(companion.preview.value).toBeNull();
+  });
+
+  it("keeps the note proposals on the reply and marks one applied", async () => {
+    const note = { kind: "create", title: "两数之和 笔记", applied: false };
+    mockedStream.mockImplementation(async (path, body, handlers) => {
+      handlers.onDelta("整理好了");
+      handlers.onNotes([note]);
+      return {
+        messageId: "22",
+        hintLevel: 0,
+        contextUsage: session().contextUsage,
+        compacted: false,
+      };
+    });
+    const { companion } = setup();
+    await flush();
+
+    await expect(companion.summarizeToNote()).resolves.toBe(true);
+
+    expect(mockedStream.mock.calls[0][1]).toMatchObject({
+      message: SUMMARIZE_TO_NOTE,
+    });
+    const reply = companion.messages.value[1];
+    expect(reply.noteEdits).toEqual([note]);
+
+    companion.markNoteApplied("22", 0, { ...note, applied: true, noteId: 30 });
+    expect(companion.messages.value[1].noteEdits?.[0]).toMatchObject({
+      applied: true,
+      noteId: 30,
+    });
+    // 别的消息、不存在的下标不受影响
+    companion.markNoteApplied("21", 0, { ...note, title: "别的" });
+    companion.markNoteApplied("22", 3, { ...note, title: "别的" });
+    expect(companion.messages.value[1].noteEdits).toHaveLength(1);
+    expect(companion.messages.value[1].noteEdits?.[0].title).toBe(
+      "两数之和 笔记"
+    );
   });
 
   it("sends the quoted code with the question and keeps it on the message", async () => {

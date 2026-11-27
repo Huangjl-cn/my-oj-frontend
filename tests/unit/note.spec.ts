@@ -1,4 +1,9 @@
+import type { Mock } from "vitest";
+
+import { NoteControllerService } from "../../generated";
 import {
+  appendMarkdown,
+  appendToNote,
   buildObsidianMarkdown,
   buildObsidianUri,
   DEFAULT_OBSIDIAN_SETTINGS,
@@ -8,6 +13,10 @@ import {
   obsidianFileName,
   readObsidianSettings,
 } from "@/services/note";
+
+vi.mock("../../generated", () => ({
+  NoteControllerService: { getNote: vi.fn(), updateNote: vi.fn() },
+}));
 
 const note = (patch: Partial<Note> = {}): Note => ({
   id: "9",
@@ -129,5 +138,56 @@ describe("notes", () => {
       overwrite: true,
     });
     localStorage.removeItem("myoj:obsidian");
+  });
+});
+
+describe("appending to a note", () => {
+  const mockedGet = NoteControllerService.getNote as Mock;
+  const mockedUpdate = NoteControllerService.updateNote as Mock;
+
+  beforeEach(() => vi.resetAllMocks());
+
+  it("leaves one blank line before the appended text", () => {
+    expect(appendMarkdown("开头\n\n\n", "\n## 新的\n")).toBe(
+      "开头\n\n## 新的\n"
+    );
+    expect(appendMarkdown("", "## 新的")).toBe("## 新的\n");
+    expect(appendMarkdown("开头", "  ")).toBe("开头");
+  });
+
+  it("reloads and tries once more when the note changed meanwhile", async () => {
+    mockedGet
+      .mockResolvedValueOnce({
+        code: 0,
+        data: { id: "9", content: "a", version: 1 },
+      })
+      .mockResolvedValueOnce({
+        code: 0,
+        data: { id: "9", content: "a\nb", version: 2 },
+      });
+    mockedUpdate
+      .mockResolvedValueOnce({ code: 40900, message: "改过了" })
+      .mockResolvedValueOnce({
+        code: 0,
+        data: { id: "9", content: "a\nb\n\n鸭鸭说的\n", version: 3 },
+      });
+
+    const note = await appendToNote("9", "鸭鸭说的");
+
+    expect(mockedUpdate).toHaveBeenLastCalledWith({
+      id: "9",
+      title: "未命名笔记",
+      content: "a\nb\n\n鸭鸭说的\n",
+      version: 2,
+    });
+    expect(note.version).toBe(3);
+  });
+
+  it("gives up after the second conflict", async () => {
+    mockedGet.mockResolvedValue({ code: 0, data: { id: "9", version: 1 } });
+    mockedUpdate.mockResolvedValue({ code: 40900, message: "改过了" });
+
+    await expect(appendToNote("9", "x")).rejects.toMatchObject({ code: 40900 });
+    expect(mockedUpdate).toHaveBeenCalledTimes(2);
   });
 });

@@ -119,6 +119,7 @@ import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import ObsidianExport from "@/components/note/ObsidianExport.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import { useNoteEditor } from "@/composables/useNoteEditor";
+import { lastNoteChange } from "@/composables/useNoteSync";
 import { loadNote, Note, removeNote } from "@/services/note";
 import { formatDateTime } from "@/utils/dateTime";
 
@@ -200,6 +201,22 @@ watch(
     }
   }
 );
+
+// 这篇在编辑器之外被写过（应用了鸭鸭的提议、存进笔记）：没有未保存的改动就直接换成新的，
+// 有改动就留着，保存时会提示冲突让用户选
+watch(lastNoteChange, (change) => {
+  const current = editor.note.value;
+  if (
+    !change ||
+    !current ||
+    change.note.id !== current.id ||
+    change.note.version <= current.version ||
+    editor.state.value !== "saved"
+  ) {
+    return;
+  }
+  editor.open(change.note);
+});
 
 const onTitle = (event: Event) =>
   editor.edit({ title: (event.target as HTMLInputElement).value });

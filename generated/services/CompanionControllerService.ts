@@ -5,6 +5,8 @@
 import type { BaseResponseCompanionCompactionVO } from '../models/BaseResponseCompanionCompactionVO';
 import type { BaseResponseCompanionHintStateVO } from '../models/BaseResponseCompanionHintStateVO';
 import type { BaseResponseCompanionHintVO } from '../models/BaseResponseCompanionHintVO';
+import type { BaseResponseCompanionNoteApplyVO } from '../models/BaseResponseCompanionNoteApplyVO';
+import type { BaseResponseCompanionNotePreviewVO } from '../models/BaseResponseCompanionNotePreviewVO';
 import type { BaseResponseCompanionReactionVO } from '../models/BaseResponseCompanionReactionVO';
 import type { BaseResponseCompanionSessionVO } from '../models/BaseResponseCompanionSessionVO';
 import type { BaseResponseListCompanionConversationVO } from '../models/BaseResponseListCompanionConversationVO';
@@ -14,6 +16,7 @@ import type { CompanionCompactRequest } from '../models/CompanionCompactRequest'
 import type { CompanionHintRequest } from '../models/CompanionHintRequest';
 import type { CompanionLevelRequest } from '../models/CompanionLevelRequest';
 import type { CompanionNewConversationRequest } from '../models/CompanionNewConversationRequest';
+import type { CompanionNoteApplyRequest } from '../models/CompanionNoteApplyRequest';
 import type { CompanionReactRequest } from '../models/CompanionReactRequest';
 import type { CompanionSolutionRequest } from '../models/CompanionSolutionRequest';
 import type { CompanionSwitchConversationRequest } from '../models/CompanionSwitchConversationRequest';
@@ -88,6 +91,23 @@ requestBody: CompanionReactRequest,
         return __request(OpenAPI, {
             method: 'POST',
             url: '/companion/react',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * 应用鸭鸭的一条笔记提议：新建或修改笔记，并标记为已应用
+     * @param requestBody 
+     * @returns BaseResponseCompanionNoteApplyVO OK
+     * @throws ApiError
+     */
+    public static applyNoteEdit(
+requestBody: CompanionNoteApplyRequest,
+): CancelablePromise<BaseResponseCompanionNoteApplyVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/companion/note/apply',
             body: requestBody,
             mediaType: 'application/json',
         });
@@ -175,6 +195,27 @@ questionId: number,
             url: '/companion/session',
             query: {
                 'questionId': questionId,
+            },
+        });
+    }
+
+    /**
+     * 预览鸭鸭的一条笔记提议：按笔记现在的内容算出应用后的样子
+     * @param messageId 
+     * @param index 
+     * @returns BaseResponseCompanionNotePreviewVO OK
+     * @throws ApiError
+     */
+    public static previewNoteEdit(
+messageId: number,
+index: number,
+): CancelablePromise<BaseResponseCompanionNotePreviewVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/companion/note/preview',
+            query: {
+                'messageId': messageId,
+                'index': index,
             },
         });
     }

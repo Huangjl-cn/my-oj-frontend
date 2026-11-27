@@ -38,8 +38,10 @@
         :conversations="companion.conversations"
         :loading="companion.conversationsLoading"
         :disabled="!session || !!companion.busy"
+        :can-summarize="canAsk && !companion.isFreshConversation"
         @open="companion.loadConversations()"
         @select="companion.switchConversation"
+        @summarize="summarizeToNote"
       />
       <button
         class="icon-btn tip-down"
@@ -84,46 +86,52 @@
       </p>
 
       <div ref="listRef" class="message-list" @scroll="onListScroll">
-        <button
-          v-if="companion.hasMore"
-          class="load-more"
-          type="button"
-          :disabled="companion.loadingMore"
-          @click="companion.loadMore()"
-        >
-          {{ companion.loadingMore ? "加载中…" : "加载更早的消息" }}
-        </button>
-        <p
-          v-if="!companion.messages.length && !companion.streaming"
-          class="empty"
-        >
-          嗨，我是{{
-            name
-          }}。卡住了就点下面的「给点提示」，想让我多说一点就把档位调高；也可以直接问我，或者在代码里选中一段再「问{{
-            name
-          }}」。
-        </p>
-        <CompanionMessageItem
-          v-for="item in companion.messages"
-          :key="item.id"
-          :message="item"
-          :hint-steps="session.hintSteps"
-          @preview="companion.openPreview"
-        />
-        <CompanionMessageItem
-          v-if="companion.streaming"
-          :message="streamingMessage"
-          :hint-steps="session.hintSteps"
-          streaming
-          :streaming-text="companion.streaming.text"
-          :thinking="companion.streaming.thinking"
-        />
-        <p v-else-if="companion.busy === 'hint'" class="pending">
-          {{ name }}在看你的代码…
-        </p>
-        <p v-else-if="companion.busy === 'compact'" class="pending">
-          正在整理之前的对话…
-        </p>
+        <div ref="stackRef" class="message-stack">
+          <button
+            v-if="companion.hasMore"
+            class="load-more"
+            type="button"
+            :disabled="companion.loadingMore"
+            @click="companion.loadMore()"
+          >
+            {{ companion.loadingMore ? "加载中…" : "加载更早的消息" }}
+          </button>
+          <p
+            v-if="!companion.messages.length && !companion.streaming"
+            class="empty"
+          >
+            嗨，我是{{
+              name
+            }}。卡住了就点下面的「给点提示」，想让我多说一点就把档位调高；也可以直接问我，或者在代码里选中一段再「问{{
+              name
+            }}」。想记笔记就跟我说一声，我写好给你看过再存。
+          </p>
+          <CompanionMessageItem
+            v-for="item in companion.messages"
+            :key="item.id"
+            :message="item"
+            :hint-steps="session.hintSteps"
+            :question-id="session.questionId"
+            @preview="companion.openPreview"
+            @note-preview="
+              (index, proposal) => openNotePreview(item, index, proposal)
+            "
+          />
+          <CompanionMessageItem
+            v-if="companion.streaming"
+            :message="streamingMessage"
+            :hint-steps="session.hintSteps"
+            streaming
+            :streaming-text="companion.streaming.text"
+            :thinking="companion.streaming.thinking"
+          />
+          <p v-else-if="companion.busy === 'hint'" class="pending">
+            {{ name }}在看你的代码…
+          </p>
+          <p v-else-if="companion.busy === 'compact'" class="pending">
+            正在整理之前的对话…
+          </p>
+        </div>
       </div>
 
       <footer :class="['composer', { lifted: !atBottom }]">
@@ -187,6 +195,14 @@
       :confirm-text="solutionTitle"
       @confirm="confirmSolution"
     />
+    <NoteProposalDialog
+      v-model:visible="notePreview.visible"
+      :message-id="notePreview.messageId"
+      :index="notePreview.index"
+      :proposal="notePreview.proposal"
+      :name="name"
+      @applied="onNoteApplied"
+    />
     <AiSettingDialog
       :visible="companion.settingsOpen"
       @update:visible="companion.setSettingsOpen"
@@ -202,7 +218,9 @@ import {
   defineExpose,
   defineProps,
   nextTick,
+  onBeforeUnmount,
   PropType,
+  reactive,
   ref,
   watch,
 } from "vue";
@@ -214,12 +232,16 @@ import CompanionMessageItem from "@/components/companion/CompanionMessageItem.vu
 import ContextUsageRing from "@/components/companion/ContextUsageRing.vue";
 import ConversationMenu from "@/components/companion/ConversationMenu.vue";
 import HintLevelPicker from "@/components/companion/HintLevelPicker.vue";
+import NoteProposalDialog from "@/components/companion/NoteProposalDialog.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import { CompanionState, SOLUTION_LEVEL } from "@/composables/useCompanion";
 import { toFlightRect, useDuckFlight } from "@/composables/useDuckFlight";
 import { PetBehavior } from "@/composables/usePetBehavior";
 import { usePetLook } from "@/composables/usePetLook";
+import { ApiId } from "@/services/apiId";
 import { CompanionMessage } from "@/services/companion";
+import { NoteProposal } from "@/services/companionNotes";
+import { NoteProposal as NoteProposalVO } from "../../../generated";
 
 /** 离底部不到这么多像素时，新内容到来自动滚到底 */
 const STICK_TO_BOTTOM_PX = 80;
@@ -270,6 +292,7 @@ defineExpose({ duckRect });
 const draft = ref("");
 const solutionConfirmVisible = ref(false);
 const listRef = ref<HTMLElement | null>(null);
+const stackRef = ref<HTMLElement | null>(null);
 let stickToBottom = true;
 /** 消息列表滚到了最底下；没到底时输入框上方加一条分隔，和上面的回答分开 */
 const atBottom = ref(true);
@@ -346,6 +369,38 @@ const onKeydown = (event: KeyboardEvent) => {
   void submit();
 };
 
+// region 笔记
+
+const notePreview = reactive({
+  visible: false,
+  messageId: "" as ApiId,
+  index: 0,
+  proposal: null as NoteProposal | null,
+});
+
+const openNotePreview = (
+  item: CompanionMessage,
+  index: number,
+  proposal: NoteProposal
+) => {
+  notePreview.messageId = item.id;
+  notePreview.index = index;
+  notePreview.proposal = proposal;
+  notePreview.visible = true;
+};
+
+const onNoteApplied = (index: number, applied: NoteProposalVO) => {
+  props.companion.markNoteApplied(notePreview.messageId, index, applied);
+};
+
+/** 对话菜单里的「整理成笔记」：让鸭鸭把这段对话整理成一篇，回答里带着提议 */
+const summarizeToNote = () => {
+  stickToBottom = true;
+  void props.companion.summarizeToNote();
+};
+
+// endregion
+
 const compactNow = async () => {
   const result = await props.companion.compact();
   if (!result) return;
@@ -376,6 +431,18 @@ watch(
   ],
   () => void nextTick(scrollToBottom)
 );
+
+// 消息变高时也贴着底部：回答收尾时整条消息换成保存好的那条，Markdown 重新渲染、笔记卡片出现，
+// 渲染完才变高，只盯消息条数和流式文字长度会停在半截
+const stackObserver =
+  typeof ResizeObserver === "undefined"
+    ? undefined
+    : new ResizeObserver(() => scrollToBottom());
+watch(stackRef, (element) => {
+  stackObserver?.disconnect();
+  if (element) stackObserver?.observe(element);
+});
+onBeforeUnmount(() => stackObserver?.disconnect());
 
 // 切题、切对话后回到最新的消息
 watch(
@@ -502,9 +569,6 @@ watch(
 .message-list {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
   padding: 18px 16px 24px;
   overflow-y: auto;
   /* 上下边缘淡出，滚动时文字不会贴着标题栏和输入框硬切 */
@@ -522,6 +586,13 @@ watch(
     #000 calc(100% - 20px),
     transparent 100%
   );
+}
+
+/* 消息一条条往下排；高度变化由 ResizeObserver 盯着，贴底时跟着滚到底 */
+.message-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .load-more {

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { OpenAPI } from "../../generated";
+import { NoteProposal as NoteProposalVO, OpenAPI } from "../../generated";
 import { ApiId } from "@/services/apiId";
 
 /**
@@ -73,6 +73,8 @@ export interface CompanionMessage {
   content: string;
   quote?: CodeQuote | null;
   codeEdits?: CodeEditProposal | null;
+  /** 鸭鸭的笔记提议（原样，用 normalizeNoteProposals 解析），下标就是应用时的 index */
+  noteEdits?: NoteProposalVO[] | null;
   createTime?: string;
 }
 

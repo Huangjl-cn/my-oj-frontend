@@ -62,10 +62,11 @@
 
 <script setup lang="ts">
 import message from "@arco-design/web-vue/es/message";
-import { defineProps, onMounted, PropType, ref } from "vue";
+import { defineProps, onMounted, PropType, ref, watch } from "vue";
 
 import NoteEditor from "@/components/note/NoteEditor.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
+import { lastNoteChange } from "@/composables/useNoteSync";
 import { ApiId } from "@/services/apiId";
 import {
   createNote,
@@ -131,6 +132,13 @@ const onSaved = (note: Note) => {
     ...items.value.filter((item) => item.id !== note.id),
   ];
 };
+
+// 鸭鸭的提议应用了、或者存进了笔记：是这道题的就放到列表最前
+watch(lastNoteChange, (change) => {
+  if (change && change.note.questionId === String(props.questionId)) {
+    onSaved(change.note);
+  }
+});
 
 const onDeleted = (id: string) => {
   items.value = items.value.filter((item) => item.id !== id);

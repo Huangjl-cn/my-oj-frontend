@@ -165,6 +165,35 @@ export const removeNote = async (id: ApiId) => {
   );
 };
 
+/** 追加到末尾：和前文之间空一行（和后端鸭鸭追加笔记的规则一样） */
+export const appendMarkdown = (content: string, text: string) => {
+  const body = text.replace(/\r\n/g, "\n").trim();
+  const head = content.replace(/\r\n/g, "\n").trimEnd();
+  if (!body) return content;
+  return head ? `${head}\n\n${body}\n` : `${body}\n`;
+};
+
+/**
+ * 把一段内容追加到一篇笔记末尾。读到保存之间笔记在别处改了（40900）就重新读一次再追加，最多试两次
+ */
+export const appendToNote = async (id: ApiId, text: string): Promise<Note> => {
+  for (let attempt = 0; ; attempt += 1) {
+    const note = await loadNote(id);
+    try {
+      return await saveNote({
+        id: note.id,
+        title: note.title,
+        content: appendMarkdown(note.content, text),
+        version: note.version,
+      });
+    } catch (cause) {
+      const conflict =
+        cause instanceof NoteServiceError && cause.code === NOTE_CONFLICT_CODE;
+      if (!conflict || attempt >= 1) throw cause;
+    }
+  }
+};
+
 /** 列表里的摘要：在前端粗略去掉 Markdown 符号（和后端 NoteSnippets 一个意思），保存后不用重新拉列表 */
 export const noteSnippet = (markdown: string, maxLength = 90) => {
   const text = markdown
