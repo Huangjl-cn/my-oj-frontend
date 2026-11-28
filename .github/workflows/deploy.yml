@@ -1,0 +1,121 @@
+# 合进 master 后构建前端并部署到服务器。
+# 部署那一步要在 production 环境里批准（Actions 页面上点 Review deployments → Approve）。
+# 重新部署某个旧提交：Actions → Deploy → Run workflow，填提交号。
+#
+# 服务器上由后端仓库的 deploy/server/deploy.sh 接手：新版本放进 www/releases/，检查 nginx.conf，
+# 再把 www/current 指过去；切换后检查不通过就切回上一版。
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+    paths-ignore: ["**.md"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 要部署的提交号（留空就是 master 最新的提交）
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      sha: ${{ steps.rev.outputs.sha }}
+    steps:
+      - name: 拉代码
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: 记下提交号
+        id: rev
+        run: echo "sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: Lint 和单元测试
+        run: |
+          npm run lint
+          npm run test:unit
+
+      - name: 类型检查和构建
+        run: npm run build
+
+      - name: 打部署包
+        run: |
+          tar -czf site.tar.gz -C deploy/oj-frontend dist nginx.conf
+          ls -lh site.tar.gz
+
+      - name: 上传部署包
+        uses: actions/upload-artifact@v7
+        with:
+          name: site
+          path: site.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://myoj.space
+    # 前一次部署还没结束时，新的排队等它
+    concurrency:
+      group: deploy-frontend
+      cancel-in-progress: false
+    steps:
+      - name: 下载部署包
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+
+      - name: 检查密钥是否填好
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_PORT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::production 环境里没有填 $name（Settings → Environments → production → Environment secrets）"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: 配置 SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # 部署钥匙在服务器上被限定为只能执行 deploy.sh，下面 ssh 末尾的 "frontend <提交号>" 就是传给它的参数
+      - name: 上传并切换版本
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            "deploy@$DEPLOY_HOST" "frontend $SHA" < site.tar.gz
