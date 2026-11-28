@@ -18,7 +18,11 @@
       <p v-if="loading && !conversations.length" class="menu-empty">加载中…</p>
       <p v-else-if="!conversations.length" class="menu-empty">还没有其他对话</p>
       <ul v-else class="menu-list">
-        <li v-for="item in conversations" :key="String(item.id)">
+        <li
+          v-for="item in conversations"
+          :key="String(item.id)"
+          class="menu-row"
+        >
           <button
             type="button"
             role="menuitem"
@@ -31,8 +35,30 @@
               }}{{ formatTime(item.updateTime) }} · {{ item.messageCount }} 条
             </span>
           </button>
+          <button
+            class="row-delete"
+            type="button"
+            :aria-label="`删除对话「${titleOf(item)}」`"
+            title="删除这段对话"
+            @click="remove(item)"
+          >
+            <AppIcon name="trash" :size="14" />
+          </button>
         </li>
       </ul>
+      <div class="menu-actions">
+        <button
+          type="button"
+          role="menuitem"
+          class="menu-action"
+          :disabled="!canSummarize"
+          :title="canSummarize ? undefined : '先聊几句才能整理'"
+          @click="summarize"
+        >
+          <AppIcon name="notebook" :size="15" />
+          把当前对话整理成笔记
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -53,11 +79,15 @@ defineProps({
   },
   loading: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  /** 当前对话聊过、能调模型时才能「整理成笔记」 */
+  canSummarize: { type: Boolean, default: false },
 });
 
 const emit = defineEmits<{
   (event: "open"): void;
   (event: "select", id: ApiId): void;
+  (event: "summarize"): void;
+  (event: "delete", conversation: CompanionConversation): void;
 }>();
 
 const rootRef = ref<HTMLElement | null>(null);
@@ -72,6 +102,16 @@ const toggle = () => {
 const choose = (item: CompanionConversation) => {
   open.value = false;
   if (!item.active) emit("select", item.id);
+};
+
+const remove = (item: CompanionConversation) => {
+  open.value = false;
+  emit("delete", item);
+};
+
+const summarize = () => {
+  open.value = false;
+  emit("summarize");
 };
 
 const titleOf = (item: CompanionConversation) => {
@@ -180,5 +220,88 @@ const formatTime = (value?: string) => {
 .item-meta {
   color: var(--muted);
   font-size: 11px;
+}
+
+.menu-row {
+  position: relative;
+}
+
+.menu-row .menu-item {
+  padding-right: 34px;
+}
+
+/* 删除：鼠标移到这一行上才出现（触屏一直显示） */
+.row-delete {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--faint);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.row-delete:hover,
+.row-delete:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--danger);
+}
+
+@media (hover: hover) {
+  .row-delete {
+    opacity: 0;
+  }
+
+  .menu-row:hover .row-delete,
+  .row-delete:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* 列表很长时这一行贴在弹层底部 */
+.menu-actions {
+  position: sticky;
+  bottom: -8px;
+  margin: 6px -8px -8px;
+  padding: 6px 8px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.menu-action {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--body);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-action:hover:not(:disabled),
+.menu-action:focus-visible {
+  outline: none;
+  background: var(--fill);
+  color: var(--tint-violet);
+}
+
+.menu-action:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 </style>

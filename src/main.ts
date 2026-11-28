@@ -5,6 +5,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import { setUnauthorizedHandler } from "@/plugins/axios";
 import { sweepExpiredQuestionDrafts } from "@/services/questionDraft";
+import { installFloatingTips } from "@/utils/floatingTip";
 import "@/access";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
@@ -46,6 +47,8 @@ window.addEventListener("error", (e) => {
 });
 
 sweepExpiredQuestionDrafts();
+// data-tip 的悬停提示画在 body 下的浮层里，不被面板裁剪
+installFloatingTips();
 
 const app = createApp(App);
 

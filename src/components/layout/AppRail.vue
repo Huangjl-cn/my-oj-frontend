@@ -7,18 +7,50 @@
     <router-link
       to="/"
       :class="['rail-btn', { on: section === 'problems' }]"
+      style="--tint: var(--tint-blue)"
       data-tip="题库"
       aria-label="题库"
     >
       <AppIcon name="book" :size="21" />
     </router-link>
     <router-link
+      v-if="isLoggedIn"
+      to="/lists"
+      :class="['rail-btn', { on: section === 'lists' }]"
+      style="--tint: var(--tint-yellow)"
+      data-tip="题单"
+      aria-label="题单"
+    >
+      <AppIcon name="layers" :size="21" />
+    </router-link>
+    <router-link
+      v-if="isLoggedIn"
+      to="/notes"
+      :class="['rail-btn', { on: section === 'notes' }]"
+      style="--tint: var(--tint-violet)"
+      data-tip="笔记"
+      aria-label="笔记"
+    >
+      <AppIcon name="notebook" :size="21" />
+    </router-link>
+    <router-link
       to="/question_submit"
       :class="['rail-btn', { on: section === 'submissions' }]"
+      style="--tint: var(--tint-green)"
       data-tip="提交记录"
       aria-label="提交记录"
     >
       <AppIcon name="list-checks" :size="21" />
+    </router-link>
+    <router-link
+      v-if="isLoggedIn"
+      to="/stats"
+      :class="['rail-btn', { on: section === 'stats' }]"
+      style="--tint: var(--tint-orange)"
+      data-tip="学习统计"
+      aria-label="学习统计"
+    >
+      <AppIcon name="chart" :size="21" />
     </router-link>
 
     <template v-if="isLoggedIn">
@@ -26,6 +58,7 @@
       <RailMenu
         label="出题"
         icon="pen-square"
+        style="--tint: var(--tint-pink)"
         :items="authorItems"
         :active="section === 'authoring'"
       />
@@ -33,6 +66,7 @@
         v-if="isAdmin"
         label="管理"
         icon="sliders"
+        style="--tint: var(--tint-teal)"
         :items="adminItems"
         :active="section === 'admin'"
       />
@@ -43,6 +77,7 @@
     <button
       class="rail-btn"
       type="button"
+      :style="{ '--tint': isDark ? 'var(--tint-amber)' : 'var(--tint-indigo)' }"
       :data-tip="isDark ? '浅色模式' : '深色模式'"
       :aria-label="isDark ? '切换为浅色模式' : '切换为深色模式'"
       @click="toggleTheme"
@@ -179,6 +214,9 @@ const section = computed(() => {
     return "problems";
   }
   if (path.startsWith("/question_submit")) return "submissions";
+  if (path.startsWith("/stats")) return "stats";
+  if (path.startsWith("/lists")) return "lists";
+  if (path.startsWith("/notes")) return "notes";
   if (["/add/question", "/update/question", "/my/question"].includes(path)) {
     return "authoring";
   }
@@ -273,6 +311,33 @@ const confirmLogout = async () => {
   background: var(--fill-strong);
 }
 
+.rail :deep(.rail-btn > svg) {
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+/* 悬停（键盘聚焦也一样）时图标换成这一项自己的颜色（--tint，见 tokens.css），底色淡淡带一点。
+   窄屏变成底部栏时不上色（见下面的 720px），手机上点完不会一直留着颜色 */
+.rail :deep(.rail-btn:hover),
+.rail :deep(.rail-btn:focus-visible) {
+  color: var(--tint, var(--ink));
+  background: color-mix(in srgb, var(--tint, var(--ink)) 11%, transparent);
+}
+
+.rail :deep(.rail-btn.on:hover) {
+  color: var(--tint, var(--ink));
+  background: var(--panel);
+}
+
+.rail :deep(.rail-btn:hover > svg) {
+  transform: scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail :deep(.rail-btn:hover > svg) {
+    transform: none;
+  }
+}
+
 .rail :deep(.rail-btn.on) {
   color: var(--ink);
   background: var(--panel);
@@ -312,8 +377,20 @@ const confirmLogout = async () => {
     display: none;
   }
 
-  .rail :deep([data-tip]:hover::after) {
-    display: none;
+  .rail :deep(.rail-btn:hover),
+  .rail :deep(.rail-btn:focus-visible) {
+    color: var(--muted);
+    background: transparent;
+  }
+
+  .rail :deep(.rail-btn.on),
+  .rail :deep(.rail-btn.on:hover) {
+    color: var(--ink);
+    background: var(--panel);
+  }
+
+  .rail :deep(.rail-btn:hover > svg) {
+    transform: none;
   }
 
   /* 图标栏在底部时卡片没地方放 */

@@ -41,6 +41,36 @@
       >
         查看代码修改（{{ editsLabel }}）
       </button>
+      <ul v-if="noteProposals.length" class="note-cards">
+        <li v-for="(item, index) in noteProposals" :key="index">
+          <button
+            v-if="item"
+            :class="['note-card', { applied: item.applied }]"
+            type="button"
+            @click="emit('note-preview', index, item)"
+          >
+            <span class="note-icon" aria-hidden="true">
+              <AppIcon :name="item.applied ? 'check' : 'notebook'" :size="15" />
+            </span>
+            <span class="note-copy">
+              <span class="note-title">{{ describeNoteProposal(item) }}</span>
+              <span class="note-sub">{{
+                item.applied
+                  ? "已存进笔记"
+                  : item.reason || "点开预览，满意再应用"
+              }}</span>
+            </span>
+            <span class="note-action">{{
+              item.applied ? "查看" : "预览"
+            }}</span>
+          </button>
+        </li>
+      </ul>
+      <SaveToNoteMenu
+        v-if="canSaveToNote && questionId != null"
+        :content="message.content"
+        :question-id="questionId"
+      />
     </template>
   </article>
 </template>
@@ -55,14 +85,22 @@ import {
   withDefaults,
 } from "vue";
 
+import SaveToNoteMenu from "@/components/companion/SaveToNoteMenu.vue";
+import AppIcon from "@/components/ui/AppIcon.vue";
 import { SOLUTION_LEVEL } from "@/composables/useCompanion";
 import { COMPANION_MOOD_LABELS } from "@/constants/companionMoods";
 import { describeProposal } from "@/services/codeEditProposal";
+import { ApiId } from "@/services/apiId";
 import {
   CodeEditProposal,
   CompanionMessage,
   HintStep,
 } from "@/services/companion";
+import {
+  describeNoteProposal,
+  NoteProposal,
+  normalizeNoteProposals,
+} from "@/services/companionNotes";
 
 const MdViewer = defineAsyncComponent(
   () => import("@/components/editor/MdViewer.vue")
@@ -77,8 +115,11 @@ const props = withDefaults(
     streaming?: boolean;
     streamingText?: string;
     thinking?: string;
+    /** 本题 id：有了才显示「存进笔记」 */
+    questionId?: ApiId | null;
   }>(),
   {
+    questionId: null,
     hintSteps: () => [],
     streaming: false,
     streamingText: "",
@@ -88,7 +129,22 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (event: "preview", proposal: CodeEditProposal): void;
+  (event: "note-preview", index: number, proposal: NoteProposal): void;
 }>();
+
+/** 下标和后端一致（应用时按下标找），解析不了的是 null，不显示 */
+const noteProposals = computed(() =>
+  normalizeNoteProposals(props.message.noteEdits)
+);
+
+/** 已经保存的聊天、提示、看答案回答可以存进笔记（流式中的、提交反应、整理笔记不行） */
+const canSaveToNote = computed(
+  () =>
+    !props.streaming &&
+    /^\d+$/.test(String(props.message.id)) &&
+    ["chat", "hint", "solution"].includes(props.message.type) &&
+    !!props.message.content.trim()
+);
 
 const showThinking = ref(false);
 
@@ -325,6 +381,93 @@ const editsLabel = computed(() =>
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.note-cards {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 笔记提议：紫色是笔记的颜色（和图标栏一致） */
+.note-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--tint-violet) 28%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--tint-violet) 5%, var(--panel));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
+}
+
+.note-card:hover {
+  border-color: color-mix(in srgb, var(--tint-violet) 55%, var(--line));
+  background: color-mix(in srgb, var(--tint-violet) 9%, var(--panel));
+}
+
+.note-card.applied {
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+.note-icon {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--tint-violet) 14%, var(--panel));
+  color: var(--tint-violet);
+}
+
+.note-card.applied .note-icon {
+  background: var(--fill);
+  color: var(--success);
+}
+
+.note-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.note-title {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.note-sub {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.note-action {
+  flex: none;
+  color: var(--tint-violet);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.note-card.applied .note-action {
+  color: var(--muted);
 }
 
 .compaction summary {

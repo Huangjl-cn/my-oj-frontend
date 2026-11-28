@@ -64,9 +64,7 @@
       <header class="section-head">
         <div>
           <h2>题面</h2>
-          <p class="form-hint">
-            支持 Markdown。参考题解只有通过了这道题的人能看到。
-          </p>
+          <p class="form-hint">支持 Markdown</p>
         </div>
         <UiSegmented
           v-model="contentTab"
@@ -93,7 +91,7 @@
     <!-- ===== 判题 ===== -->
     <section id="section-judge" class="panel form-panel">
       <h2>判题</h2>
-      <p class="form-hint">运行限制，以及程序读入的参数和输出的类型。</p>
+      <p class="form-hint">运行限制、参数和输出</p>
 
       <div class="limits">
         <label class="field">
@@ -281,11 +279,7 @@
         <div>
           <h2>初始代码</h2>
           <p class="form-hint">
-            {{
-              updatePage
-                ? "做题时编辑器里一开始的代码。改了参数可以按参数重新生成。"
-                : "不自定义时，按输入参数自动生成每种语言的模板。"
-            }}
+            {{ updatePage ? "编辑器里的初始代码" : "不填就按参数自动生成" }}
           </p>
         </div>
         <button

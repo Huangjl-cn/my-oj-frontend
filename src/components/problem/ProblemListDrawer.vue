@@ -1,7 +1,12 @@
 <template>
   <div class="drawer" role="dialog" aria-label="题目列表">
     <header>
-      <strong>题目列表</strong>
+      <strong v-if="context?.listId" class="list-title">
+        <router-link :to="`/lists/${context.listId}`" title="打开题单">
+          {{ context.listTitle || "题单" }}
+        </router-link>
+      </strong>
+      <strong v-else>题目列表</strong>
       <span v-if="context" class="count num">{{ context.total }}</span>
       <button
         class="icon-btn tip-down"
@@ -32,7 +37,7 @@
     </div>
 
     <UiPagination
-      v-if="context"
+      v-if="context && !context.listId"
       class="pager"
       :current="context.page"
       :total="context.total"
@@ -119,6 +124,23 @@ header {
 header strong {
   color: var(--ink);
   font-size: 15px;
+}
+
+.list-title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.list-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.list-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .count {

@@ -5,15 +5,20 @@
 import type { BaseResponseCompanionCompactionVO } from '../models/BaseResponseCompanionCompactionVO';
 import type { BaseResponseCompanionHintStateVO } from '../models/BaseResponseCompanionHintStateVO';
 import type { BaseResponseCompanionHintVO } from '../models/BaseResponseCompanionHintVO';
+import type { BaseResponseCompanionNoteApplyVO } from '../models/BaseResponseCompanionNoteApplyVO';
+import type { BaseResponseCompanionNotePreviewVO } from '../models/BaseResponseCompanionNotePreviewVO';
 import type { BaseResponseCompanionReactionVO } from '../models/BaseResponseCompanionReactionVO';
 import type { BaseResponseCompanionSessionVO } from '../models/BaseResponseCompanionSessionVO';
+import type { BaseResponseCompanionTraceVO } from '../models/BaseResponseCompanionTraceVO';
 import type { BaseResponseListCompanionConversationVO } from '../models/BaseResponseListCompanionConversationVO';
 import type { BaseResponseListCompanionMessageVO } from '../models/BaseResponseListCompanionMessageVO';
 import type { CompanionChatRequest } from '../models/CompanionChatRequest';
 import type { CompanionCompactRequest } from '../models/CompanionCompactRequest';
+import type { CompanionDeleteConversationRequest } from '../models/CompanionDeleteConversationRequest';
 import type { CompanionHintRequest } from '../models/CompanionHintRequest';
 import type { CompanionLevelRequest } from '../models/CompanionLevelRequest';
 import type { CompanionNewConversationRequest } from '../models/CompanionNewConversationRequest';
+import type { CompanionNoteApplyRequest } from '../models/CompanionNoteApplyRequest';
 import type { CompanionReactRequest } from '../models/CompanionReactRequest';
 import type { CompanionSolutionRequest } from '../models/CompanionSolutionRequest';
 import type { CompanionSwitchConversationRequest } from '../models/CompanionSwitchConversationRequest';
@@ -94,6 +99,23 @@ requestBody: CompanionReactRequest,
     }
 
     /**
+     * 应用鸭鸭的一条笔记提议：新建或修改笔记，并标记为已应用
+     * @param requestBody 
+     * @returns BaseResponseCompanionNoteApplyVO OK
+     * @throws ApiError
+     */
+    public static applyNoteEdit(
+requestBody: CompanionNoteApplyRequest,
+): CancelablePromise<BaseResponseCompanionNoteApplyVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/companion/note/apply',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
      * 按当前档位给一条提示
      * @param requestBody 
      * @returns BaseResponseCompanionHintVO OK
@@ -122,6 +144,23 @@ requestBody: CompanionNewConversationRequest,
         return __request(OpenAPI, {
             method: 'POST',
             url: '/companion/conversation',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * 删除一段对话：消息、记忆、轨迹一起删，删了找不回来；删的是当前对话时换成最近的另一段，返回删完后的会话
+     * @param requestBody 
+     * @returns BaseResponseCompanionSessionVO OK
+     * @throws ApiError
+     */
+    public static deleteConversation(
+requestBody: CompanionDeleteConversationRequest,
+): CancelablePromise<BaseResponseCompanionSessionVO> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/companion/conversation/delete',
             body: requestBody,
             mediaType: 'application/json',
         });
@@ -162,6 +201,24 @@ requestBody: CompanionChatRequest,
     }
 
     /**
+     * 一段对话的轨迹：每一轮发给模型的内容、模型调用、工具调用、耗时和 token
+     * @param conversationId 
+     * @returns BaseResponseCompanionTraceVO OK
+     * @throws ApiError
+     */
+    public static getTrace(
+conversationId: number,
+): CancelablePromise<BaseResponseCompanionTraceVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/companion/trace',
+            query: {
+                'conversationId': conversationId,
+            },
+        });
+    }
+
+    /**
      * 进入题目时获取陪练会话：提示档位、各档说明、当前对话的上下文占用和最近消息
      * @param questionId 
      * @returns BaseResponseCompanionSessionVO OK
@@ -175,6 +232,27 @@ questionId: number,
             url: '/companion/session',
             query: {
                 'questionId': questionId,
+            },
+        });
+    }
+
+    /**
+     * 预览鸭鸭的一条笔记提议：按笔记现在的内容算出应用后的样子
+     * @param messageId 
+     * @param index 
+     * @returns BaseResponseCompanionNotePreviewVO OK
+     * @throws ApiError
+     */
+    public static previewNoteEdit(
+messageId: number,
+index: number,
+): CancelablePromise<BaseResponseCompanionNotePreviewVO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/companion/note/preview',
+            query: {
+                'messageId': messageId,
+                'index': index,
             },
         });
     }

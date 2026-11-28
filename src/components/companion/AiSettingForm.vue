@@ -6,9 +6,7 @@
       <button class="link-btn" type="button" @click="load">重试</button>
     </p>
     <form v-else class="setting-form" @submit.prevent="save">
-      <p v-if="setting?.mockMode" class="note">
-        开发环境的模拟模式：不会真正调用模型，回复是固定话术。
-      </p>
+      <p v-if="setting?.mockMode" class="note">模拟模式，回复是固定的</p>
 
       <label class="field">
         <span class="field-label key-label">
@@ -31,7 +29,7 @@
           "
         />
         <span class="field-hint">
-          费用走你自己的 DeepSeek 账户；Key 加密保存，不会再完整显示。
+          费用走你的 DeepSeek 账户，Key 加密保存。
           <a
             href="https://platform.deepseek.com/api_keys"
             target="_blank"

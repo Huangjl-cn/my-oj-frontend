@@ -94,18 +94,23 @@ describe("streamCompanion", () => {
           'event:delta\ndata:{"text":"先看"}\n\nevent:delta\ndata:{"te',
           'xt":"第 3 行"}\n\n',
           'event:edits\ndata:{"baseHash":"h","edits":[],"resultCode":"x"}\n\n',
+          'event:notes\ndata:[{"kind":"create","title":"笔记"}]\n\n',
           'event:done\ndata:{"messageId":"9","hintLevel":1,"compacted":false}\n\n',
         ])
       );
     const thinking: string[] = [];
     const deltas: string[] = [];
     const edits = vi.fn();
+    const notes = vi.fn();
 
     const done = await streamCompanion("/companion/chat", body, {
       onThinking: (text) => thinking.push(text),
       onDelta: (text) => deltas.push(text),
       onEdits: edits,
+      onNotes: notes,
     });
+
+    expect(notes).toHaveBeenCalledWith([{ kind: "create", title: "笔记" }]);
 
     expect(thinking).toEqual(["想一想"]);
     expect(deltas.join("")).toBe("先看第 3 行");

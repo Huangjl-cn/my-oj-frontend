@@ -1,7 +1,11 @@
 import axios from "axios";
 
-import { OpenAPI } from "../../generated";
-import { ApiId } from "@/services/apiId";
+import {
+  CompanionControllerService,
+  NoteProposal as NoteProposalVO,
+  OpenAPI,
+} from "../../generated";
+import { ApiId, toGeneratedApiId } from "@/services/apiId";
 
 /**
  * AI 陪练的接口与类型。后端接口说明见后端仓库 docs/frontend/ai-companion.md。
@@ -73,6 +77,8 @@ export interface CompanionMessage {
   content: string;
   quote?: CodeQuote | null;
   codeEdits?: CodeEditProposal | null;
+  /** 鸭鸭的笔记提议（原样，用 normalizeNoteProposals 解析），下标就是应用时的 index */
+  noteEdits?: NoteProposalVO[] | null;
   createTime?: string;
 }
 
@@ -272,6 +278,26 @@ export const switchCompanionConversation = (conversationId: ApiId) =>
   unwrap<CompanionSession>(
     axios.put(apiUrl("/companion/conversation/active"), { conversationId })
   );
+
+/**
+ * 删除一段对话（消息、记忆、轨迹一起删，找不回来），返回删完后的会话：删的是当前对话时已经换成另一段。
+ * 新接口按约定用生成的客户端。
+ */
+export const deleteCompanionConversation = async (conversationId: ApiId) => {
+  let body: { code?: number; data?: unknown; message?: string };
+  try {
+    body = await CompanionControllerService.deleteConversation({
+      conversationId: toGeneratedApiId(conversationId),
+    });
+  } catch (error) {
+    throw toCompanionError(error);
+  }
+  if (body?.code === 0 && body.data) return body.data as CompanionSession;
+  throw new CompanionApiError(
+    body?.code ?? COMPANION_NETWORK_ERROR,
+    body?.message || "删除失败"
+  );
+};
 
 export const reactToSubmission = (submissionId: ApiId) =>
   unwrap<CompanionReaction>(

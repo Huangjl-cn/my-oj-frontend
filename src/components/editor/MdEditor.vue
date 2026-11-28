@@ -3,6 +3,7 @@
     :value="value"
     :mode="mode"
     :plugins="plugins"
+    :locale="zhHans"
     @change="handleChange"
   />
 </template>
@@ -11,7 +12,9 @@
 import gfm from "@bytemd/plugin-gfm";
 import highlight from "@bytemd/plugin-highlight";
 import { Editor } from "@bytemd/vue-next";
+import gfmZhHans from "@bytemd/plugin-gfm/locales/zh_Hans.json";
 import "bytemd/dist/index.css";
+import zhHans from "bytemd/locales/zh_Hans.json";
 import { withDefaults, defineProps } from "vue";
 
 interface Props {
@@ -20,7 +23,8 @@ interface Props {
   handleChange: (v: string) => void;
 }
 
-const plugins = [gfm(), highlight()];
+// 编辑器和 gfm 插件的按钮、提示都用中文
+const plugins = [gfm({ locale: gfmZhHans }), highlight()];
 
 withDefaults(defineProps<Props>(), {
   value: () => "",
@@ -120,5 +124,19 @@ withDefaults(defineProps<Props>(), {
 
 .bytemd-toolbar-icon.bytemd-tippy.bytemd-tippy-right:last-child {
   display: none;
+}
+
+/*
+ * 全屏：ByteMD 只给了 position: fixed，没给层级，做题页里排在后面的代码面板、陪练面板会盖在它上面。
+ * 层级比陪练面板（2000）高、比弹窗（3000）低，删除确认这类弹窗照样出现在上面
+ */
+.bytemd.bytemd-fullscreen {
+  z-index: 2500;
+  border-radius: 0 !important;
+}
+
+.bytemd.bytemd-fullscreen .bytemd-toolbar,
+.bytemd.bytemd-fullscreen .bytemd-status {
+  border-radius: 0 !important;
 }
 </style>

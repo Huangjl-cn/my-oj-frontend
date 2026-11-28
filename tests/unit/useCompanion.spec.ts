@@ -1,10 +1,11 @@
 import type { Mock } from "vitest";
 import { ref } from "vue";
 
-import { useCompanion } from "@/composables/useCompanion";
+import { SUMMARIZE_TO_NOTE, useCompanion } from "@/composables/useCompanion";
 import {
   CompanionApiError,
   CompanionSession,
+  deleteCompanionConversation,
   getCompanionSession,
   reactToSubmission,
   requestHint,
@@ -28,6 +29,7 @@ vi.mock("@/services/companion", async (importOriginal) => ({
   requestHint: vi.fn(),
   setHintLevel: vi.fn(),
   compactCompanionMemory: vi.fn(),
+  deleteCompanionConversation: vi.fn(),
 }));
 
 const mockedSession = getCompanionSession as Mock;
@@ -149,6 +151,43 @@ describe("useCompanion", () => {
     expect(companion.preview.value).toBeNull();
   });
 
+  it("keeps the note proposals on the reply and marks one applied", async () => {
+    const note = { kind: "create", title: "两数之和 笔记", applied: false };
+    mockedStream.mockImplementation(async (path, body, handlers) => {
+      handlers.onDelta("整理好了");
+      handlers.onNotes([note]);
+      return {
+        messageId: "22",
+        hintLevel: 0,
+        contextUsage: session().contextUsage,
+        compacted: false,
+      };
+    });
+    const { companion } = setup();
+    await flush();
+
+    await expect(companion.summarizeToNote()).resolves.toBe(true);
+
+    expect(mockedStream.mock.calls[0][1]).toMatchObject({
+      message: SUMMARIZE_TO_NOTE,
+    });
+    const reply = companion.messages.value[1];
+    expect(reply.noteEdits).toEqual([note]);
+
+    companion.markNoteApplied("22", 0, { ...note, applied: true, noteId: 30 });
+    expect(companion.messages.value[1].noteEdits?.[0]).toMatchObject({
+      applied: true,
+      noteId: 30,
+    });
+    // 别的消息、不存在的下标不受影响
+    companion.markNoteApplied("21", 0, { ...note, title: "别的" });
+    companion.markNoteApplied("22", 3, { ...note, title: "别的" });
+    expect(companion.messages.value[1].noteEdits).toHaveLength(1);
+    expect(companion.messages.value[1].noteEdits?.[0].title).toBe(
+      "两数之和 笔记"
+    );
+  });
+
   it("sends the quoted code with the question and keeps it on the message", async () => {
     mockedStream.mockResolvedValue({
       messageId: "22",
@@ -248,6 +287,46 @@ describe("useCompanion", () => {
     expect(mockedStart).toHaveBeenCalledWith("7");
     expect(companion.conversationId.value).toBe("51");
     expect(companion.messages.value).toEqual([]);
+  });
+
+  it("deletes a conversation and switches away when it was the current one", async () => {
+    const mockedDelete = deleteCompanionConversation as Mock;
+    mockedSession.mockResolvedValue(
+      session({
+        messages: [{ id: "1", role: "user", type: "chat", content: "在吗" }],
+      })
+    );
+    mockedDelete.mockResolvedValue(
+      session({ conversationId: "61", messages: [] })
+    );
+    const { companion } = setup();
+    await flush();
+    companion.conversations.value = [
+      { id: "50", messageCount: 1, active: true },
+      { id: "61", messageCount: 3, active: false },
+    ];
+
+    await expect(companion.deleteConversation("50")).resolves.toBe(true);
+
+    expect(mockedDelete).toHaveBeenCalledWith("50");
+    expect(companion.conversationId.value).toBe("61");
+    expect(companion.messages.value).toEqual([]);
+    expect(companion.conversations.value.map((item) => item.id)).toEqual([
+      "61",
+    ]);
+    expect(companion.busy.value).toBeNull();
+
+    // 删别的对话：当前这段不动
+    mockedDelete.mockResolvedValue(session({ conversationId: "61" }));
+    companion.conversations.value = [
+      { id: "61", messageCount: 3, active: true },
+      { id: "70", messageCount: 2, active: false },
+    ];
+    await companion.deleteConversation("70");
+    expect(companion.conversationId.value).toBe("61");
+    expect(companion.conversations.value.map((item) => item.id)).toEqual([
+      "61",
+    ]);
   });
 
   it("switches to an earlier conversation and shows its messages", async () => {

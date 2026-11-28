@@ -39,6 +39,18 @@
   --easy: #16a34a;
   --medium: #d97706;
   --hard: #dc2626;
+  --favorite: #eab308;
+
+  /* === 点缀色：只在图标栏悬停时给图标上色，每一项一个颜色 === */
+  --tint-blue: #2563eb;
+  --tint-green: #16a34a;
+  --tint-orange: #ea580c;
+  --tint-pink: #db2777;
+  --tint-teal: #0d9488;
+  --tint-indigo: #4f46e5;
+  --tint-amber: #d97706;
+  --tint-yellow: #ca8a04;
+  --tint-violet: #7c3aed;
 
   /* === 字体：英文和数字用 Geist，中文用系统黑体 === */
   --font-sans: "Geist Variable", "PingFang SC", "Microsoft YaHei UI",
@@ -101,6 +113,17 @@
   --easy: #4ade80;
   --medium: #fbbf24;
   --hard: #f87171;
+  --favorite: #facc15;
+
+  --tint-blue: #60a5fa;
+  --tint-green: #4ade80;
+  --tint-orange: #fb923c;
+  --tint-pink: #f472b6;
+  --tint-teal: #2dd4bf;
+  --tint-indigo: #a5b4fc;
+  --tint-amber: #fbbf24;
+  --tint-yellow: #facc15;
+  --tint-violet: #a78bfa;
 
   --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
     0 8px 24px -12px rgba(0, 0, 0, 0.7);

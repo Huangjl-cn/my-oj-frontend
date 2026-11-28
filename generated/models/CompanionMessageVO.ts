@@ -5,6 +5,7 @@
 
 import type { CodeEditProposal } from './CodeEditProposal';
 import type { CodeQuote } from './CodeQuote';
+import type { NoteProposal } from './NoteProposal';
 
 /**
  * 当前对话最近的消息，按时间正序
@@ -38,5 +39,9 @@ export type CompanionMessageVO = {
     content?: string;
     quote?: CodeQuote;
     codeEdits?: CodeEditProposal;
+    /**
+     * 这条消息附带的笔记提议（新建或修改），没有为 null
+     */
+    noteEdits?: Array<NoteProposal>;
     createTime?: string;
 };

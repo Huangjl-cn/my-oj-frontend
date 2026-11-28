@@ -13,6 +13,10 @@ const ProblemsView = () => import("@/views/problem/ProblemsView.vue");
 const QuestionSubmitView = () =>
   import("@/views/question/QuestionSubmitView.vue");
 const UserManageView = () => import("@/views/user/UserManageView.vue");
+const LearningStatsView = () => import("@/views/user/LearningStatsView.vue");
+const QuestionListsView = () => import("@/views/list/QuestionListsView.vue");
+const QuestionListView = () => import("@/views/list/QuestionListView.vue");
+const NotesView = () => import("@/views/note/NotesView.vue");
 const UserProfileView = () => import("@/views/user/UserProfileView.vue");
 
 export const routes: Array<RouteRecordRaw> = [
@@ -66,6 +70,43 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/question_submit",
     name: "浏览题目提交",
     component: QuestionSubmitView,
+  },
+  {
+    path: "/lists",
+    name: "题单",
+    component: QuestionListsView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
+  },
+  {
+    path: "/lists/:id",
+    name: "题单详情",
+    component: QuestionListView,
+    props: (route) => ({ id: String(route.params.id) }),
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
+  },
+  {
+    path: "/notes",
+    name: "笔记",
+    component: NotesView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      // 选中的笔记在 ?id= 里，换笔记不重建页面；页面铺满，列表和编辑区各自滚动
+      queryState: true,
+      fullHeight: true,
+    },
+  },
+  {
+    path: "/stats",
+    name: "学习统计",
+    component: LearningStatsView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+    },
   },
   {
     path: "/my/question",

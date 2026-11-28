@@ -43,6 +43,16 @@
             </span>
           </button>
           <button
+            v-if="isLoggedIn"
+            type="button"
+            role="tab"
+            :aria-selected="tab === 'notes'"
+            :class="{ on: tab === 'notes' }"
+            @click="tab = 'notes'"
+          >
+            笔记
+          </button>
+          <button
             type="button"
             aria-label="公开提交（在新标签页打开）"
             @click="openPublicSubmissions"
@@ -130,7 +140,12 @@
 
       <div class="pane-body">
         <template v-if="question">
-          <ProblemStatement v-if="tab === 'question'" :question="question" />
+          <ProblemStatement v-if="tab === 'question'" :question="question">
+            <template v-if="isLoggedIn && questionId != null" #actions>
+              <FavoriteButton :question-id="questionId" />
+              <AddToListMenu :question-id="questionId" />
+            </template>
+          </ProblemStatement>
           <div v-else-if="tab === 'solution'" class="solution">
             <MdViewer v-if="solution.text" :value="solution.text" />
             <p v-else class="hint">
@@ -149,6 +164,10 @@
             @open="openDetail"
             @refresh="submissions.load()"
             @page="submissions.changePage"
+          />
+          <ProblemNotes
+            v-else-if="tab === 'notes' && questionId != null"
+            :question-id="questionId"
           />
           <SubmissionDetail
             v-else-if="activeDetailTab"
@@ -306,6 +325,16 @@
       class="companion-pane"
       :companion="companion"
       :duck="duck"
+      @open-trace="traceOpen = true"
+    />
+    <!-- 鸭鸭的轨迹：太宽放不进鸭鸭面板，铺满做题页 -->
+    <CompanionTrace
+      v-if="companionOpen && traceOpen && companion.conversationId != null"
+      class="trace-layer"
+      :conversation-id="companion.conversationId"
+      :busy="!!companion.busy"
+      :name="companionName"
+      @close="traceOpen = false"
     />
     <DuckFlight />
 
@@ -338,6 +367,7 @@ import CodeEditPreviewBar from "@/components/companion/CodeEditPreviewBar.vue";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import CompanionPanel from "@/components/companion/CompanionPanel.vue";
 import CompanionPet from "@/components/companion/CompanionPet.vue";
+import CompanionTrace from "@/components/companion/trace/CompanionTrace.vue";
 import DuckFlight from "@/components/companion/DuckFlight.vue";
 import { useDuckFlight } from "@/composables/useDuckFlight";
 import { PetActivity, usePetBehavior } from "@/composables/usePetBehavior";
@@ -346,6 +376,9 @@ import MySubmissionList from "@/components/problem/MySubmissionList.vue";
 import PaneResizer from "@/components/problem/PaneResizer.vue";
 import ProblemListDrawer from "@/components/problem/ProblemListDrawer.vue";
 import ProblemStatement from "@/components/problem/ProblemStatement.vue";
+import ProblemNotes from "@/components/note/ProblemNotes.vue";
+import AddToListMenu from "@/components/questionList/AddToListMenu.vue";
+import FavoriteButton from "@/components/questionList/FavoriteButton.vue";
 import SubmissionDetail from "@/components/problem/SubmissionDetail.vue";
 import VerdictDock from "@/components/problem/VerdictDock.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
@@ -359,6 +392,7 @@ import {
 import { useProblemEditor } from "@/composables/problem/useProblemEditor";
 import { useProblemLayout } from "@/composables/problem/useProblemLayout";
 import { useCompanion } from "@/composables/useCompanion";
+import { useFavorites } from "@/composables/useFavorites";
 import { useMyProgress } from "@/composables/useMyProgress";
 import { ApiId, parseRouteApiId, toGeneratedApiId } from "@/services/apiId";
 import {
@@ -399,7 +433,7 @@ type CodeEditorInstance = {
   replaceAll: (code: string) => boolean;
 };
 
-type Tab = "question" | "solution" | "mine" | SubmissionTabKey;
+type Tab = "question" | "solution" | "mine" | "notes" | SubmissionTabKey;
 
 /** 上次用的语言，下次打开别的题默认用它 */
 const LAST_LANGUAGE_KEY = "myoj:last-language";
@@ -408,6 +442,7 @@ const route = useRoute();
 const router = useRouter();
 const { userId, markStatus, load: loadProgress } = useMyProgress();
 const isLoggedIn = computed(() => userId.value != null);
+const favorites = useFavorites();
 
 const routeId = parseRouteApiId(route.params.id);
 const question = ref<QuestionVO | null>(null);
@@ -498,6 +533,11 @@ const companionName = computed(() => companion.session?.personaName || "鸭鸭")
 const companionOpen = computed(
   () => companionEnabled.value && !!question.value && companion.panelOpen
 );
+/** 鸭鸭的轨迹铺在做题页上面；收起鸭鸭面板时一起关 */
+const traceOpen = ref(false);
+watch(companionOpen, (open) => {
+  if (!open) traceOpen.value = false;
+});
 
 // 三块面板的宽度：拖中间的竖条调整，记在本机
 const ideRef = ref<HTMLElement | null>(null);
@@ -654,7 +694,7 @@ const judge = reactive(
     onUpdate: markProgress,
     onFinished: (submission: QuestionSubmitVO | QuestionSubmitSummaryVO) => {
       const tone = getJudgeResultPresentation(submission).tone;
-      // 第一次通过后题解就能看了，下次打开重新取
+      // 题解现在登录就能看（后端不检查通没通过）；万一之前没取到，通过后清掉错误，下次打开重新取
       if (tone === "passed" && !solution.text) solution.error = "";
       void submissions.load();
       void refreshQuestionStats();
@@ -809,6 +849,7 @@ const loadQuestion = async () => {
   void editor.activateLanguage(language);
   if (isLoggedIn.value) {
     void loadProgress();
+    void favorites.load();
     const page = await submissions.load();
     const pending = page.find((item) => isJudging(item.status));
     if (pending) judge.resume(pending);
@@ -1146,6 +1187,20 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
+/* 轨迹盖住三块面板（留着左边的图标栏），和面板一样的边距 */
+.ide {
+  position: relative;
+}
+
+.trace-layer {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 6px;
+  left: 0;
+  z-index: 40;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .statement-skeleton i,
   .spin {
@@ -1178,6 +1233,13 @@ onBeforeUnmount(() => {
 
   .resizer {
     display: none;
+  }
+
+  /* 窄屏时鸭鸭面板是底部弹层（层级 2000），轨迹铺满整个窗口盖在它上面 */
+  .trace-layer {
+    position: fixed;
+    inset: 8px;
+    z-index: 2100;
   }
 }
 </style>

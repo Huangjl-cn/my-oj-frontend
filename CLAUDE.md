@@ -14,7 +14,7 @@ npm run test:unit          # Vitest unit tests (tests/unit/*.spec.ts, jsdom, glo
 npm run generate:api       # Regenerate API client from backend OpenAPI spec (requires backend running on :8102)
 ```
 
-- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`. Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
+- **Unit tests exist** in `tests/unit/`: `questionSubmit.spec.ts` (judge-info adaptation), `questionSubmitPolling.spec.ts` (poller, uses fake timers), `questionJudgeCase.spec.ts` (judge case service), `questionJudgeConfig.spec.ts` (judge config normalization), `questionProgress.spec.ts` (submission → progress state, acceptance rate), `questionStarterCode.spec.ts` (language options + starter code), `questionDraft.spec.ts` (draft management), `useTheme.spec.ts`, `companionStream.spec.ts` (SSE parsing + stream errors), `codeEditProposal.spec.ts` (applying AI code edits), `useCompanion.spec.ts` (companion state, services mocked), `petPlacement.spec.ts` (pet position/size clamping + storage parsing), `editorSelection.spec.ts` (selected line range), `useProblemEditor.spec.ts` (language pick, drafts, reset), `problemNavigation.spec.ts` (prev / next across pages), `difficulty.spec.ts`, `dateTime.spec.ts` (relative time, compact numbers), `apiConfig.spec.ts`, `apiId.spec.ts`, `checkAccess.spec.ts`, `userSummary.spec.ts`, `userRole.spec.ts`, `duckPoses.spec.ts` (mascot poses, wing angles, face shapes), `usePetBehavior.spec.ts` (pet states over time, fake timers), `useDuckFlight.spec.ts`, `learningStats.spec.ts` (stats normalization, bar widths, attempt wording, busiest hours, calendar summary, sparkline, verdict segments), `questionList.spec.ts` (list normalization, move up / down, form checks), `useFavorites.spec.ts` (optimistic star, rollback on failure), `note.spec.ts` (Obsidian markdown / file names / URI, snippets, appending with one retry on a conflict, card excerpts, column dealing), `useNoteEditor.spec.ts` (autosave, saving again, conflicts, retry), `companionNotes.spec.ts` (duck's note proposals: normalizing, wording, preview / apply calls), `companionTrace.spec.ts` (trace normalizing, rows per turn, toggles, search, timeline layout), `floatingTip.spec.ts` (tooltip placement, flipping, clamping, hover in a clipping panel). Run one file via `npm run test:unit tests/unit/<file>.spec.ts`.
 - The dev server proxies `/api` to `http://127.0.0.1:8102` (configured in `vite.config.mts`).
 - If the dev server shows stale results, kill `node` processes and restart `npm run serve`.
 - Env values come from `import.meta.env` (e.g. `BASE_URL`); there is no `process.env` in app code.
@@ -34,7 +34,7 @@ npm only: `package-lock.json` is the lockfile (`npm ci` to install). Do not add 
 - **Router:** Vue Router 4 (`createWebHistory`)
 - **HTTP:** Axios (`withCredentials: true`, interceptors in `src/plugins/axios.ts`)
 - **Editor:** Monaco Editor, assembled on demand in `src/components/editor/monaco.ts` (java, javascript, typescript, python, cpp, go)
-- **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight
+- **Markdown:** ByteMD (`@bytemd/vue-next`) with plugin-gfm and plugin-highlight; `MdEditor` uses ByteMD's and gfm's `zh_Hans` locales (JSON imports, hence `resolveJsonModule` in tsconfig)
 - **Syntax highlighting:** `highlight.js` (direct dependency) — used by `CodeBlock.vue` and ByteMD's plugin-highlight; colors come from `styles/code.css`
 - **Codegen:** `openapi-typescript-codegen` generates API client from OpenAPI spec into `generated/`
 - **Tests:** Vitest 3 (jsdom), configured in `vite.config.mts`
@@ -54,6 +54,9 @@ src/
 │   │   ├── CompanionPanel.vue       # Third panel on the problem page: header, messages, composer + toolbar
 │   │   ├── ContextUsageRing.vue / HintLevelPicker.vue / ConversationMenu.vue / SelectionAskBox.vue
 │   │   ├── CompanionMessageItem.vue / CodeEditPreviewBar.vue / AiSettingDialog.vue
+│   │   ├── NoteProposalDialog.vue   # Preview of one note proposal (what changed / full text), apply
+│   │   ├── SaveToNoteMenu.vue       # 「存进笔记」 under a reply: new note on this question, or append to one (no model call)
+│   │   ├── trace/                   # 轨迹: CompanionTrace (overlay over the problem page), TraceTimeline (input / model / tool lanes), TraceDetail
 │   ├── editor/
 │   │   ├── CodeBlock.vue        # Read-only highlighted code (highlight.js, 6 languages)
 │   │   ├── CodeEditor.vue       # Monaco wrapper (format / getCursorInfo / collapseSelection / replaceAll, diff preview, selection events)
@@ -61,7 +64,7 @@ src/
 │   │   ├── monacoThemes.ts      # myoj-light / myoj-dark editor themes (same colors as styles/code.css)
 │   │   ├── MdEditor.vue / MdViewer.vue
 │   ├── layout/
-│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 提交记录, 出题 / 管理 menus, theme, account
+│   │   ├── AppRail.vue          # Left icon rail (bottom bar on narrow screens): 题库, 题单 / 笔记 / 学习统计 (logged in), 提交记录, 出题 / 管理 menus, theme, account
 │   │   ├── RailMenu.vue + railMenu.ts  # Rail popover menu
 │   ├── problem/             # 题库页和做题页（PaneResizer：做题页面板之间的拖动条）
 │   │   ├── ProblemStatement.vue   # Title, facts (difficulty, rate, limits), tags, content, author
@@ -70,19 +73,25 @@ src/
 │   │   ├── ProblemListDrawer.vue  # List drawer over the statement panel
 │   │   ├── DifficultyLabel.vue / ProblemStatusIcon.vue
 │   ├── question/            # Judge value editors, SubmissionRankRings, SubmissionDiagnosticPanel, admin details
+│   ├── questionList/        # FavoriteButton (star), AddToListMenu (problem page), ListFormDialog (new / edit list)
+│   ├── note/                # NoteEditor (autosave, conflict bar), ProblemNotes (problem page tab), ObsidianExport + ObsidianIcon
 │   ├── ui/                  # AppIcon + icons.ts, UiInput, UiSelect, UiNumberInput, UiTagInput, UiSwitch, UiSegmented, UiPagination
-│   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity
+│   └── user/                # AuthShell, AvatarPicker, UserAvatar, UserFormDialog, UserIdentity,
+│                            # SubmitCalendar (props weeks / showStats), DifficultyBars (per-difficulty solved bars)
 ├── composables/
 │   ├── problem/useProblemEditor.ts   # Languages, starter code, local drafts (300ms debounce)
 │   ├── problem/useJudge.ts           # Submit, queue polling, rank, verdict state
 │   ├── problem/useMySubmissions.ts   # My submissions page + detail tabs with pollers
 │   ├── problem/useProblemLayout.ts   # Draggable panel widths on the problem page (localStorage["myoj:problem-layout"])
 │   ├── useMyProgress.ts   # Whole-library progress (GET /question/progress/my), shared by list and problem pages
+│   ├── useFavorites.ts    # My favorite question ids (one shared set), optimistic toggle with rollback
+│   ├── useNoteEditor.ts   # One note being edited: 1s autosave, version conflicts, retry
+│   ├── useNoteSync.ts     # Broadcast when a note was written outside its editor (duck proposal applied, 存进笔记)
 │   ├── useCompanion.ts / usePetPlacement.ts / usePetBehavior.ts (which pose the duck shows) / usePetLook.ts (eyes follow the mouse) / useDuckFlight.ts / useDismissable.ts / useTheme.ts
 ├── layouts/
 │   ├── AppLayout.vue     # Rail + main area + ICP footer
 │   └── UserLayout.vue    # Login / register
-├── services/             # apiId, companion(+Stream), codeEditProposal, problemNavigation, questionDraft,
+├── services/             # apiId, companion(+Stream, Notes, Trace), codeEditProposal, learningStats, note, problemNavigation, questionDraft, questionList,
 │                         # questionJudgeCase, questionJudgeConfig, questionProgress, questionStarterCode,
 │                         # questionSubmit, questionSubmitPolling, userSummary
 ├── styles/
@@ -96,7 +105,9 @@ src/
 │   ├── problem/ProblemsView.vue   # 题库 (/ and /questions)
 │   ├── problem/ProblemView.vue    # 做题页 (/problem/:id)
 │   ├── question/                  # AddQuestionView, ManageQuestionView (also /my/question with scope=mine), QuestionSubmitView
-│   ├── user/                      # Login, Register, Profile, UserManage
+│   ├── list/                      # QuestionListsView (/lists), QuestionListView (/lists/:id)
+│   ├── note/NotesView.vue         # 笔记 (/notes?id=)
+│   ├── user/                      # Login, Register, Profile, UserManage, LearningStats (/stats)
 │   └── NoAuthView.vue
 ├── App.vue               # AppLayout, or UserLayout for /user/*
 └── main.ts               # Fonts, styles, Arco message CSS, router, store, access guard
@@ -106,11 +117,13 @@ generated/               # Auto-generated API client — DO NOT EDIT (npm run ge
 
 ## Design System
 
-Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
+Gray canvas with floating white panels (gaps between them, no hairline-glued blocks), black / white / gray only. Color is used only for meaning: difficulty (`--easy` / `--medium` / `--hard`) and verdicts (`--success` / `--danger`). The one decorative exception is the icon rail: each item has its own `--tint-*` color (blue 题库, yellow 题单, violet 笔记, green 提交记录, orange 学习统计, pink 出题, teal 管理, indigo / amber theme toggle; light and dark values in `tokens.css`), set as `--tint` on the button and shown only on hover / keyboard focus (not on the ≤720px bottom bar, so a tap doesn't leave it colored; no scale with reduced motion). A new rail item gets a new tint. Prefer icons with `data-tip` tooltips over text labels where the meaning is obvious; keep text short.
+
+- **Copy:** hints, subtitles, empty states and toasts are one short phrase — say what it is or what to do, not how it works or why (「只有你能看到」, 「还没有笔记」, 「笔记之后改过，已重新对上」). No second sentence explaining mechanics; if something needs explaining, it belongs in docs, not under a title. Page titles that explain themselves get no subtitle.
 
 - **Tokens** live in `src/styles/tokens.css` for light and `:root[data-theme="dark"]`: surfaces `--bg` (canvas), `--panel`, `--fill`, `--fill-strong`; lines `--line`, `--line-strong`; text `--ink`, `--body`, `--muted`, `--faint`; `--primary` is black in light mode and near-white in dark mode (`--on-primary` flips with it); radii `--radius-sm` 8 / `md` 12 / `lg` 18 / `xl` 22 / `pill`; `--shadow-panel`, `--shadow-float`, `--focus-ring`; motion `--motion-fast|standard|layout`, `--ease-out|in-out|drawer`.
 - The bottom of `tokens.css` keeps **legacy aliases** (`--canvas`, `--hairline`, `--surface-soft`, `--surface-dark`, `--font-display`, `--error`, …) that a few companion components still use. New code uses the new names.
-- **Shared classes** (`base.css`): `.panel` (white floating block), `.btn` / `.btn.primary` / `.btn.sm` (pills), `.icon-btn` (36px round, `.on` = pressed), `.num` (tabular numbers), `[data-tip]` CSS tooltips (right by default, `.tip-up` / `.tip-down`; add `.tip-end` / `.tip-start` to align the tip with the element's right / left edge for buttons near a panel edge). Panels with `overflow: hidden` (list panels, the editor tabs, the companion panel) clip tooltips, so a button at the top or side of one needs a direction that stays inside. Don't put `data-tip` inside a horizontally scrolling strip (it is always clipped).
+- **Shared classes** (`base.css`): `.panel` (white floating block), `.btn` / `.btn.primary` / `.btn.sm` (pills), `.icon-btn` (36px round, `.on` = pressed), `.num` (tabular numbers), `[data-tip]` tooltips (right by default, `.tip-up` / `.tip-down`; `.tip-end` / `.tip-start` align the tip with the element's right / left edge). They are drawn by `utils/floatingTip.ts` (installed in `main.ts`) in one `position: fixed` layer under `body`, so `overflow: hidden` panels and scrolling strips can't clip them; if the asked side doesn't fit the window the tip flips to the opposite side and is clamped inside. Shown on mouse hover and keyboard focus, never on touch; hidden on pointer down, scroll, resize and Esc.
 - **Normal pages** (`page.css`): `div.page` grid → `.panel.page-head` (h1 + `.count`, `.head-end` actions) → `.panel.list-panel` (`.list-toolbar`, `.list-rows` with `.list-head` + `.list-row` grids whose columns each page defines, `.list-empty`, `.list-pager`). Filters apply as you type (300ms) — no 搜索 buttons. Row actions are icon buttons with `data-tip`. Forms use `.field` / `.field-label` + `Ui*` inputs and `.textarea`.
 - **Code colors** (`code.css`): `--code-surface`, `--code-ink`, `--sx-keyword|type|string|number|comment|function|tag|deletion`. Code follows the theme (white in light mode). Monaco can't read CSS variables, so `monacoThemes.ts` repeats the same colors; change both together.
 - **Mascot:** 鸭鸭, a duck drawn like the Ollama icon: one stroke width, `currentColor` lines, fill `--mascot-fill` (defaults to `--panel`; set it to the background it sits on), small dot eyes. `CompanionAvatar` takes `mood` (static uses) or `pose` (the pet); body motion only runs with `lively`, so static icons just blink. Parts (head, tuft, wings, feet) rotate around their own boxes (`transform-box: fill-box`); add a pose in `duckPoses.ts`, not in the component.
@@ -205,7 +218,7 @@ Polling logic lives in `src/services/` and `useJudge` — do not re-implement in
 5. Tests in `questionSubmitPolling.spec.ts` and `questionSubmit.spec.ts` pin this behavior
 
 ### Question Answer Visibility
-The 题解 tab requires login; whether the user may see it (admin, or after an Accepted submission) is decided by the backend (`getQuestionSolution`), whose message is shown as-is when refused.
+The 题解 tab requires login; any logged-in user gets the answer — the backend's `getQuestionSolution` does not check for an Accepted submission (a product decision, kept on purpose). If it ever refuses, its message is shown as-is. The duck's trace shows the reference answer inside the system prompt under the same rule.
 
 ### Judge Case Architecture
 
@@ -218,6 +231,18 @@ The 题解 tab requires login; whether the user may see it (admin, or after an A
 - Judge values support 0D scalars, 1D arrays, and 2D arrays based on `dimensions`; each type (BOOLEAN, INTEGER, LONG, DOUBLE, STRING) has its own default value and validation
 
 Components: `JudgeValueEditor.vue` renders the full config editor (parameters + cases), `JudgeScalarInput.vue` renders individual scalar input fields.
+
+### 笔记 (/notes, problem page 「笔记」 tab)
+
+Logged-in only. Backend `/note/*` via `services/note.ts`. A note is free or attached to a question (`questionId`), several per question. `/notes` (`meta.fullHeight` + `queryState`) without `?id=` is a **card wall**: filter chips (全部 / 挂在题上 / 自由笔记 / the top tags from `GET /note/overview`), search (300ms), cards dealt round-robin into 1–4 columns by width (`distributeColumns`, so the newest fill the first row; columns from a `ResizeObserver`), each showing the rendered Markdown `excerpt` the list returns (`noteExcerpt` mirrors it after saves). Clicking a card sets `?id=` and shows the searchable list on the left (same filters; ← back to the wall) with `NoteEditor` on the right; the problem page's 「笔记」 tab (`ProblemNotes`) lists this question's notes, creates attached ones and edits inline (`mode="tab"`). `NoteEditor` loads by `noteId`, flushes before switching or leaving (and warns on `beforeunload`); `useNoteEditor` saves 1s after typing stops, saves again if you typed meanwhile, keeps the text and offers 重试 on errors, and on a 40900 version conflict (another tab, later the duck) stops and asks 「用别处的版本」 / 「用我的覆盖」 (the latter reloads the version and saves yours). ByteMD's fullscreen is only `position: fixed` without a z-index, so `MdEditor` gives `.bytemd-fullscreen` z-index 2500 (above the companion panel, below dialogs) — otherwise the problem page's later panels cover it. `ObsidianExport` (purple `ObsidianIcon`): builds Markdown with YAML properties (title, source link, problem, tags incl. `myoj`, difficulty, dates), copies it, then opens `obsidian://new?file=<folder>/<title>&clipboard=true` (+ `vault`, `overwrite=true` from settings in `localStorage["myoj:obsidian"]`); also 「下载 .md」. One-way only. The list snippet is computed on the backend (`NoteSnippets`) and mirrored by `noteSnippet` after saves.
+
+### 题单和收藏 (/lists, /lists/:id)
+
+Logged-in only. Backend `/question_list/*` (generated `QuestionListControllerService`, wrapped by `services/questionList.ts`). Three kinds: `favorite` (「我的收藏」, one per user, created on first use, can't be renamed or deleted), `custom` (private to the owner) and `official` (admins create and edit, everyone sees). `/lists` is a bento grid: 「我的收藏」 is the big card on the left (progress ring, the next three unsolved favorites from `loadListDetail` — clicking one sets the list context —, 继续做 / 打开), my own lists in two columns on the right with a dashed 「新建题单」 card filling the gap, official lists four per row; `/lists/:id` lists the questions in order with status, and — when `editable` — move up / down / remove, edit and delete. Clicking a question there calls `setListContext` (`problemNavigation.ts`), so the problem page's prev / next and list drawer follow the list (the drawer shows the list name and no pager). Stars: `FavoriteButton` in the 题库 rows (last column, logged in) and next to the problem title (`ProblemStatement`'s `actions` slot, together with `AddToListMenu`, which ticks my own lists — not the favorite — and can create a list). `useFavorites` keeps one shared set, flips the star before the request and puts it back if it fails. The star color is `--favorite`.
+
+### 学习统计 (LearningStatsView, /stats)
+
+Logged-in only. A 12-column **bento grid** where every row is filled: `SubmitCalendar` (`fill` — cells stretch to the width — with a `footer` slot holding active days / this month / busiest day / busiest hours) spans 8 columns and two rows, next to four 2-column tiles with a small chart each (solved ring, 12-week sparkline, verdict segments, this week's seven days); then tags (two columns) | difficulty | languages, then recent solves | first-try + stuck tags. Below 1280px the calendar goes full width and the tiles form one row. Sources: `useMyProgress`, `useSubmitCalendar` (week count from window width: 52 / 40 / 26 / 16) and `GET /question/progress/stats` (`services/learningStats.ts`: tags, languages, recent first solves, first-try count and the latest six, `hourCounts[24]`, `verdicts`, `stuckTags`). `summarizeCalendar`, `sparklinePoints`, `busiestHours`, `verdictSegments` turn them into the tiles. The refresh button forces all three. Profile's progress panel links here.
 
 ### Question Progress Tracking
 
@@ -241,7 +266,7 @@ Only Arco's `message` is used: components import `@arco-design/web-vue/es/messag
 Backend contract: `docs/frontend/ai-companion.md` in the backend repo. `generated/` also contains `CompanionControllerService`, but the app calls these endpoints through `src/services/companion.ts` (axios) and `companionStream.ts` (fetch) — chat / solution are SSE streams the generated client can't consume.
 
 - **State:** `useCompanion()` owns everything for the current question; ProblemView wraps it in `reactive()` and passes it to `CompanionPanel` as the `companion` prop (children call its methods instead of mutating it). Switching question or logging out resets it and aborts an in-flight stream.
-- **Streaming:** chat / solution are `POST` + `text/event-stream`, so `EventSource` can't be used. Errors before the stream starts come back as plain JSON (check `Content-Type`); errors mid-stream arrive as an `error` event. Events: `thinking`, `delta`, `edits`, `done`, `error`.
+- **Streaming:** chat / solution are `POST` + `text/event-stream`, so `EventSource` can't be used. Errors before the stream starts come back as plain JSON (check `Content-Type`); errors mid-stream arrive as an `error` event. Events: `thinking`, `delta`, `edits`, `notes`, `done`, `error`. The message list stays pinned to the bottom with a `ResizeObserver` on `.message-stack` (a finished reply re-renders its Markdown and only then gets taller), unless the user scrolled up.
 - **Reactions:** when polling reaches a terminal status, ProblemView calls `companion.onJudged()`: an instant mood plays first, then `POST /companion/react` replaces it with the model-chosen mood and a bubble (idempotent per submission).
 - **Conversations:** one question can have several conversations (each with its own memory and context usage); the session carries the current `conversationId`, and chat / hint / solution / compact send it. 「新对话」 is disabled while the current one is still empty; the header dropdown switches back to an earlier one. The hint level belongs to the question, not the conversation.
 - **Hint level:** one concept for users — how much the companion may reveal. `hintSteps` is a single list (index = level) of track-neutral titles and descriptions; whether the user lacks an idea or has a bug is the model's call and is never shown. The composer toolbar has `HintLevelPicker` (L0–L4 via `PUT /level`, hover shows each level's description; 「看答案」 at the bottom, confirmed first) and 「给点提示」, which asks one hint at the current level without changing it. `direct` mode shows 「不设限」.
@@ -250,6 +275,9 @@ Backend contract: `docs/frontend/ai-companion.md` in the backend repo. `generate
 - **One duck:** ProblemView creates a single `usePetBehavior` and passes it to `CompanionPet` (`behavior` prop) and `CompanionPanel` (`duck` prop). While the panel is open the floating pet is hidden and the duck in the panel header (40px, `lively`) shows the same poses — thinking, typing out a reply, waiting for a verdict, reactions. Opening / closing the panel flies the duck between the two spots (`useDuckFlight` + `DuckFlight.vue`, 520ms arc; both ends are hidden while it flies, `land()` plays on arrival; skipped with reduced motion). `CompanionPanel.duckRect()` subtracts the panel's slide-in offset so the duck lands where it will end up.
 - **Pet behavior** (`usePetBehavior`, tested in `usePetBehavior.spec.ts`): priority drag > short reactions (land, dizzy, wave, startled) > sleep > activity (`talking` while a reply streams, `judging` while a submission is pending) > companion mood (6s; `thinking` until changed) > watching you type (2s after the last key) > random idle action > idle. Pressing only shows the lifted pose after 180ms, so a click never flashes it. Fast shaking (>0.6s) makes it dizzy, a slow drag (>1.5s) makes it fly, release plays a squash landing. After 60s without mouse or keyboard it yawns, dozes and sleeps; moving the mouse 40px wakes it startled. Hover waves (at most every 6s). While dragged, `CompanionPet` swings it like a pendulum from the horizontal drag speed.
 - **Code edits:** proposals are previewed in Monaco's diff editor (`CodeEditor` `previewCode` prop) with `CodeEditPreviewBar`; applying uses `replaceAll()` → `executeEdits`, so Ctrl+Z undoes it. If the code changed since the request, `resolveProposal` re-applies each edit by unique `oldText`; rewrites ask to overwrite.
+- **Notes:** in chat the duck can list / search / read the user's notes and propose new notes or edits (backend `NoteTools`). Proposals arrive as the `notes` event and stay on the message as `noteEdits` (raw generated `NoteProposal`s; `services/companionNotes.ts` normalizes them and keeps the indexes, because apply is by index). Each shows as a violet card under the reply; `NoteProposalDialog` asks the backend for a preview against the note as it is now (`ready` / `rebased` / `partial` / `overwrite` needs confirming / `stale` / `missing` / `applied`) and applies through the generated `CompanionControllerService` (`previewNoteEdit` / `applyNoteEdit`); then `markNoteApplied` updates the card and `notifyNoteChanged` refreshes the problem page's 笔记 tab and an open `NoteEditor` (only when it has no unsaved edits — otherwise the save hits the version conflict). 「存进笔记」 under chat / hint / solution replies saves the reply as is; the history menu's 「把当前对话整理成笔记」 just sends `SUMMARIZE_TO_NOTE`.
+- **Conversations, deleting:** each row in the history menu has a trash button (shown on hover); after a confirm, `deleteConversation` calls `POST /companion/conversation/delete` (generated client). It is a physical delete — messages, memory and trace go too. Deleting the current one applies the session the backend returns (the latest other conversation, or a fresh one).
+- **Trace (轨迹):** the panel has 「对话 / 轨迹」 tabs under the header. 轨迹 opens `CompanionTrace`, which covers the three problem-page panels (absolute inside `.ide`; fixed full-window at ≤1024px, above the bottom-sheet panel), Esc or 「对话」 closes it. Data: `GET /companion/trace` (generated client) via `services/companionTrace.ts` — every turn (chat / hint / solution / reaction / compaction) with its user text, the context sections sent to the model, and steps (model calls with tokens incl. cache hits, tool calls with arguments and results, each with start time and duration). `buildTraceRows` flattens it into rows (系统 / 用户 / 上下文 / 模型 / 工具 / 助手 / 出错) with toggles for context and model calls plus search; `layoutTimeline` draws each turn at real speed and squeezes the idle time between turns. The right pane shows the selected row; the 系统 row has 系统提示词 / 工具 tabs. It reloads when the duck finishes a turn. Old conversations without records come back `fromMemory` (no times).
 - **Error codes:** 40020/40021 open the settings dialog; 42900 = another AI request in flight; see `describeCompanionError`.
 - **nginx:** `/api/companion/` has its own location with `proxy_buffering off` and a 300s read timeout — without it SSE replies arrive all at once.
 

@@ -179,7 +179,7 @@
           <router-link
             v-for="item in rows"
             :key="String(item.id)"
-            class="prow"
+            :class="['prow', { starred: isLoggedIn }]"
             :to="`/problem/${item.id}`"
           >
             <ProblemStatusIcon :status="statusOf(item.id)" />
@@ -207,6 +207,12 @@
               <AppIcon name="send" :size="15" />
               {{ formatCompactNumber(item.submitNum) }}
             </span>
+            <FavoriteButton
+              v-if="isLoggedIn && item.id != null"
+              :question-id="item.id"
+              size="sm"
+              tip-class="tip-up tip-end"
+            />
           </router-link>
         </template>
         <template v-else-if="loading">
@@ -256,10 +262,12 @@ import { LocationQuery, useRoute, useRouter } from "vue-router";
 import CompanionAvatar from "@/components/companion/CompanionAvatar.vue";
 import DifficultyLabel from "@/components/problem/DifficultyLabel.vue";
 import ProblemStatusIcon from "@/components/problem/ProblemStatusIcon.vue";
+import FavoriteButton from "@/components/questionList/FavoriteButton.vue";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import UiPagination from "@/components/ui/UiPagination.vue";
 import UiSegmented from "@/components/ui/UiSegmented.vue";
 import { useDismissable } from "@/composables/useDismissable";
+import { useFavorites } from "@/composables/useFavorites";
 import { useMyProgress } from "@/composables/useMyProgress";
 import { toGeneratedApiId } from "@/services/apiId";
 import { setProblemListContext } from "@/services/problemNavigation";
@@ -314,6 +322,14 @@ const route = useRoute();
 const router = useRouter();
 const { userId, total, solved, load: loadProgress, statusOf } = useMyProgress();
 const isLoggedIn = computed(() => userId.value != null);
+const favorites = useFavorites();
+watch(
+  userId,
+  () => {
+    void favorites.load();
+  },
+  { immediate: true }
+);
 
 // ===== 筛选条件都放在地址栏里，从做题页返回时还在 =====
 const firstText = (value: LocationQuery[string]) =>
@@ -945,6 +961,11 @@ div.problems-page {
   text-decoration: none;
 }
 
+/* 登录后最后多一列星标 */
+.prow.starred {
+  grid-template-columns: 28px minmax(0, 1fr) 210px 86px 92px 72px 30px;
+}
+
 .prow + .prow {
   box-shadow: 0 -1px 0 var(--line);
 }
@@ -1056,6 +1077,10 @@ div.problems-page {
     grid-template-columns: 28px minmax(0, 1fr) 150px 80px 84px;
   }
 
+  .prow.starred {
+    grid-template-columns: 28px minmax(0, 1fr) 150px 80px 84px 30px;
+  }
+
   .submits {
     display: none;
   }
@@ -1077,6 +1102,10 @@ div.problems-page {
 
   .prow {
     grid-template-columns: 24px minmax(0, 1fr) 64px 64px;
+  }
+
+  .prow.starred {
+    grid-template-columns: 24px minmax(0, 1fr) 64px 64px 30px;
   }
 
   .tags {

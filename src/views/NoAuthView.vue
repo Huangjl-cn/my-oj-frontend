@@ -3,7 +3,7 @@
     <section class="panel no-auth-card">
       <CompanionAvatar :size="72" mood="nervous" />
       <h1>这里进不去</h1>
-      <p>当前账号没有访问这个页面的权限。需要的话找管理员开通。</p>
+      <p>没有权限，需要的话找管理员开通</p>
       <div class="actions">
         <router-link class="btn primary sm" to="/">
           <AppIcon name="book" :size="16" />
